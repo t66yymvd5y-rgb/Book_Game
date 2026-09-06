@@ -75,13 +75,14 @@ is not free.
 ## 3. Progression
 
 Reputation (0–100) is the single progression currency, earned by serving people well and
-lost by letting them walk out.
+lost by letting them walk out. A sale is +2.4, a delighted customer +4.5, a walkout −0.4 —
+paced so a decent player reaches the cafe in a sitting rather than a fortnight.
 
 | Level | At rep | Unlocks | Rent |
 |---|---|---|---|
 | 1 | 0 | 4 shelves, counter | RM120/day |
-| 2 | 25 | Display table | RM170/day |
-| 3 | 60 | **Kopi Corner** (cafe) | RM240/day |
+| 2 | 18 | Display table | RM170/day |
+| 3 | 45 | **Kopi Corner** (cafe) | RM240/day |
 
 The cafe is the expansion you asked about, and it earns its place mechanically rather than
 cosmetically: it raises every customer's patience by 50%. In a game whose central scarcity
