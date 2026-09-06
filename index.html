@@ -1,0 +1,1084 @@
+<title>Kedai Buku</title>
+<style>
+  :root{
+    --ink:#f4ead6; --ink-dim:#b7a78c; --bg:#150f0b; --panel:#241a14;
+    --panel-2:#2f2219; --line:#4a3524; --gold:#e8b04b; --green:#7fbf6a;
+    --red:#d1615d; --blue:#7fb0d8; --shadow:rgba(0,0,0,.5);
+    --pix:"Press Start 2P", ui-monospace, monospace;
+    --sans:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--sans);
+    font-size:12px; line-height:1.6;
+    overscroll-behavior:none; user-select:none; -webkit-user-select:none;
+  }
+  #wrap{max-width:460px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);}
+
+  /* ---- HUD ---- */
+  #hud{display:flex;gap:4px;padding:6px;background:var(--panel);border-bottom:2px solid var(--line);}
+  .stat{flex:1;background:var(--panel-2);border:1px solid var(--line);padding:5px 3px;text-align:center;}
+  .stat b{display:block;font-family:var(--pix);color:var(--gold);font-size:9px;margin-top:5px;}
+  .stat span{font-family:var(--pix);color:var(--ink-dim);font-size:6px;}
+
+  /* ---- canvas ---- */
+  #stage{background:#0c0906;}
+  canvas{display:block;width:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:manipulation;}
+  #tip{background:#1c1510;padding:6px 8px;font-size:11px;color:var(--gold);
+    border-top:1px solid var(--line);border-bottom:2px solid var(--line);min-height:28px;}
+
+  /* ---- panel ---- */
+  #panel{flex:1;background:var(--panel);padding:9px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  h2{font-family:var(--pix);font-size:10px;margin:0 0 10px;color:var(--gold);line-height:1.6;}
+  h3{font-family:var(--pix);font-size:7px;margin:12px 0 6px;color:var(--ink-dim);letter-spacing:1px;text-transform:uppercase;}
+  p{margin:0 0 8px;color:var(--ink-dim);font-size:12px;line-height:1.65;}
+
+  .tabs{display:flex;gap:3px;margin-bottom:9px;}
+  .tab{flex:1;padding:8px 2px;background:var(--panel-2);border:1px solid var(--line);color:var(--ink-dim);
+    text-align:center;font-family:var(--pix);font-size:7px;cursor:pointer;}
+  .tab.on{background:var(--gold);color:#150f0b;border-color:var(--gold);}
+
+  button{font-family:var(--pix);font-size:8px;line-height:1.7;cursor:pointer;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--ink);padding:8px 9px;}
+  button:active{transform:translateY(1px);}
+  button:disabled{opacity:.35;cursor:default;}
+  .btn-go{background:var(--gold);color:#150f0b;border-color:#8a6420;width:100%;padding:13px;font-size:10px;margin-top:12px;}
+  .btn-sm{padding:6px 8px;font-size:7px;}
+  .row{display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
+
+  .card{background:var(--panel-2);border:1px solid var(--line);padding:7px;margin-bottom:6px;display:flex;gap:9px;align-items:flex-start;}
+  .card canvas{width:36px;height:54px;flex:none;border:1px solid #000;image-rendering:pixelated;}
+  .card .meta{flex:1;min-width:0;}
+  .t{font-family:var(--pix);font-size:8px;line-height:1.7;color:var(--ink);}
+  .a{font-size:11px;color:var(--ink-dim);margin-top:4px;}
+  .tagrow{margin-top:5px;display:flex;flex-wrap:wrap;gap:3px;}
+  .tag{font-size:10px;padding:2px 5px;background:#3b2b1f;border:1px solid var(--line);color:var(--ink-dim);}
+  .tag.g{color:var(--green);border-color:#3d5c33;}
+  .tag.b{color:var(--blue);border-color:#2f4a5e;}
+  .tag.r{color:var(--red);border-color:#5e2f2f;}
+  .price{font-family:var(--pix);color:var(--gold);font-size:8px;}
+  .cost{font-size:11px;color:var(--ink-dim);}
+
+  .empty{text-align:center;color:var(--ink-dim);padding:20px 8px;font-size:12px;line-height:1.9;}
+  .bar{height:6px;background:#3b2b1f;border:1px solid var(--line);margin-top:5px;}
+  .bar i{display:block;height:100%;background:var(--green);}
+
+  /* ---- modal ---- */
+  #modal{position:fixed;inset:0;background:rgba(8,5,3,.9);display:none;z-index:50;align-items:flex-end;justify-content:center;}
+  #modal.on{display:flex;}
+  #sheet{width:100%;max-width:460px;max-height:92vh;overflow-y:auto;background:var(--panel);
+    border-top:3px solid var(--gold);padding:11px;}
+  .speaker{font-family:var(--pix);color:var(--gold);font-size:9px;margin-bottom:8px;line-height:1.7;}
+  .say{background:var(--panel-2);border-left:3px solid var(--gold);padding:9px 10px;font-size:13px;
+    line-height:1.65;color:var(--ink);margin-bottom:8px;white-space:pre-line;}
+  .say.me{border-left-color:var(--blue);color:var(--ink-dim);font-style:italic;}
+  .choice{display:block;width:100%;text-align:left;margin-bottom:5px;font-family:var(--sans);font-size:12px;padding:10px;}
+  .clues{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px;}
+  .pick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:7px;}
+  .pick .bk{background:var(--panel-2);border:1px solid var(--line);padding:5px;text-align:center;cursor:pointer;}
+  .pick .bk canvas{width:100%;height:auto;aspect-ratio:2/3;border:1px solid #000;image-rendering:pixelated;}
+  .pick .bk div{font-size:10px;margin-top:4px;color:var(--ink-dim);line-height:1.4;}
+  .verdict{text-align:center;padding:10px;font-family:var(--pix);font-size:9px;margin:8px 0;border:1px solid var(--line);}
+  .verdict.good{color:var(--green);border-color:#3d5c33;}
+  .verdict.bad{color:var(--red);border-color:#5e2f2f;}
+
+  .bookhead{display:flex;gap:11px;margin-bottom:10px;}
+  .bookhead canvas{width:80px;height:120px;flex:none;border:2px solid #000;image-rendering:pixelated;}
+  .review{border-top:1px solid var(--line);padding:8px 0;font-size:12px;color:var(--ink-dim);line-height:1.6;}
+  .review b{font-family:var(--pix);font-size:7px;color:var(--gold);display:block;margin-bottom:5px;}
+  .stars{color:var(--gold);letter-spacing:2px;font-family:var(--sans);font-size:11px;}
+  .buy{background:#3d5c33;color:#eafae4;border-color:#5b8a4a;width:100%;padding:12px;margin-top:10px;font-size:9px;line-height:1.7;}
+  .note{font-size:10px;color:#8a7a63;line-height:1.6;margin-top:9px;border-top:1px solid var(--line);padding-top:7px;}
+
+  .ledger{display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--line);}
+  .ledger b{font-family:var(--pix);font-size:8px;color:var(--gold);}
+  .ledger.neg b{color:var(--red);}
+  .ledger.pos b{color:var(--green);}
+  .lock{opacity:.4;}
+  /* Press Start 2P is far wider than the fallback - never let it break the layout */
+  .t,button,h2,h3,.speaker,.verdict,.stat b{overflow-wrap:anywhere;}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+<div id="wrap">
+  <div id="hud">
+    <div class="stat"><span>DAY</span><b id="hDay">1</b></div>
+    <div class="stat"><span>CASH</span><b id="hCash">1500</b></div>
+    <div class="stat"><span>REP</span><b id="hRep">0</b></div>
+    <div class="stat"><span>PHASE</span><b id="hPhase">SETUP</b></div>
+  </div>
+  <div id="stage"><canvas id="cv" width="192" height="144"></canvas></div>
+  <div id="tip">Tap OPEN when your shelves are ready.</div>
+  <div id="panel"></div>
+</div>
+
+<div id="modal"><div id="sheet"></div></div>
+
+<script>
+"use strict";
+/* ============================================================
+   KEDAI BUKU — a bookshop simulator set in a Petaling Jaya shoplot
+   Prototype build. Single file, no dependencies, no network.
+   ============================================================ */
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const el = (t,c,h) => { const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e; };
+const rnd = a => a[(Math.random()*a.length)|0];
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const rm = n => "RM" + n.toFixed(2);
+function seeded(str){ let h=2166136261; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
+  return ()=>{ h+=0x6D2B79F5; let t=h; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
+
+/* ---------- catalogue: real books ----------
+   Fields: id,title,author,year,genre,mood[],pace,weight,cost,blurb,themes[]
+   In a shipped build this array is a live Open Library / Google Books query.
+   Frozen here because the prototype sandbox has no network. ---------- */
+let _id=0;
+const b=(title,author,year,genre,moods,pace,weight,cost,blurb,themes)=>
+  ({id:_id++,title,author,year,genre,moods,pace,weight,cost,blurb,themes});
+
+const BOOKS=[
+ b("Never Let Me Go","Kazuo Ishiguro",2005,"literary",["melancholy","contemplative"],"slow","medium",29,
+   "Three friends raised at a secluded English boarding school slowly uncover the purpose their lives were made for.",["memory","mortality","friendship"]),
+ b("The Remains of the Day","Kazuo Ishiguro",1989,"literary",["melancholy","contemplative"],"slow","medium",28,
+   "An English butler takes a motoring holiday and reckons with a lifetime of dignified service and unspoken love.",["regret","duty","class"]),
+ b("Klara and the Sun","Kazuo Ishiguro",2021,"literary",["melancholy","hopeful"],"slow","medium",32,
+   "An Artificial Friend watches the world from a shop window, waiting to be chosen by a child.",["love","loneliness","faith"]),
+ b("Beloved","Toni Morrison",1987,"literary",["unsettling","melancholy"],"slow","heavy",31,
+   "A formerly enslaved woman in Ohio is haunted, literally, by the daughter she could not let be taken.",["memory","slavery","motherhood"]),
+ b("Norwegian Wood","Haruki Murakami",1987,"literary",["melancholy","contemplative"],"steady","medium",30,
+   "A student in 1960s Tokyo is pulled between a fragile first love and a woman who wants him to live.",["grief","first love","youth"]),
+ b("Kafka on the Shore","Haruki Murakami",2002,"literary",["unsettling","contemplative"],"steady","medium",33,
+   "A runaway boy and an old man who talks to cats are drawn together by a prophecy neither understands.",["fate","identity","dreams"]),
+ b("One Hundred Years of Solitude","Gabriel Garcia Marquez",1967,"literary",["contemplative","melancholy"],"slow","heavy",34,
+   "Seven generations of the Buendia family rise and fall in the invented town of Macondo.",["family","time","solitude"]),
+ b("The God of Small Things","Arundhati Roy",1997,"literary",["melancholy","unsettling"],"slow","heavy",30,
+   "Twins in Kerala carry the weight of one afternoon that broke their family and the laws that govern who may be loved.",["family","caste","childhood"]),
+ b("Things Fall Apart","Chinua Achebe",1958,"literary",["melancholy","contemplative"],"steady","medium",26,
+   "A respected Igbo wrestler and farmer watches his world reorder itself around the arrival of missionaries.",["tradition","change","masculinity"]),
+ b("Pachinko","Min Jin Lee",2017,"literary",["melancholy","hopeful"],"steady","heavy",35,
+   "Four generations of a Korean family in Japan endure exile, prejudice and stubborn, quiet endurance.",["family","migration","belonging"]),
+
+ b("The Garden of Evening Mists","Tan Twan Eng",2011,"literary",["melancholy","contemplative"],"slow","medium",33,
+   "In post-war Malaya a survivor of a Japanese camp apprentices herself to the Emperor's former gardener.",["memory","forgiveness","malaysia"]),
+ b("The Gift of Rain","Tan Twan Eng",2007,"literary",["melancholy","thrilling"],"steady","heavy",34,
+   "A half-Chinese, half-English boy in Penang is befriended by a Japanese diplomat on the eve of the occupation.",["loyalty","betrayal","malaysia"]),
+ b("Evening is the Whole Day","Preeta Samarasan",2008,"literary",["melancholy","unsettling"],"slow","medium",29,
+   "A Tamil family in a decaying Ipoh mansion unravels around a servant girl's dismissal.",["family","class","malaysia"]),
+ b("The Rice Mother","Rani Manicka",2002,"literary",["melancholy","hopeful"],"steady","medium",28,
+   "A Ceylonese girl married off to Malaya at fourteen becomes the spine of a family across a century.",["family","war","malaysia"]),
+ b("Once We Were There","Bernice Chauly",2017,"literary",["unsettling","melancholy"],"fast","heavy",30,
+   "A journalist in Reformasi-era Kuala Lumpur loses her child and everything that held her together.",["loss","politics","malaysia"]),
+ b("The Weight of Our Sky","Hanna Alkaf",2019,"ya",["thrilling","hopeful"],"fast","medium",27,
+   "A Malay girl with OCD is caught in the Kuala Lumpur riots of May 1969 and must cross the city to find her mother.",["race","mental health","malaysia"]),
+ b("The Girl and the Ghost","Hanna Alkaf",2020,"children",["unsettling","hopeful"],"fast","light",24,
+   "A lonely village girl inherits a pelesit, a dark spirit who wants to be her only friend.",["friendship","folklore","malaysia"]),
+
+ b("Gone Girl","Gillian Flynn",2012,"crime",["thrilling","unsettling"],"fast","medium",29,
+   "A wife vanishes on her fifth anniversary and her husband becomes the whole country's suspect.",["marriage","deceit","media"]),
+ b("The Girl with the Dragon Tattoo","Stieg Larsson",2005,"crime",["thrilling","unsettling"],"fast","heavy",30,
+   "A disgraced journalist and a ferocious young hacker reopen a forty-year-old disappearance.",["corruption","revenge","secrets"]),
+ b("And Then There Were None","Agatha Christie",1939,"crime",["thrilling","unsettling"],"fast","light",24,
+   "Ten strangers are lured to an island and accused, one by one, of a murder they got away with.",["guilt","justice","isolation"]),
+ b("The Big Sleep","Raymond Chandler",1939,"crime",["thrilling","funny"],"fast","medium",25,
+   "Philip Marlowe takes a blackmail job for a dying general and finds the whole of Los Angeles underneath it.",["corruption","loyalty","noir"]),
+ b("The Silence of the Lambs","Thomas Harris",1988,"crime",["thrilling","unsettling"],"fast","medium",27,
+   "A trainee FBI agent bargains with one monster to catch another.",["fear","ambition","evil"]),
+
+ b("Dune","Frank Herbert",1965,"scifi",["thrilling","contemplative"],"steady","heavy",36,
+   "A ducal heir is exiled to a desert planet whose spice runs the empire and whose people have been waiting for him.",["power","ecology","prophecy"]),
+ b("The Left Hand of Darkness","Ursula K. Le Guin",1969,"scifi",["contemplative","melancholy"],"slow","heavy",30,
+   "An envoy on a frozen world must understand a people who have no fixed gender before they refuse him.",["gender","trust","otherness"]),
+ b("Project Hail Mary","Andy Weir",2021,"scifi",["thrilling","funny","hopeful"],"fast","medium",34,
+   "A man wakes alone on a spaceship with no memory, two corpses, and the job of saving the sun.",["friendship","science","survival"]),
+ b("The Fifth Season","N. K. Jemisin",2015,"fantasy",["unsettling","thrilling"],"fast","heavy",33,
+   "On a world that ends regularly, a woman hunts the husband who murdered their son and took their daughter.",["oppression","motherhood","apocalypse"]),
+ b("Piranesi","Susanna Clarke",2020,"fantasy",["contemplative","unsettling"],"steady","light",29,
+   "A gentle man keeps records in an infinite house of statues and tides, certain he is not alone.",["wonder","memory","captivity"]),
+ b("The Hobbit","J.R.R. Tolkien",1937,"fantasy",["comforting","funny"],"steady","light",26,
+   "A comfortable hobbit is bullied out of his door by thirteen dwarves and a wizard, and rather enjoys it.",["adventure","courage","home"]),
+ b("Neuromancer","William Gibson",1984,"scifi",["thrilling","unsettling"],"fast","heavy",28,
+   "A burnt-out console cowboy is hired for one last run into the ice of a corporate artificial intelligence.",["technology","addiction","identity"]),
+
+ b("The Haunting of Hill House","Shirley Jackson",1959,"horror",["unsettling","melancholy"],"steady","light",25,
+   "Four people spend a summer in a house that is not sane, and one of them was always going to stay.",["loneliness","fear","the house"]),
+ b("Mexican Gothic","Silvia Moreno-Garcia",2020,"horror",["unsettling","thrilling"],"fast","medium",30,
+   "A 1950s socialite visits her cousin's mouldering house in the mountains and finds the walls are listening.",["family","colonialism","dread"]),
+
+ b("Pride and Prejudice","Jane Austen",1813,"romance",["funny","comforting"],"steady","light",22,
+   "Elizabeth Bennet decides very early that she cannot stand Mr Darcy, and is wrong.",["class","pride","marriage"]),
+ b("Beach Read","Emily Henry",2020,"romance",["funny","hopeful"],"fast","light",27,
+   "Two rival novelists spend a summer next door to each other and swap genres, and then everything else.",["grief","writing","second chances"]),
+
+ b("Sapiens: A Brief History of Humankind","Yuval Noah Harari",2011,"history",["contemplative"],"steady","heavy",38,
+   "How an unremarkable ape came to run the planet on the strength of stories it made up.",["civilisation","myth","progress"]),
+ b("Educated","Tara Westover",2018,"biography",["thrilling","hopeful"],"fast","medium",33,
+   "A girl kept out of school by survivalist parents in Idaho teaches herself enough to reach Cambridge.",["family","education","escape"]),
+ b("The Emperor of All Maladies","Siddhartha Mukherjee",2010,"nonfiction",["contemplative","melancholy"],"slow","heavy",39,
+   "A biography of cancer, from ancient surgeons to the modern clinic, by an oncologist who tells it as a life.",["medicine","science","mortality"]),
+ b("Man's Search for Meaning","Viktor E. Frankl",1946,"philosophy",["contemplative","hopeful"],"fast","light",23,
+   "A psychiatrist's account of the camps, and of the one freedom that could not be taken from him.",["suffering","meaning","hope"]),
+ b("Thinking, Fast and Slow","Daniel Kahneman",2011,"nonfiction",["contemplative"],"slow","heavy",37,
+   "The two systems of the mind, and the reliable ways both of them fool you.",["psychology","bias","decisions"]),
+ b("Quiet","Susan Cain",2012,"nonfiction",["contemplative","hopeful"],"steady","medium",31,
+   "The case for introverts in a world that will not stop talking.",["personality","work","solitude"]),
+ b("Bad Blood","John Carreyrou",2018,"business",["thrilling","unsettling"],"fast","medium",32,
+   "How a Silicon Valley blood-testing unicorn worth nine billion dollars turned out to test nothing.",["fraud","ambition","silicon valley"]),
+ b("Zero to One","Peter Thiel",2014,"business",["contemplative"],"fast","light",29,
+   "Notes on building companies that make something new instead of copying what works.",["startups","monopoly","contrarian"]),
+ b("Meditations","Marcus Aurelius",180,"philosophy",["contemplative","comforting"],"slow","medium",21,
+   "A Roman emperor's private notes to himself on temper, duty and dying well.",["stoicism","duty","death"]),
+ b("The Myth of Sisyphus","Albert Camus",1942,"philosophy",["contemplative","melancholy"],"slow","heavy",24,
+   "If life is absurd, the question is whether to go on. Camus says yes, and explains why.",["absurdity","meaning","suicide"]),
+ b("Devotions","Mary Oliver",2017,"poetry",["comforting","contemplative"],"slow","light",35,
+   "Fifty years of poems about geese, ponds, mortality and paying attention.",["nature","attention","grace"]),
+ b("Milk and Honey","Rupi Kaur",2014,"poetry",["melancholy","hopeful"],"fast","light",26,
+   "Short poems on hurting, loving and surviving both.",["healing","love","womanhood"]),
+ b("Where the Wild Things Are","Maurice Sendak",1963,"children",["comforting","funny"],"fast","light",20,
+   "Max is sent to bed without supper and sails off to be king of the monsters.",["temper","imagination","home"]),
+ b("Charlotte's Web","E.B. White",1952,"children",["comforting","melancholy"],"fast","light",19,
+   "A spider spends her life writing advertisements in her web to save a pig.",["friendship","death","farm"]),
+ b("Matilda","Roald Dahl",1988,"children",["funny","hopeful"],"fast","light",21,
+   "A small girl with enormous powers and appalling parents discovers the library, then revenge.",["books","injustice","cleverness"]),
+ b("The Little Prince","Antoine de Saint-Exupery",1943,"children",["comforting","melancholy"],"fast","light",22,
+   "A pilot down in the desert meets a boy from an asteroid who has questions about grown-ups.",["innocence","love","loss"]),
+];
+const BOOK = id => BOOKS[id];
+
+const GENRE_LABEL={literary:"Literary",crime:"Crime",scifi:"Sci-Fi",fantasy:"Fantasy",horror:"Horror",
+  romance:"Romance",history:"History",biography:"Biography",nonfiction:"Non-Fiction",philosophy:"Philosophy",
+  poetry:"Poetry",children:"Children",business:"Business",ya:"YA"};
+
+/* ---------- customers ---------- */
+/* want: genres[], moods[], maxPrice, avoid[] (moods or genres they refuse)
+   probes: each reveals a clue and costs a little of their patience  */
+const CAST=[
+ {key:"rosnah",name:"Puan Rosnah",role:"retired teacher",skin:"#c58a5e",hair:"#2b2b33",shirt:"#7a9ec4",
+  want:{genres:["literary","poetry","children"],moods:["comforting","hopeful"],max:35,avoid:["unsettling"]},
+  enter:"Aiyo, the aircon here is very good. I just came to look, ah.",
+  probes:[
+   {q:"What do you usually read, Puan?",a:"I taught Bahasa and English for thirty-one years. Now I only read what is kind.",reveal:"Likes gentle books"},
+   {q:"Reading for yourself or a gift?",a:"For me. My grandchildren gave me a lot of free time.",reveal:"Reading for herself"},
+   {q:"Any budget in mind?",a:"Teacher's pension, dear. Under thirty-five ringgit, please.",reveal:"Under RM35"}],
+  yes:"Oh, this one looks lovely. I'll take it. You are very clever, you know.",
+  no:"Hmm. Maybe next time, ah. I'll come back."},
+
+ {key:"devan",name:"Mr Devan",role:"retired civil servant",skin:"#8b5e3c",hair:"#e8e8e8",shirt:"#5b6b4a",
+  want:{genres:["history","biography","nonfiction","philosophy"],moods:["contemplative"],max:60,avoid:["romance"]},
+  enter:"Good morning. Do you carry proper history, or only the airport kind?",
+  probes:[
+   {q:"What sort of history, sir?",a:"Anything with footnotes. I spent forty years in the Ministry; I know when I'm being flattered.",reveal:"Wants serious non-fiction"},
+   {q:"Price a concern?",a:"I would rather pay for one good book than three bad ones.",reveal:"Not price-sensitive"},
+   {q:"Fiction ever?",a:"My wife reads the romance. I read the truth.",reveal:"Refuses romance"}],
+  yes:"Now this is a book. Wrap it. And keep more like it.",
+  no:"No, no. I'll try the shop in Bangsar."},
+
+ {key:"weilun",name:"Wei Lun",role:"engineering student",skin:"#e0b48c",hair:"#1a1a22",shirt:"#3f6a63",
+  want:{genres:["scifi","fantasy","business"],moods:["thrilling","funny"],max:30,avoid:["poetry"]},
+  enter:"Boss, got anything cheap? I've got RM30 until Thursday.",
+  probes:[
+   {q:"What are you into?",a:"Space, robots, anything where someone builds their way out of a problem.",reveal:"Wants sci-fi"},
+   {q:"Thirty ringgit firm?",a:"Very firm. Rent already made me cry once this month.",reveal:"Hard cap RM30"},
+   {q:"Long book or short?",a:"Long, actually. Cost per hour, boss. I'm an engineer.",reveal:"Values length"}],
+  yes:"Steady. Take my money before I change my mind.",
+  no:"Cannot lah. Sorry boss."},
+
+ {key:"farah",name:"Farah",role:"marketing exec",skin:"#c99161",hair:"#241a18",shirt:"#c4718a",
+  want:{genres:["romance","crime","ya"],moods:["thrilling","funny","hopeful"],max:45,avoid:["philosophy"]},
+  enter:"Hi! Do you have the one everyone's posting about? The one with the twist?",
+  probes:[
+   {q:"Which twist do you mean?",a:"I don't know! That's the problem. Something I can finish in a weekend.",reveal:"Wants fast, gripping"},
+   {q:"Happy ending or devastating?",a:"Devastating is fine as long as it's satisfying.",reveal:"Open to dark"},
+   {q:"Have you read much this year?",a:"Four books. I'm behind on my goal and it's genuinely stressing me out.",reveal:"Wants an easy win"}],
+  yes:"Oh this is SO going on my story. Taking it.",
+  no:"Hmm, not really my vibe. Thanks though!"},
+
+ {key:"lim",name:"Uncle Lim",role:"kopitiam owner next door",skin:"#c58a5e",hair:"#3a3a42",shirt:"#b8b0a0",
+  want:{genres:["children"],moods:["comforting","funny"],max:30,avoid:["horror","philosophy"]},
+  enter:"Eh, neighbour! My daughter's birthday. She's seven. Help me, I don't read.",
+  probes:[
+   {q:"What does she like?",a:"Animals. Cats, pigs, anything with a face.",reveal:"Wants animals"},
+   {q:"Does she read alone?",a:"Her mother reads to her. So must be nice to say out loud.",reveal:"Read-aloud"},
+   {q:"Budget?",a:"Don't insult me. But also don't rob me. Thirty.",reveal:"Around RM30"}],
+  yes:"Good, good. Come for kopi later, on me.",
+  no:"Aiya. Never mind, I'll buy her a bicycle."},
+
+ {key:"prakash",name:"Dr Prakash",role:"GP down the row",skin:"#8b5e3c",hair:"#22222a",shirt:"#dedede",
+  want:{genres:["nonfiction","biography","philosophy","history"],moods:["contemplative","thrilling"],max:50,avoid:["fantasy"]},
+  enter:"I have eleven minutes before my next patient. Sell me something.",
+  probes:[
+   {q:"Fiction or non?",a:"Non. I get enough fiction from patients describing their symptoms.",reveal:"Non-fiction only"},
+   {q:"Medicine or away from it?",a:"Either. If it's about medicine it must be honest about how much we get wrong.",reveal:"Open to medicine"},
+   {q:"How much time do you actually have?",a:"Twenty minutes a night, if my daughter sleeps.",reveal:"Time-poor"}],
+  yes:"Right. Good. I'll be back Thursday.",
+  no:"Not today. Ten minutes now. Goodbye."},
+
+ {key:"angela",name:"Sister Angela",role:"church volunteer",skin:"#d9a97e",hair:"#4a4a52",shirt:"#6b7f9e",
+  want:{genres:["philosophy","poetry","literary"],moods:["contemplative","comforting","melancholy"],max:40,avoid:["horror"]},
+  enter:"I'm looking for something to sit with. Not to finish quickly.",
+  probes:[
+   {q:"Sit with how?",a:"Slowly. A few pages, then a long think. That is the whole point.",reveal:"Wants slow reading"},
+   {q:"Comfort or challenge?",a:"Comfort that has been through something. Not the cheap kind.",reveal:"Earned comfort"},
+   {q:"Poetry?",a:"Always poetry. But good poetry.",reveal:"Loves poetry"}],
+  yes:"Yes. This is the one. Thank you for listening properly.",
+  no:"Not quite. But thank you for thinking about it."},
+
+ {key:"amirah",name:"Amirah",role:"form five student",skin:"#c99161",hair:"#1e1a24",shirt:"#8a6ab0",
+  want:{genres:["horror","ya","fantasy"],moods:["unsettling","thrilling"],max:32,avoid:["comforting"]},
+  enter:"I want something that will actually scare me. Not baby scary.",
+  probes:[
+   {q:"How scared are we talking?",a:"Can't-sleep scared. My mum will complain and that's how I'll know it worked.",reveal:"Wants real horror"},
+   {q:"Ghosts or people?",a:"People are worse. But a proper haunted house is also acceptable.",reveal:"Open to both"},
+   {q:"Duit raya still holding?",a:"Barely. Thirty-two ringgit, that's it.",reveal:"Under RM32"}],
+  yes:"Okay this cover alone is unhinged. Buying.",
+  no:"That's giving primary school. No thanks."},
+
+ {key:"zaid",name:"Zaid",role:"unpublished novelist",skin:"#a97448",hair:"#181820",shirt:"#4a4a56",
+  want:{genres:["literary","poetry"],moods:["melancholy","unsettling","contemplative"],max:45,avoid:["business","romance"]},
+  enter:"I've been to four shops today. All of them had the same nine books.",
+  probes:[
+   {q:"What are you hoping to find?",a:"Something the algorithm didn't pick. Something with a sentence in it I'd be jealous of.",reveal:"Wants literary depth"},
+   {q:"Are you writing?",a:"Third draft. It's set in Ipoh. It's not going well.",reveal:"Writing about Malaysia"},
+   {q:"Malaysian authors?",a:"If you actually stock them, and not just the one everybody names.",reveal:"Tests your curation"}],
+  yes:"Right. Okay. You actually know what you're doing. I'll be back.",
+  no:"Yeah. Same nine books. See you."},
+
+ {key:"chin",name:"Mrs Chin",role:"tuition centre owner",skin:"#e0b48c",hair:"#2a2a30",shirt:"#a0453f",
+  want:{genres:["children","ya","literary"],moods:["hopeful","funny"],max:28,avoid:["horror"]},
+  enter:"I need books for the centre. Something the kids will finish.",
+  probes:[
+   {q:"What age group?",a:"Nine to twelve. If it's boring they will simply refuse.",reveal:"Ages 9-12"},
+   {q:"Curriculum or fun?",a:"Fun. The curriculum has already ruined reading for them.",reveal:"Wants fun"},
+   {q:"Per unit budget?",a:"Twenty-eight. I'm buying six of whatever you pick.",reveal:"Under RM28"}],
+  yes:"Fine. Put six aside for me. Don't disappoint me next month.",
+  no:"Too expensive, or too boring. Either way, no."},
+
+ {key:"bala",name:"Bala",role:"rider on a break",skin:"#7a4f30",hair:"#161620",shirt:"#3f8a4a",
+  want:{genres:["biography","business","crime"],moods:["thrilling","hopeful"],max:26,avoid:[]},
+  enter:"Just sheltering from the rain, boss. Ten minutes only.",
+  probes:[
+   {q:"Read much?",a:"Used to. Before the app. Now I read the map.",reveal:"Lapsed reader"},
+   {q:"What got you before?",a:"True stories. People who came from nothing.",reveal:"Wants true stories"},
+   {q:"Got budget?",a:"Twenty-six. That's two hours of riding, so it better be good.",reveal:"Under RM26"}],
+  yes:"Okay. Two hours. Worth it, I think.",
+  no:"Next time boss. Rain stopped already."},
+
+ {key:"tan",name:"Mr Tan",role:"collector",skin:"#c58a5e",hair:"#c8c8c8",shirt:"#6a5b7a",
+  want:{genres:["literary","scifi","crime"],moods:["contemplative","unsettling"],max:80,avoid:["children"]},
+  enter:"I collect. I don't browse. Show me something that will hold value.",
+  probes:[
+   {q:"What do you collect?",a:"Twentieth century, mostly. Books that were dismissed and then weren't.",reveal:"Wants classics"},
+   {q:"Condition matters?",a:"Everything matters. But content first.",reveal:"Content first"},
+   {q:"Ceiling?",a:"There isn't one, if it's right.",reveal:"No price ceiling"}],
+  yes:"Good eye. That is a real book. I'll take it at your price.",
+  no:"No. You're selling what everyone sells."},
+];
+
+/* ---------- in-world reviews ---------- */
+const REVIEW_LINES={
+  comforting:["Read it in one sitting with the fan on. Felt held.","Like being told everything will probably be fine."],
+  melancholy:["Cried on the LRT. Twice. Worth it.","Sad in the way that makes you call your mother."],
+  unsettling:["Did not sleep. Do not read at night, I am serious.","Something is wrong on every page and I loved it."],
+  funny:["Laughed out loud in a mamak and got looks.","Genuinely funny, not just clever-funny."],
+  hopeful:["Ended it wanting to be slightly better. That's rare.","Left me lighter than it found me."],
+  thrilling:["Missed my stop. Missed two stops.","Could not put it down, ruined my whole Sunday."],
+  contemplative:["Read ten pages a night. Thought about it all day.","A book to argue with. I did, at length."],
+};
+function reviewsFor(bk){
+  const r=seeded(bk.title+bk.author); const pool=[];
+  bk.moods.forEach(m=>(REVIEW_LINES[m]||[]).forEach(l=>pool.push(l)));
+  const names=CAST.map(c=>c.name);
+  const avail=names.slice();
+  const out=[]; const n=2+((r()*2)|0);
+  for(let i=0;i<n && pool.length && avail.length;i++){
+    const li=(r()*pool.length)|0, ni=(r()*avail.length)|0;
+    out.push({who:avail.splice(ni,1)[0], text:pool.splice(li,1)[0], stars:4+((r()*2)|0)});
+  }
+  return out;
+}
+
+/* ---------- shop grid ---------- */
+const GW=12, GH=9, TS=16;
+const EMPTY=0, WALL=1, SHELF=2, COUNTER=3, TABLE=4, PLANT=5, CAFE=6, DOOR=7;
+const FURN={
+  [SHELF]:{name:"Shelf",cost:120,slots:3,desc:"Holds 3 titles"},
+  [TABLE]:{name:"Display Table",cost:200,slots:1,desc:"Featured title, +40% notice",lvl:2},
+  [PLANT]:{name:"Potted Palm",cost:60,slots:0,desc:"+ambience, slower exits"},
+  [CAFE]:{name:"Kopi Corner",cost:900,slots:0,desc:"+50% patience, all customers",lvl:3},
+};
+
+const S={
+  phase:"morning", day:1, cash:1500, rep:0,
+  grid:[], slots:{},          // tileKey -> [bookId,...]
+  stock:{},                   // bookId -> {copies, price, auto, cost}
+  offers:[], customers:[], tick:0, dayLen:900,
+  spawnQueue:[], talking:null, placing:null,
+  stats:{rev:0,spent:0,served:0,delighted:0,missed:0,walkouts:0},
+  history:[], soldEver:{}, tab:"stock", featured:null,
+  seen:{}, tutorial:true,
+};
+
+function key(x,y){return x+","+y;}
+function initGrid(){
+  S.grid=[];
+  for(let y=0;y<GH;y++){ const row=[]; for(let x=0;x<GW;x++){
+    let t=EMPTY;
+    if(y===0||x===0||x===GW-1||y===GH-1) t=WALL;
+    if(y===GH-1 && x===6) t=DOOR;
+    row.push(t);
+  } S.grid.push(row);}
+  // starting fit-out
+  [[2,2],[3,2],[8,2],[9,2]].forEach(([x,y])=>{S.grid[y][x]=SHELF; S.slots[key(x,y)]=[];});
+  S.grid[2][6]=COUNTER; S.grid[2][1]=PLANT; S.grid[2][10]=PLANT;
+}
+function tilesOf(type){const o=[];for(let y=0;y<GH;y++)for(let x=0;x<GW;x++)if(S.grid[y][x]===type)o.push([x,y]);return o;}
+function level(){ return S.rep>=45?3 : S.rep>=18?2 : 1; }
+function rent(){ return [0,120,170,240][level()]; }
+function maxCustomers(){ return 4 + level()*2 + Math.floor(S.rep/12); }
+
+/* ---------- stock helpers ---------- */
+const autoPrice = cost => Math.round(cost*1.75) - 0.10;
+function shelvedIds(){ const o=[]; Object.keys(S.slots).forEach(k=>S.slots[k].forEach(id=>o.push(id))); return o; }
+function shelfCapacity(){ return tilesOf(SHELF).length*3; }
+function priceOf(id){ const s=S.stock[id]; return s.auto?autoPrice(s.cost):s.price; }
+function rollOffers(){
+  const have=Object.keys(S.stock).map(Number);
+  const pool=BOOKS.filter(x=>!have.includes(x.id)||S.stock[x.id].copies===0);
+  const r=[]; const used={};
+  const n=Math.min(8,pool.length);
+  while(r.length<n){ const p=pool[(Math.random()*pool.length)|0]; if(used[p.id])continue; used[p.id]=1; r.push(p.id); }
+  S.offers=r;
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+const cv=$("#cv"), ctx=cv.getContext("2d");
+ctx.imageSmoothingEnabled=false;
+
+const C={floor1:"#cec1a7",floor2:"#c9bca2",wall:"#e3d6bb",dado:"#4d7a63",wood:"#8b5a35",
+  woodD:"#6b4426",woodL:"#a97448",shadow:"rgba(0,0,0,.18)",door:"#3c2a1c",grout:"#bcae92"};
+const SPINE={literary:"#8a4a4a",crime:"#3a3a4a",scifi:"#2f5f7a",fantasy:"#4a6a35",horror:"#2a2028",
+  romance:"#a8556e",history:"#7a6030",biography:"#6a5a8a",nonfiction:"#356a6a",philosophy:"#5a4a3a",
+  poetry:"#8a6a3a",children:"#c98a35",business:"#405a70",ya:"#7a4a8a"};
+
+function px(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
+
+function drawShelf(x,y,ids){
+  const X=x*TS,Y=y*TS;
+  px(X,Y+2,TS,TS-2,C.woodD);
+  px(X+1,Y+3,TS-2,TS-4,C.wood);
+  for(let r=0;r<3;r++){
+    const sy=Y+4+r*4;
+    px(X+1,sy+3,TS-2,1,C.woodD);
+    const id=ids&&ids[r];
+    if(id!=null){
+      const bk=BOOK(id); const rr=seeded(bk.title);
+      for(let i=0;i<5;i++){
+        const w=1+((rr()*2)|0);
+        const base=SPINE[bk.genre]||"#7a5a4a";
+        px(X+2+i*2.4, sy, w, 3, i%2? base : shade(base,1.25));
+      }
+    }
+  }
+}
+function shade(hex,f){
+  const n=parseInt(hex.slice(1),16);
+  const r=clamp(Math.round((n>>16)*f),0,255),g=clamp(Math.round((n>>8&255)*f),0,255),b2=clamp(Math.round((n&255)*f),0,255);
+  return "#"+((r<<16)|(g<<8)|b2).toString(16).padStart(6,"0");
+}
+function drawFurn(x,y,t){
+  const X=x*TS,Y=y*TS;
+  if(t===COUNTER){ px(X,Y+6,TS,TS-6,C.woodD); px(X+1,Y+7,TS-2,TS-9,C.woodL);
+    px(X+3,Y+4,10,3,"#c9b48a"); px(X+11,Y+3,3,2,"#6b6b7a"); }
+  if(t===TABLE){ px(X+1,Y+7,TS-2,7,C.woodD); px(X+2,Y+6,TS-4,6,C.woodL);
+    const id=S.slots[key(x,y)]&&S.slots[key(x,y)][0];
+    if(id!=null){const bk=BOOK(id); px(X+5,Y+2,6,5,SPINE[bk.genre]||"#8a5a4a"); px(X+5,Y+2,6,1,"#f0e6d0");}
+  }
+  if(t===PLANT){ px(X+6,Y+10,4,5,"#9a5a3a");
+    px(X+4,Y+4,8,6,"#3f7a45"); px(X+6,Y+2,4,4,"#4f9a55"); px(X+3,Y+7,3,3,"#357a3d"); }
+  if(t===CAFE){ px(X,Y+4,TS,TS-4,"#4a3a2a"); px(X+1,Y+5,TS-2,TS-6,"#6a4f36");
+    px(X+3,Y+7,5,4,"#e8dcc4"); px(X+9,Y+8,4,3,"#c98a35"); }
+}
+function drawPerson(p){
+  const X=p.px, Y=p.py, bob=(p.moving && ((S.tick>>2)&1))?1:0;
+  px(X-3,Y+11,7,2,C.shadow);
+  px(X-2,Y+5-bob,5,7,p.shirt);           // body
+  px(X-2,Y+11-bob,2,2,"#2a2a30");        // legs
+  px(X+1,Y+11-bob,2,2,"#2a2a30");
+  px(X-2,Y-1-bob,5,5,p.skin);            // head
+  px(X-2,Y-2-bob,5,3,p.hair);            // hair
+  px(X-1,Y+1-bob,1,1,"#20161a"); px(X+1,Y+1-bob,1,1,"#20161a");
+  if(p.state==="browse"||p.state==="walk"){
+    const pat=p.patience/p.patMax;
+    px(X-4,Y-6,9,2,"#20161a");
+    px(X-4,Y-6,Math.round(9*pat),2, pat>.5?"#7fbf6a":pat>.25?"#e8b04b":"#d1615d");
+  }
+  if(p.bubble){ px(X+3,Y-9,6,5,"#f4ead6"); px(X+4,Y-7,1,1,"#20161a"); px(X+6,Y-7,1,1,"#20161a"); }
+}
+function render(){
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+    px(x*TS,y*TS,TS,TS,(x+y)%2?C.floor1:C.floor2);
+    px(x*TS,y*TS,TS,1,C.grout); px(x*TS,y*TS,1,TS,C.grout);
+    const rr=seeded("t"+x+"_"+y);
+    for(let i=0;i<5;i++) px(x*TS+2+((rr()*12)|0), y*TS+2+((rr()*12)|0),1,1,
+      ["#b6a98d","#d8ccb2","#a89a80"][(rr()*3)|0]);
+  }
+  // back wall + signage
+  for(let x=0;x<GW;x++){ px(x*TS,0,TS,TS,C.wall); px(x*TS,TS-4,TS,4,C.dado); }
+  px(2*TS,2,7*TS,9,"#3b2a1e"); px(2*TS+1,3,7*TS-2,7,"#5c4330");
+  ctx.fillStyle="#e8b04b"; ctx.font="6px monospace"; ctx.fillText("KEDAI BUKU",2*TS+9,9);
+  for(let y=1;y<GH;y++){ px(0,y*TS,4,TS,C.dado); px(GW*TS-4,y*TS,4,TS,C.dado); }
+  // street frontage: glazing, door, kerb
+  const fy=(GH-1)*TS+6;
+  px(0,fy,GW*TS,TS-6,"#3b2a1e");
+  for(let x=1;x<GW-1;x++){
+    if(x===6) continue;
+    px(x*TS+1,fy+2,TS-2,7,"#8fb8c9");
+    px(x*TS+1,fy+2,TS-2,2,"#b6d6e0");
+  }
+  px(6*TS-1,fy-2,TS+2,TS-4,"#2a1c12");
+  px(6*TS,fy,TS,TS-6,C.door); px(6*TS+2,fy+1,TS-4,8,"#a8ccd8");
+  px(6*TS+2,fy+1,TS-4,2,"#cfe6ee"); px(6*TS+12,fy+5,1,2,"#e8b04b");
+  px(5*TS+8,fy-4,TS,3,"#8a5a3a");
+
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+    const t=S.grid[y][x];
+    if(t===SHELF) drawShelf(x,y,S.slots[key(x,y)]);
+    else if(t===COUNTER||t===TABLE||t===PLANT||t===CAFE) drawFurn(x,y,t);
+  }
+  if(S.placing!=null){
+    for(let y=1;y<GH-1;y++)for(let x=1;x<GW-1;x++)
+      if(S.grid[y][x]===EMPTY) px(x*TS+6,y*TS+6,4,4,"rgba(232,176,75,.5)");
+  }
+  S.customers.forEach(drawPerson);
+  if(S.phase==="open"){
+    const w=Math.round(GW*TS*(S.tick/S.dayLen));
+    px(0,0,GW*TS,3,"#20161a"); px(0,0,w,3,"#e8b04b");
+  }
+}
+
+/* ============================================================
+   CUSTOMER SIM
+   ============================================================ */
+function pathTo(p,tx,ty){
+  const start=[Math.round(p.gx),Math.round(p.gy)];
+  const q=[start], prev={}, seen={}; seen[key(start[0],start[1])]=1;
+  while(q.length){
+    const [x,y]=q.shift();
+    if(x===tx&&y===ty) break;
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
+      const nx=x+dx, ny=y+dy;
+      if(nx<1||ny<1||nx>GW-2||ny>GH-1) return;
+      const t=S.grid[ny]&&S.grid[ny][nx];
+      if(t===undefined) return;
+      if(t!==EMPTY&&t!==DOOR&&!(nx===tx&&ny===ty)) return;
+      const k=key(nx,ny); if(seen[k]) return;
+      seen[k]=1; prev[k]=[x,y]; q.push([nx,ny]);
+    });
+  }
+  const path=[]; let cur=key(tx,ty);
+  if(!prev[cur]&&!(start[0]===tx&&start[1]===ty)) return null;
+  while(cur){ const [cx,cy]=cur.split(",").map(Number); path.unshift([cx,cy]); const p2=prev[cur]; cur=p2?key(p2[0],p2[1]):null; }
+  return path;
+}
+function spawnCustomer(){
+  const arch=rnd(CAST);
+  const shelves=tilesOf(SHELF).concat(tilesOf(TABLE));
+  const p={
+    arch, key:arch.key, name:arch.name, skin:arch.skin, hair:arch.hair, shirt:arch.shirt,
+    gx:6, gy:GH-1, px:6*TS+8, py:(GH-1)*TS+2,
+    state:"walk", path:null, pi:0, moving:true, bubble:false,
+    patMax: Math.round((430+Math.random()*220) * (tilesOf(CAFE).length?1.5:1) * (1+tilesOf(PLANT).length*0.06)),
+    clues:[], probesLeft:3, done:false,
+  };
+  p.patience=p.patMax;
+  const t = shelves.length? rnd(shelves) : [6,3];
+  p.target=[t[0], t[1]+1];
+  p.path=pathTo(p,p.target[0],p.target[1]);
+  S.customers.push(p);
+}
+function stepCustomer(p){
+  if(p.state==="talking") return;
+  p.patience-=1;
+  if(S.tick>=S.dayLen && p.state!=="leave"){
+    p.state="leave"; p.bubble=false; p.path=pathTo(p,6,GH-1); p.pi=0;
+    return;
+  }
+  if(p.patience<=0 && p.state!=="leave"){
+    p.state="leave"; p.bubble=false;
+    p.path=pathTo(p,6,GH-1); p.pi=0;
+    if(!p.served){ S.stats.walkouts++; S.rep=clamp(S.rep-0.4,0,100); }
+  }
+  if(p.path && p.pi<p.path.length){
+    const [tx,ty]=p.path[p.pi];
+    const dx=(tx*TS+8)-p.px, dy=(ty*TS+2)-p.py;
+    const sp=1.15;
+    p.moving=true;
+    if(Math.abs(dx)<=sp&&Math.abs(dy)<=sp){ p.px=tx*TS+8; p.py=ty*TS+2; p.gx=tx; p.gy=ty; p.pi++; }
+    else { p.px+=clamp(dx,-sp,sp); p.py+=clamp(dy,-sp,sp); }
+  } else {
+    p.moving=false;
+    if(p.state==="walk"){ p.state="browse"; p.bubble=true; }
+    else if(p.state==="leave"){ p.dead=true; }
+  }
+  // passive self-serve: small chance if a shelved book fits them well
+  if(p.state==="browse" && !p.served && S.tick%40===0){
+    const best=bestMatchFor(p);
+    if(best && best.score>=78 && Math.random()<0.22) completeSale(p,best.id,true);
+  }
+}
+function scoreMatch(p,id){
+  const bk=BOOK(id), w=p.arch.want, price=priceOf(id);
+  let s=10;
+  if(w.genres.includes(bk.genre)) s+=42;
+  else s-=14;
+  const moodHits=bk.moods.filter(m=>w.moods.includes(m)).length;
+  s+=moodHits*16;
+  if(w.avoid.includes(bk.genre)) s-=55;
+  if(bk.moods.some(m=>w.avoid.includes(m))) s-=30;
+  if(price<=w.max) s+=18; else s-= Math.min(45,(price-w.max)*3.2);
+  const fair=autoPrice(BOOK(id).cost);
+  if(price>fair*1.25) s-=12;
+  if(price<fair*0.85) s+=4;
+  return Math.round(clamp(s,0,100));
+}
+function bestMatchFor(p){
+  let best=null;
+  shelvedIds().forEach(id=>{ if(!S.stock[id]||S.stock[id].copies<=0) return;
+    const sc=scoreMatch(p,id); if(!best||sc>best.score) best={id,score:sc}; });
+  return best;
+}
+function completeSale(p,id,passive){
+  const st=S.stock[id]; if(!st||st.copies<=0) return;
+  const price=priceOf(id);
+  st.copies--; S.cash+=price; S.stats.rev+=price; S.stats.served++;
+  S.soldEver[id]=(S.soldEver[id]||0)+1;
+  p.served=true; p.bubble=false;
+  const sc=scoreMatch(p,id);
+  if(sc>=85 && !passive){ S.stats.delighted++; S.rep=clamp(S.rep+4.5,0,100); }
+  else S.rep=clamp(S.rep+(passive?1.0:2.4),0,100);
+  if(st.copies===0){ Object.keys(S.slots).forEach(k=>{ S.slots[k]=S.slots[k].filter(x=>x!==id); }); }
+  p.state="leave"; p.path=pathTo(p,6,GH-1); p.pi=0;
+  log((passive?"":"")+p.name+" bought "+BOOK(id).title+" — "+rm(price));
+}
+function log(t){ S.history.unshift(t); if(S.history.length>40)S.history.pop(); }
+
+/* ============================================================
+   GAME LOOP
+   ============================================================ */
+let last=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(ts-last<66) { render(); return; }
+  last=ts;
+  if(S.phase==="open" && !S.talking){
+    S.tick++;
+    while(S.spawnQueue.length && S.spawnQueue[0]<=S.tick){ S.spawnQueue.shift(); spawnCustomer(); }
+    S.customers.forEach(stepCustomer);
+    const before=S.customers.length;
+    S.customers=S.customers.filter(c=>!c.dead);
+    if(S.tick>=S.dayLen && S.customers.length===0) endDay();
+    if(S.tick%10===0) drawOpenPanel();
+  }
+  render();
+}
+
+/* ---------- phases ---------- */
+function startDay(){
+  S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[];
+  S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0};
+  const n=maxCustomers();
+  for(let i=0;i<n;i++) S.spawnQueue.push(Math.round(40 + (S.dayLen-260)*(i/n) + Math.random()*40));
+  S.spawnQueue.sort((a,b)=>a-b);
+  tip("Tap a customer to talk. The bar over their head is patience.");
+  paint();
+}
+function endDay(){
+  S.phase="evening";
+  const r=rent();
+  S.cash-=r;
+  paint();
+}
+function nextDay(){
+  S.day++; S.phase="morning"; S.stats.spent=0; S.tab="stock";
+  rollOffers(); paint();
+}
+
+/* ============================================================
+   UI
+   ============================================================ */
+function tip(t){ $("#tip").textContent=t; }
+function hud(){
+  $("#hDay").textContent=S.day;
+  $("#hCash").textContent=Math.round(S.cash);
+  $("#hRep").textContent=Math.round(S.rep);
+  $("#hPhase").textContent={morning:"MORNING",open:"OPEN",evening:"CLOSED"}[S.phase];
+}
+function coverCanvas(bk,w,h){
+  const c=document.createElement("canvas"); c.width=48;c.height=72;
+  const g=c.getContext("2d"); g.imageSmoothingEnabled=false;
+  const r=seeded(bk.title+bk.author);
+  const base=SPINE[bk.genre]||"#7a5a4a";
+  const bg=shade(base, .7+r()*.5);
+  g.fillStyle=bg; g.fillRect(0,0,48,72);
+  const style=(r()*4)|0, ac=shade(base,1.9);
+  g.fillStyle=ac;
+  if(style===0){ for(let i=0;i<3;i++) g.fillRect(0,12+i*15,48,4); }
+  else if(style===1){ g.beginPath(); g.arc(24,30,11+((r()*6)|0),0,7); g.fill(); }
+  else if(style===2){ g.beginPath(); g.moveTo(0,72);g.lineTo(48,24);g.lineTo(48,72);g.closePath();g.fill(); }
+  else { for(let i=0;i<7;i++) g.fillRect(5+((r()*36)|0),9+((r()*46)|0),4+((r()*7)|0),4); }
+  g.fillStyle="rgba(0,0,0,.35)"; g.fillRect(0,0,4,72);
+  g.fillStyle="#f4ead6";
+  g.font="5px monospace";
+  const words=bk.title.split(" "); const lines=[]; let line="";
+  words.forEach(wd=>{ if((line+wd).length>10){ lines.push(line); line=wd+" "; } else line+=wd+" "; });
+  lines.push(line);
+  let ly=66-lines.length*6;
+  g.fillStyle="rgba(0,0,0,.45)"; g.fillRect(0,ly-6,48,lines.length*6+10);
+  g.fillStyle="#f4ead6";
+  lines.forEach(l=>{ g.fillText(l.trim(),5,ly); ly+=6; });
+  g.fillStyle="rgba(255,255,255,.6)"; g.font="4px monospace";
+  g.fillText(bk.author.split(" ").slice(-1)[0].toUpperCase(),5,ly+1);
+  c.style.width=w+"px"; c.style.height=h+"px";
+  return c;
+}
+function bookCard(bk,extraHTML,onClick){
+  const c=el("div","card");
+  c.appendChild(coverCanvas(bk,34,48));
+  const m=el("div","meta");
+  m.appendChild(el("div","t",bk.title));
+  m.appendChild(el("div","a",bk.author+" · "+bk.year));
+  const tr=el("div","tagrow");
+  tr.appendChild(el("span","tag b",GENRE_LABEL[bk.genre]||bk.genre));
+  bk.moods.slice(0,2).forEach(m2=>tr.appendChild(el("span","tag",m2)));
+  m.appendChild(tr);
+  if(extraHTML) m.appendChild(el("div",null,extraHTML));
+  c.appendChild(m);
+  if(onClick) c.onclick=onClick;
+  return c;
+}
+
+/* ---------- morning ---------- */
+function drawMorning(){
+  const P=$("#panel"); P.innerHTML="";
+  const tabs=el("div","tabs");
+  [["stock","STOCK"],["price","PRICE"],["shop","SHOP"]].forEach(([k,l])=>{
+    const t=el("div","tab"+(S.tab===k?" on":""),l);
+    t.onclick=()=>{S.tab=k;drawMorning();};
+    tabs.appendChild(t);
+  });
+  P.appendChild(tabs);
+
+  if(S.tab==="stock"){
+    const cap=shelfCapacity(), used=shelvedIds().length;
+    P.appendChild(el("p",null,"Distributor van, 8am. Shelf space "+used+"/"+cap+
+      ". What you stock is what this neighbourhood gets to read."));
+    S.offers.forEach(id=>{
+      const bk=BOOK(id);
+      const have=S.stock[id]&&S.stock[id].copies>0;
+      const row=el("div");
+      const btn=el("button","btn-sm", have?"IN STOCK":"BUY 2 · "+rm(bk.cost*2));
+      btn.disabled = have || S.cash<bk.cost*2 || used>=cap;
+      btn.onclick=e=>{e.stopPropagation();buyStock(id);};
+      const c=bookCard(bk,'<div style="margin-top:5px"><span class="cost">cost '+rm(bk.cost)+
+        ' ea · auto '+rm(autoPrice(bk.cost))+'</span></div>', ()=>openBook(id));
+      const wrapb=el("div"); wrapb.style.marginTop="5px"; wrapb.appendChild(btn);
+      c.querySelector(".meta").appendChild(wrapb);
+      row.appendChild(c); P.appendChild(row);
+    });
+    if(used>=cap) P.appendChild(el("p",null,"Shelves full. Buy another shelf in SHOP, or sell through what you have."));
+  }
+
+  if(S.tab==="price"){
+    P.appendChild(el("p",null,"AUTO prices at 1.75x cost — safe, never greedy. Manual lets you chase margin, but every customer has a ceiling and Wei Lun's is RM30."));
+    const ids=Object.keys(S.stock).map(Number).filter(id=>S.stock[id].copies>0);
+    if(!ids.length) P.appendChild(el("div","empty","No stock yet.<br>Buy some books first."));
+    ids.forEach(id=>{
+      const bk=BOOK(id), st=S.stock[id];
+      const c=bookCard(bk,null,()=>openBook(id));
+      const ctl=el("div"); ctl.style.marginTop="6px";
+      const r=el("div","row");
+      const auto=el("button","btn-sm",st.auto?"AUTO":"MANUAL");
+      auto.style.background=st.auto?"var(--gold)":"var(--panel-2)";
+      auto.style.color=st.auto?"#150f0b":"var(--ink)";
+      auto.onclick=e=>{e.stopPropagation(); st.auto=!st.auto; if(!st.auto)st.price=autoPrice(st.cost); drawMorning();};
+      r.appendChild(auto);
+      if(!st.auto){
+        const m=el("button","btn-sm","−"); m.onclick=e=>{e.stopPropagation();st.price=Math.max(st.cost,st.price-2);drawMorning();};
+        const p2=el("button","btn-sm","+"); p2.onclick=e=>{e.stopPropagation();st.price+=2;drawMorning();};
+        r.appendChild(m); r.appendChild(p2);
+      }
+      const lab=el("span","price",rm(priceOf(id)));
+      r.appendChild(lab);
+      ctl.appendChild(r);
+      const marg=priceOf(id)-st.cost;
+      ctl.appendChild(el("div","cost","cost "+rm(st.cost)+" · margin "+rm(marg)+" · "+st.copies+" copies"));
+      c.querySelector(".meta").appendChild(ctl);
+      P.appendChild(c);
+    });
+  }
+
+  if(S.tab==="shop"){
+    P.appendChild(el("p",null,"Level "+level()+" · rent "+rm(rent())+"/day · "+maxCustomers()+" customers expected. Reputation unlocks the rest."));
+    Object.keys(FURN).forEach(k=>{
+      const f=FURN[k], lv=f.lvl||1, locked=level()<lv;
+      const c=el("div","card"+(locked?" lock":""));
+      const m=el("div","meta");
+      m.appendChild(el("div","t",f.name+" · "+rm(f.cost)));
+      m.appendChild(el("div","a",f.desc + (locked?" · needs level "+lv:"")));
+      const btn=el("button","btn-sm",locked?"LOCKED":"PLACE");
+      btn.disabled=locked||S.cash<f.cost;
+      btn.onclick=()=>{ S.placing=+k; tip("Tap an empty floor tile to place the "+f.name+"."); };
+      const bw=el("div"); bw.style.marginTop="5px"; bw.appendChild(btn);
+      m.appendChild(bw); c.appendChild(m); P.appendChild(c);
+    });
+    P.appendChild(el("p",null,"Kopi Corner is the cafe expansion. It does not sell drinks yet — it buys you time, which in this shop is the same thing."));
+  }
+
+  const go=el("button","btn-go","OPEN THE SHOP");
+  go.onclick=()=>{ if(!shelvedIds().length){tip("You have nothing on the shelves.");return;} startDay(); };
+  P.appendChild(go);
+  tip("Day "+S.day+" · morning. Stock, price, then open.");
+}
+function buyStock(id){
+  const bk=BOOK(id), spend=bk.cost*2;
+  if(S.cash<spend) return;
+  S.cash-=spend; S.stats.spent+=spend;
+  S.stock[id]={copies:2,cost:bk.cost,price:autoPrice(bk.cost),auto:true};
+  // shelve it
+  const shelves=tilesOf(SHELF);
+  for(const [x,y] of shelves){ const k=key(x,y); S.slots[k]=S.slots[k]||[];
+    if(S.slots[k].length<3){ S.slots[k].push(id); break; } }
+  S.offers=S.offers.filter(o=>o!==id);
+  drawMorning(); hud();
+}
+
+/* ---------- open ---------- */
+function drawOpenPanel(){
+  const P=$("#panel");
+  const inShop=S.customers.filter(c=>!c.dead&&c.state!=="leave");
+  P.innerHTML="";
+  const left=Math.max(0,Math.round((S.dayLen-S.tick)/15));
+  P.appendChild(el("h2",null,"TRADING · "+left+"s left"));
+  if(!inShop.length) P.appendChild(el("div","empty","Quiet right now.<br>Someone will come."));
+  inShop.forEach(p=>{
+    const c=el("div","card");
+    const m=el("div","meta");
+    m.appendChild(el("div","t",p.name));
+    m.appendChild(el("div","a",p.arch.role+(p.served?" · served":"")));
+    const bar=el("div","bar"); const i=el("i"); i.style.width=Math.round(100*p.patience/p.patMax)+"%";
+    bar.appendChild(i); m.appendChild(bar);
+    c.appendChild(m);
+    if(!p.served){ const btn=el("button","btn-sm","TALK"); btn.onclick=()=>talk(p); c.appendChild(btn); }
+    P.appendChild(c);
+  });
+  const l=el("div"); l.style.marginTop="8px";
+  S.history.slice(0,4).forEach(h=>l.appendChild(el("div","cost","· "+h)));
+  P.appendChild(l);
+  hud();
+}
+
+/* ---------- conversation ---------- */
+function talk(p){
+  S.talking=p; p.state="talking"; p.moving=false;
+  renderTalk(p, [{who:"npc",text:p.arch.enter}]);
+}
+function renderTalk(p,convo){
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("div","speaker",p.name.toUpperCase()+" — "+p.arch.role));
+  convo.forEach(c=>{ const d=el("div","say"+(c.who==="me"?" me":"")); d.textContent=(c.who==="me"?"> ":"")+c.text; sh.appendChild(d); });
+  if(p.clues.length){
+    const cl=el("div","clues");
+    p.clues.forEach(c=>cl.appendChild(el("span","tag g",c)));
+    sh.appendChild(cl);
+  }
+  sh.appendChild(el("h3",null,"Ask ("+p.probesLeft+" left)"));
+  p.arch.probes.forEach((pr,i)=>{
+    if(p.asked&&p.asked[i]) return;
+    const btn=el("button","choice",pr.q);
+    btn.disabled=p.probesLeft<=0;
+    btn.onclick=()=>{
+      p.asked=p.asked||{}; p.asked[i]=1; p.probesLeft--;
+      p.patience-=45;
+      p.clues.push(pr.reveal);
+      renderTalk(p, convo.concat([{who:"me",text:pr.q},{who:"npc",text:pr.a}]));
+    };
+    sh.appendChild(btn);
+  });
+  const rec=el("button","choice"); rec.style.borderColor="var(--gold)"; rec.style.color="var(--gold)";
+  rec.textContent="Recommend a book →";
+  rec.onclick=()=>renderPick(p,convo);
+  sh.appendChild(rec);
+  const bye=el("button","choice"); bye.textContent="Leave them to browse";
+  bye.onclick=()=>{ closeModal(); p.state="browse"; S.talking=null; };
+  sh.appendChild(bye);
+}
+function renderPick(p,convo){
+  const sh=$("#sheet"); sh.innerHTML="";
+  sh.appendChild(el("div","speaker","RECOMMEND TO "+p.name.toUpperCase()));
+  if(p.clues.length){ const cl=el("div","clues"); p.clues.forEach(c=>cl.appendChild(el("span","tag g",c))); sh.appendChild(cl); }
+  const ids=shelvedIds().filter(id=>S.stock[id]&&S.stock[id].copies>0);
+  const grid=el("div","pick");
+  ids.forEach(id=>{
+    const bk=BOOK(id);
+    const cell=el("div","bk");
+    cell.appendChild(coverCanvas(bk,100,150));
+    cell.appendChild(el("div",null,bk.title.slice(0,22)+"<br><span style='color:var(--gold)'>"+rm(priceOf(id))+"</span>"));
+    cell.onclick=()=>resolve(p,id,convo);
+    grid.appendChild(cell);
+  });
+  sh.appendChild(grid);
+  const back=el("button","choice","← Keep talking"); back.onclick=()=>renderTalk(p,convo);
+  sh.appendChild(back);
+}
+function resolve(p,id,convo){
+  const sc=scoreMatch(p,id), bk=BOOK(id);
+  const sh=$("#sheet"); sh.innerHTML="";
+  sh.appendChild(el("div","speaker",p.name.toUpperCase()));
+  sh.appendChild(el("div","say me","> \""+bk.title+"\" — I think this is you."));
+  const bought=sc>=55;
+  sh.appendChild(el("div","say", bought? p.arch.yes : p.arch.no));
+  const v=el("div","verdict "+(bought?"good":"bad"));
+  v.textContent = sc>=85? "PERFECT MATCH · "+sc : bought? "SOLD · "+sc : "NO SALE · "+sc;
+  sh.appendChild(v);
+  if(!bought){
+    const w=p.arch.want;
+    sh.appendChild(el("p",null,"They wanted: "+w.genres.map(g=>GENRE_LABEL[g]).join(", ")+
+      " · "+w.moods.join(", ")+" · under "+rm(w.max)+
+      (w.avoid.length?" · never "+w.avoid.join(", "):"")));
+  }
+  if(bought) completeSale(p,id,false);
+  else { p.patience=Math.min(p.patience,60); p.state="browse"; S.rep=clamp(S.rep-0.3,0,100); }
+  const ok=el("button","choice","Continue");
+  ok.onclick=()=>{ closeModal(); S.talking=null; if(p.state==="talking")p.state="browse"; drawOpenPanel(); };
+  sh.appendChild(ok);
+  hud();
+}
+function closeModal(){ $("#modal").classList.remove("on"); }
+
+/* ---------- book card ---------- */
+function openBook(id){
+  const bk=BOOK(id);
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  const head=el("div","bookhead");
+  head.appendChild(coverCanvas(bk,76,114));
+  const hm=el("div");
+  hm.appendChild(el("div","t",bk.title));
+  hm.appendChild(el("div","a",bk.author));
+  hm.appendChild(el("div","a","First published "+bk.year));
+  const tr=el("div","tagrow");
+  tr.appendChild(el("span","tag b",GENRE_LABEL[bk.genre]||bk.genre));
+  bk.moods.forEach(m=>tr.appendChild(el("span","tag",m)));
+  tr.appendChild(el("span","tag",bk.pace));
+  hm.appendChild(tr);
+  head.appendChild(hm);
+  sh.appendChild(head);
+  sh.appendChild(el("p",null,bk.blurb));
+  const th=el("div","tagrow"); bk.themes.forEach(t=>th.appendChild(el("span","tag r",t))); sh.appendChild(th);
+  sh.appendChild(el("h3",null,"What your customers said"));
+  reviewsFor(bk).forEach(r=>{
+    const d=el("div","review");
+    d.appendChild(el("b",null,r.who+"  <span class='stars'>"+"★".repeat(r.stars)+"</span>"));
+    d.appendChild(el("span",null,r.text));
+    sh.appendChild(d);
+  });
+  const buy=el("button","buy","ORDER A PHYSICAL COPY · "+rm(autoPrice(bk.cost)));
+  buy.onclick=()=>orderPanel(bk);
+  sh.appendChild(buy);
+  sh.appendChild(el("div","note","Prototype: catalogue is a frozen snapshot of real bibliographic records. In the shipped app this screen is a live Open Library / Google Books lookup, and the button above hits the real storefront. Reviews are written by this game's characters, not real readers."));
+  const cl=el("button","choice","Close"); cl.style.marginTop="8px"; cl.onclick=closeModal; sh.appendChild(cl);
+}
+function orderPanel(bk){
+  const sh=$("#sheet"); sh.innerHTML="";
+  sh.appendChild(el("div","speaker","ORDER · PHYSICAL COPY"));
+  sh.appendChild(el("div","say",bk.title+"\nby "+bk.author));
+  sh.appendChild(el("div","ledger","<span>Book</span><b>"+rm(autoPrice(bk.cost))+"</b>"));
+  sh.appendChild(el("div","ledger","<span>Courier · Klang Valley</span><b>RM8.00</b>"));
+  sh.appendChild(el("div","ledger pos","<span>Total</span><b>"+rm(autoPrice(bk.cost)+8)+"</b>"));
+  sh.appendChild(el("p",null,"Delivered in 2 working days. This is the commerce hook — in the live build it opens checkout. Nothing is charged here."));
+  const cl=el("button","choice","← Back"); cl.onclick=()=>openBook(bk.id); sh.appendChild(cl);
+}
+
+/* ---------- evening ---------- */
+function drawEvening(){
+  const P=$("#panel"); P.innerHTML="";
+  P.appendChild(el("h2",null,"DAY "+S.day+" · CLOSED"));
+  const st=S.stats, r=rent();
+  const rows=[["Takings",st.rev,"pos"],["Stock bought",-st.spent,"neg"],["Rent",-r,"neg"],
+    ["Net", st.rev-st.spent-r, (st.rev-st.spent-r)>=0?"pos":"neg"]];
+  rows.forEach(([l,v,c])=>P.appendChild(el("div","ledger "+c,"<span>"+l+"</span><b>"+(v<0?"-":"")+rm(Math.abs(v))+"</b>")));
+  P.appendChild(el("h3",null,"The day"));
+  P.appendChild(el("p",null, st.served+" served · "+st.delighted+" delighted · "+st.walkouts+" walked out unserved."+
+    (st.walkouts>2?" You are losing people to impatience. A Kopi Corner or more palms would buy you time.":"")));
+  P.appendChild(el("p",null,"Reputation "+Math.round(S.rep)+"/100 · level "+level()+
+    (level()<3?" · next unlock at "+(level()===1?18:45):" · everything unlocked")));
+  if(S.cash<0) P.appendChild(el("p",null,"You are in the red. Uncle Lim is carrying you on credit — you won't close, but you cannot restock until you're positive."));
+  P.appendChild(el("h3",null,"Sales"));
+  if(!S.history.length) P.appendChild(el("div","empty","Nobody bought anything today."));
+  S.history.slice(0,8).forEach(h=>P.appendChild(el("div","cost","· "+h)));
+  const go=el("button","btn-go","NEXT MORNING");
+  go.onclick=()=>{ S.history=[]; nextDay(); };
+  P.appendChild(go);
+  tip("Shutters down. Count the takings.");
+}
+
+function paint(){
+  hud();
+  if(S.phase==="morning") drawMorning();
+  else if(S.phase==="open") drawOpenPanel();
+  else drawEvening();
+}
+
+/* ---------- input ---------- */
+cv.addEventListener("click",e=>{
+  const r=cv.getBoundingClientRect();
+  const x=Math.floor((e.clientX-r.left)/r.width*GW);
+  const y=Math.floor((e.clientY-r.top)/r.height*GH);
+  if(S.placing!=null && S.phase==="morning"){
+    if(S.grid[y]&&S.grid[y][x]===EMPTY){
+      const f=FURN[S.placing];
+      if(S.cash>=f.cost){ S.cash-=f.cost; S.stats.spent+=f.cost; S.grid[y][x]=S.placing;
+        if(f.slots) S.slots[key(x,y)]=[]; }
+    }
+    S.placing=null; tip("Placed."); paint(); return;
+  }
+  if(S.phase==="open"){
+    let hit=null,bd=99;
+    S.customers.forEach(p=>{ if(p.served||p.state==="leave")return;
+      const d=Math.hypot(p.px-(x*TS+8), p.py-(y*TS+6)); if(d<bd&&d<18){bd=d;hit=p;} });
+    if(hit){ talk(hit); return; }
+  }
+  const t=S.grid[y]&&S.grid[y][x];
+  if(t===SHELF||t===TABLE){
+    const ids=S.slots[key(x,y)]||[];
+    if(ids.length){ const sh=$("#sheet"); sh.innerHTML=""; $("#modal").classList.add("on");
+      sh.appendChild(el("div","speaker","THIS SHELF"));
+      ids.forEach(id=>sh.appendChild(bookCard(BOOK(id),
+        "<div class='price' style='margin-top:4px'>"+rm(priceOf(id))+" · "+(S.stock[id]?S.stock[id].copies:0)+" left</div>",
+        ()=>openBook(id))));
+      const cl=el("button","choice","Close"); cl.onclick=closeModal; sh.appendChild(cl);
+    }
+  }
+});
+$("#modal").addEventListener("click",e=>{ if(e.target.id==="modal") { if(!S.talking) closeModal(); } });
+
+/* ---------- boot ---------- */
+initGrid(); rollOffers(); paint();
+requestAnimationFrame(loop);
+setTimeout(()=>{
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("div","speaker","KEDAI BUKU"));
+  sh.appendChild(el("div","say","A shoplot in Petaling Jaya. Yours since this morning. Four shelves, a counter, and RM1,500."));
+  sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
+  sh.appendChild(el("p",null,"MORNING — buy stock, set prices, fit out the shop.<br>OPEN — customers come in. Tap one, ask up to three questions, then recommend from your shelves.<br>CLOSED — pay the rent."));
+  sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
+  const go=el("button","choice","Open up →"); go.style.borderColor="var(--gold)"; go.style.color="var(--gold)";
+  go.onclick=closeModal; sh.appendChild(go);
+},200);
+</script>
