@@ -8,28 +8,30 @@
     --sans:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;}
   body{
     background:var(--bg); color:var(--ink); font-family:var(--sans);
     font-size:12px; line-height:1.6;
     overscroll-behavior:none; user-select:none; -webkit-user-select:none;
   }
-  #wrap{max-width:460px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);}
+  #wrap{max-width:460px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;background:var(--bg);}
 
   /* ---- HUD ---- */
-  #hud{display:flex;gap:4px;padding:6px;background:var(--panel);border-bottom:2px solid var(--line);}
+  #hud{display:flex;gap:4px;padding:6px;background:var(--panel);border-bottom:2px solid var(--line);flex:none;}
   .stat{flex:1;background:var(--panel-2);border:1px solid var(--line);padding:5px 3px;text-align:center;}
   .stat b{display:block;font-family:var(--pix);color:var(--gold);font-size:9px;margin-top:5px;}
   .stat span{font-family:var(--pix);color:var(--ink-dim);font-size:6px;}
 
   /* ---- canvas ---- */
-  #stage{background:#0c0906;}
+  #stage{background:#0c0906;flex:none;width:100%;max-width:min(460px,calc(40dvh * 4 / 3));margin:0 auto;}
   canvas{display:block;width:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:manipulation;}
-  #tip{background:#1c1510;padding:6px 8px;font-size:11px;color:var(--gold);
+  #tip{background:#1c1510;padding:6px 8px;font-size:11px;color:var(--gold);flex:none;
     border-top:1px solid var(--line);border-bottom:2px solid var(--line);min-height:28px;}
 
   /* ---- panel ---- */
-  #panel{flex:1;background:var(--panel);padding:9px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  #panel{flex:1;min-height:0;background:var(--panel);padding:9px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  #action{padding:8px;background:var(--panel);border-top:2px solid var(--line);flex:none;}
+  #action:empty{display:none;}
   h2{font-family:var(--pix);font-size:10px;margin:0 0 10px;color:var(--gold);line-height:1.6;}
   h3{font-family:var(--pix);font-size:7px;margin:12px 0 6px;color:var(--ink-dim);letter-spacing:1px;text-transform:uppercase;}
   p{margin:0 0 8px;color:var(--ink-dim);font-size:12px;line-height:1.65;}
@@ -43,7 +45,7 @@
     background:var(--panel-2);color:var(--ink);padding:8px 9px;}
   button:active{transform:translateY(1px);}
   button:disabled{opacity:.35;cursor:default;}
-  .btn-go{background:var(--gold);color:#150f0b;border-color:#8a6420;width:100%;padding:13px;font-size:10px;margin-top:12px;}
+  .btn-go{background:var(--gold);color:#150f0b;border-color:#8a6420;width:100%;padding:14px;font-size:10px;}
   .btn-sm{padding:6px 8px;font-size:7px;}
   .row{display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
 
@@ -96,6 +98,11 @@
   .ledger.neg b{color:var(--red);}
   .ledger.pos b{color:var(--green);}
   .lock{opacity:.4;}
+  .namerow{display:flex;align-items:center;gap:8px;margin:10px 0 4px;}
+  .namerow span{font-family:var(--pix);font-size:9px;color:var(--gold);white-space:nowrap;}
+  #shopName{flex:1;min-width:0;font-family:var(--sans);font-size:15px;padding:9px 10px;
+    background:var(--panel-2);border:1px solid var(--gold);color:var(--ink);}
+  #shopName:focus{outline:2px solid var(--gold);outline-offset:1px;}
   /* Press Start 2P is far wider than the fallback - never let it break the layout */
   .t,button,h2,h3,.speaker,.verdict,.stat b{overflow-wrap:anywhere;}
 </style>
@@ -111,6 +118,7 @@
   <div id="stage"><canvas id="cv" width="192" height="144"></canvas></div>
   <div id="tip">Tap OPEN when your shelves are ready.</div>
   <div id="panel"></div>
+  <div id="action"></div>
 </div>
 
 <div id="modal"><div id="sheet"></div></div>
@@ -417,7 +425,7 @@ const S={
   spawnQueue:[], talking:null, placing:null,
   stats:{rev:0,spent:0,served:0,delighted:0,missed:0,walkouts:0},
   history:[], soldEver:{}, tab:"stock", featured:null,
-  seen:{}, tutorial:true,
+  seen:{}, tutorial:true, shopName:"", keeper:null,
 };
 
 function key(x,y){return x+","+y;}
@@ -432,6 +440,7 @@ function initGrid(){
   // starting fit-out
   [[2,2],[3,2],[8,2],[9,2]].forEach(([x,y])=>{S.grid[y][x]=SHELF; S.slots[key(x,y)]=[];});
   S.grid[2][6]=COUNTER; S.grid[2][1]=PLANT; S.grid[2][10]=PLANT;
+  S.keeper=[6,1];   // you, standing behind the counter
 }
 function tilesOf(type){const o=[];for(let y=0;y<GH;y++)for(let x=0;x<GW;x++)if(S.grid[y][x]===type)o.push([x,y]);return o;}
 function level(){ return S.rep>=45?3 : S.rep>=18?2 : 1; }
@@ -502,15 +511,24 @@ function drawFurn(x,y,t){
   if(t===CAFE){ px(X,Y+4,TS,TS-4,"#4a3a2a"); px(X+1,Y+5,TS-2,TS-6,"#6a4f36");
     px(X+3,Y+7,5,4,"#e8dcc4"); px(X+9,Y+8,4,3,"#c98a35"); }
 }
-function drawPerson(p){
-  const X=p.px, Y=p.py, bob=(p.moving && ((S.tick>>2)&1))?1:0;
+function drawSprite(X,Y,skin,hair,shirt,bob){
   px(X-3,Y+11,7,2,C.shadow);
-  px(X-2,Y+5-bob,5,7,p.shirt);           // body
+  px(X-2,Y+5-bob,5,7,shirt);             // body
   px(X-2,Y+11-bob,2,2,"#2a2a30");        // legs
   px(X+1,Y+11-bob,2,2,"#2a2a30");
-  px(X-2,Y-1-bob,5,5,p.skin);            // head
-  px(X-2,Y-2-bob,5,3,p.hair);            // hair
+  px(X-2,Y-1-bob,5,5,skin);              // head
+  px(X-2,Y-2-bob,5,3,hair);              // hair
   px(X-1,Y+1-bob,1,1,"#20161a"); px(X+1,Y+1-bob,1,1,"#20161a");
+}
+function drawKeeper(){
+  if(!S.keeper) return;
+  const [kx,ky]=S.keeper;
+  const bob=((S.tick>>4)&1)?1:0;                 // slow idle shift of weight
+  drawSprite(kx*TS+8, ky*TS+3, "#c58a5e", "#241a18", "#7a5a8a", bob);
+}
+function drawPerson(p){
+  const X=p.px, Y=p.py, bob=(p.moving && ((S.tick>>2)&1))?1:0;
+  drawSprite(X,Y,p.skin,p.hair,p.shirt,bob);
   if(p.state==="browse"||p.state==="walk"){
     const pat=p.patience/p.patMax;
     px(X-4,Y-6,9,2,"#20161a");
@@ -528,8 +546,10 @@ function render(){
   }
   // back wall + signage
   for(let x=0;x<GW;x++){ px(x*TS,0,TS,TS,C.wall); px(x*TS,TS-4,TS,4,C.dado); }
-  px(2*TS,2,7*TS,9,"#3b2a1e"); px(2*TS+1,3,7*TS-2,7,"#5c4330");
-  ctx.fillStyle="#e8b04b"; ctx.font="6px monospace"; ctx.fillText("KEDAI BUKU",2*TS+9,9);
+  px(1*TS+8,2,9*TS,10,"#3b2a1e"); px(1*TS+9,3,9*TS-2,8,"#5c4330");
+  ctx.fillStyle="#e8b04b"; ctx.font="6px monospace"; ctx.textAlign="center";
+  ctx.fillText(shopLabel().toUpperCase(), GW*TS/2, 10);
+  ctx.textAlign="left";
   for(let y=1;y<GH;y++){ px(0,y*TS,4,TS,C.dado); px(GW*TS-4,y*TS,4,TS,C.dado); }
   // street frontage: glazing, door, kerb
   const fy=(GH-1)*TS+6;
@@ -553,6 +573,7 @@ function render(){
     for(let y=1;y<GH-1;y++)for(let x=1;x<GW-1;x++)
       if(S.grid[y][x]===EMPTY) px(x*TS+6,y*TS+6,4,4,"rgba(232,176,75,.5)");
   }
+  drawKeeper();
   S.customers.forEach(drawPerson);
   if(S.phase==="open"){
     const w=Math.round(GW*TS*(S.tick/S.dayLen));
@@ -574,6 +595,7 @@ function pathTo(p,tx,ty){
       if(nx<1||ny<1||nx>GW-2||ny>GH-1) return;
       const t=S.grid[ny]&&S.grid[ny][nx];
       if(t===undefined) return;
+      if(S.keeper && nx===S.keeper[0] && ny===S.keeper[1]) return;
       if(t!==EMPTY&&t!==DOOR&&!(nx===tx&&ny===ty)) return;
       const k=key(nx,ny); if(seen[k]) return;
       seen[k]=1; prev[k]=[x,y]; q.push([nx,ny]);
@@ -605,6 +627,7 @@ function stepCustomer(p){
   p.patience-=1;
   if(S.tick>=S.dayLen && p.state!=="leave"){
     p.state="leave"; p.bubble=false; p.path=pathTo(p,6,GH-1); p.pi=0;
+    tip("Closing time. Seeing the last customers out.");
     return;
   }
   if(p.patience<=0 && p.state!=="leave"){
@@ -711,6 +734,12 @@ function nextDay(){
    UI
    ============================================================ */
 function tip(t){ $("#tip").textContent=t; }
+function setAction(label,fn){
+  const a=$("#action"); a.innerHTML="";
+  if(!label) return;
+  const b2=el("button","btn-go",label); b2.onclick=fn; a.appendChild(b2);
+}
+function shopLabel(){ return "Kedai Buku"+(S.shopName?" "+S.shopName:""); }
 function hud(){
   $("#hDay").textContent=S.day;
   $("#hCash").textContent=Math.round(S.cash);
@@ -838,10 +867,11 @@ function drawMorning(){
     P.appendChild(el("p",null,"Kopi Corner is the cafe expansion. It does not sell drinks yet — it buys you time, which in this shop is the same thing."));
   }
 
-  const go=el("button","btn-go","OPEN THE SHOP");
-  go.onclick=()=>{ if(!shelvedIds().length){tip("You have nothing on the shelves.");return;} startDay(); };
-  P.appendChild(go);
-  tip("Day "+S.day+" · morning. Stock, price, then open.");
+  setAction("OPEN THE SHOP",()=>{
+    if(!shelvedIds().length){tip("You have nothing on the shelves.");return;}
+    startDay();
+  });
+  tip(shopLabel()+" · day "+S.day+", morning. Stock, price, then open.");
 }
 function buyStock(id){
   const bk=BOOK(id), spend=bk.cost*2;
@@ -878,6 +908,7 @@ function drawOpenPanel(){
   const l=el("div"); l.style.marginTop="8px";
   S.history.slice(0,4).forEach(h=>l.appendChild(el("div","cost","· "+h)));
   P.appendChild(l);
+  setAction(null);
   hud();
 }
 
@@ -928,12 +959,50 @@ function renderPick(p,convo){
     const cell=el("div","bk");
     cell.appendChild(coverCanvas(bk,100,150));
     cell.appendChild(el("div",null,bk.title.slice(0,22)+"<br><span style='color:var(--gold)'>"+rm(priceOf(id))+"</span>"));
-    cell.onclick=()=>resolve(p,id,convo);
+    cell.onclick=()=>renderConfirm(p,id,convo);
     grid.appendChild(cell);
   });
   sh.appendChild(grid);
   const back=el("button","choice","← Keep talking"); back.onclick=()=>renderTalk(p,convo);
   sh.appendChild(back);
+}
+function renderConfirm(p,id,convo){
+  const bk=BOOK(id), sh=$("#sheet"); sh.innerHTML="";
+  sh.appendChild(el("div","speaker","BEFORE YOU RECOMMEND"));
+  const head=el("div","bookhead");
+  head.appendChild(coverCanvas(bk,80,120));
+  const hm=el("div");
+  hm.appendChild(el("div","t",bk.title));
+  hm.appendChild(el("div","a",bk.author+" · "+bk.year));
+  hm.appendChild(el("div","price",rm(priceOf(id))));
+  const tr=el("div","tagrow");
+  tr.appendChild(el("span","tag b",GENRE_LABEL[bk.genre]||bk.genre));
+  bk.moods.forEach(m=>tr.appendChild(el("span","tag",m)));
+  tr.appendChild(el("span","tag",bk.pace));
+  hm.appendChild(tr);
+  head.appendChild(hm);
+  sh.appendChild(head);
+  sh.appendChild(el("p",null,bk.blurb));
+  const th=el("div","tagrow"); bk.themes.forEach(t=>th.appendChild(el("span","tag r",t))); sh.appendChild(th);
+  sh.appendChild(el("h3",null,"What your customers said"));
+  reviewsFor(bk).slice(0,2).forEach(r=>{
+    const d=el("div","review");
+    d.appendChild(el("b",null,r.who+"  <span class='stars'>"+"★".repeat(r.stars)+"</span>"));
+    d.appendChild(el("span",null,r.text));
+    sh.appendChild(d);
+  });
+  if(p.clues.length){
+    sh.appendChild(el("h3",null,"What "+p.name+" told you"));
+    const cl=el("div","clues"); p.clues.forEach(c=>cl.appendChild(el("span","tag g",c))); sh.appendChild(cl);
+  }
+  const yes=el("button","choice"); yes.style.borderColor="var(--gold)"; yes.style.color="var(--gold)";
+  yes.textContent="Recommend this to "+p.name;
+  yes.onclick=()=>resolve(p,id,convo);
+  sh.appendChild(yes);
+  const back=el("button","choice","← Choose another book");
+  back.onclick=()=>renderPick(p,convo);
+  sh.appendChild(back);
+  sh.scrollTop=0;
 }
 function resolve(p,id,convo){
   const sc=scoreMatch(p,id), bk=BOOK(id);
@@ -1021,10 +1090,8 @@ function drawEvening(){
   P.appendChild(el("h3",null,"Sales"));
   if(!S.history.length) P.appendChild(el("div","empty","Nobody bought anything today."));
   S.history.slice(0,8).forEach(h=>P.appendChild(el("div","cost","· "+h)));
-  const go=el("button","btn-go","NEXT MORNING");
-  go.onclick=()=>{ S.history=[]; nextDay(); };
-  P.appendChild(go);
-  tip("Shutters down. Count the takings.");
+  setAction("NEXT MORNING",()=>{ S.history=[]; nextDay(); });
+  tip("Shutters down. Tap NEXT MORNING below to start day "+(S.day+1)+".");
 }
 
 function paint(){
@@ -1070,15 +1137,36 @@ $("#modal").addEventListener("click",e=>{ if(e.target.id==="modal") { if(!S.talk
 /* ---------- boot ---------- */
 initGrid(); rollOffers(); paint();
 requestAnimationFrame(loop);
-setTimeout(()=>{
+function nameScreen(){
   const sh=$("#sheet"); sh.innerHTML="";
   $("#modal").classList.add("on");
-  sh.appendChild(el("div","speaker","KEDAI BUKU"));
+  sh.appendChild(el("div","speaker","NAME YOUR SHOP"));
+  sh.appendChild(el("p",null,"Every shoplot on the row has a name painted above the door. Yours goes on the sign."));
+  const row=el("div","namerow");
+  row.appendChild(el("span",null,"KEDAI BUKU"));
+  const inp=document.createElement("input");
+  inp.id="shopName"; inp.type="text"; inp.maxLength=16; inp.placeholder="your name";
+  inp.autocomplete="off"; inp.value=S.shopName;
+  row.appendChild(inp);
+  sh.appendChild(row);
+  sh.appendChild(el("p",null,"Leave it blank and the sign just reads KEDAI BUKU."));
+  const go=el("button","choice"); go.style.borderColor="var(--gold)"; go.style.color="var(--gold)";
+  go.textContent="Paint the sign →";
+  go.onclick=()=>{ S.shopName=inp.value.trim().slice(0,16); introScreen(); };
+  sh.appendChild(go);
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter") go.click(); });
+  setTimeout(()=>inp.focus(),50);
+}
+function introScreen(){
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("div","speaker",shopLabel().toUpperCase()));
   sh.appendChild(el("div","say","A shoplot in Petaling Jaya. Yours since this morning. Four shelves, a counter, and RM1,500."));
   sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
   sh.appendChild(el("p",null,"MORNING — buy stock, set prices, fit out the shop.<br>OPEN — customers come in. Tap one, ask up to three questions, then recommend from your shelves.<br>CLOSED — pay the rent."));
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
   const go=el("button","choice","Open up →"); go.style.borderColor="var(--gold)"; go.style.color="var(--gold)";
-  go.onclick=closeModal; sh.appendChild(go);
-},200);
+  go.onclick=()=>{ closeModal(); paint(); }; sh.appendChild(go);
+}
+setTimeout(nameScreen,200);
 </script>

@@ -20,7 +20,7 @@ behind them, so the prototype can be argued with rather than just played.
 | Store view | Top-down tile grid with placeable furniture. Expansion = more tiles. |
 | Core skill | **Matching people to books, plus curation** — what you choose to stock. Pricing is a real system but not the skill being tested. |
 | Stakes | Soft pressure. Rent and stock costs bite, but the shop cannot be lost. |
-| Setting | Malaysian shoplot bookstore, RM currency. |
+| Setting | Malaysian shoplot bookstore, RM currency. The player names the shop; it is painted on the sign above the shelves. |
 
 The purpose decision is load-bearing. Because the sim comes first, the commerce layer is
 placed where a bookshop would place it — on the book itself, reached by curiosity — and
@@ -45,8 +45,10 @@ personally serve, so the moment-to-moment decision is *who do I approach* — an
 whole game in one gesture.
 
 Tapping a customer opens a conversation. You have **three questions**, each of which costs
-patience and returns a **clue chip** — a genre, a mood, a budget, a refusal. Then you
-recommend one title off your own shelves.
+patience and returns a **clue chip** — a genre, a mood, a budget, a refusal. Then you pick a
+title off your own shelves and read its page — synopsis, themes, price, reviews, with the
+customer's clue chips repeated underneath — before confirming or going back for another.
+Staking a recommendation is a decision, so the information belongs at the decision point.
 
 The recommendation is scored against a hidden want vector:
 
@@ -122,6 +124,10 @@ window, and charges nothing. In the live build it opens checkout.
   competitor, no returns. Those are the obvious next systems, but none of them tests the
   core skill, so none of them belongs in a prototype meant to answer *is the matching loop
   fun*.
+- **The shopkeeper does not move.** You stand behind the counter and customers route
+  around you, but serving happens through the conversation panel rather than by walking
+  the floor. Whether the player should have a body worth moving is an open design question,
+  not an oversight.
 - **Twelve NPC archetypes, three questions each.** Enough to prove the loop, not enough for
   retention. Repetition will set in within an hour, which is the expected failure of
   authored dialogue and the argument for the hybrid approach below.
