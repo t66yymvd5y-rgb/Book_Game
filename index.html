@@ -477,6 +477,196 @@ const CAST=[
    {q:"Budget?",a:"Thirty-eight. Practically a rounding error after the week I've had.",reveal:"Under RM38"}],
   yes:"Perfect. This is coming with me to the bathtub tonight, work phone off.",
   no:"Not tonight's book, I don't think. But a good try."},
+
+ {key:"johan",name:"Johan",role:"indie barista",skin:"#a97448",hair:"#cc7722",shirt:"#3a3a42",
+  want:{genres:["poetry","philosophy","literary"],moods:["melancholy","contemplative"],max:25,avoid:["business","romance"]},
+  enter:"Hey. Got anything that makes sense of a slow, rainy shift?",
+  probes:[
+   {q:"What usually makes sense to you?",a:"Just words that mean something. Doesn't need a plot, just a vibe.",reveal:"Wants poetic prose or philosophy"},
+   {q:"Fiction or non-fiction?",a:"Fiction feels fake right now. Show me something real and a bit sad.",reveal:"Prefers non-fiction or poetry"},
+   {q:"Budget for today?",a:"Twenty-five. Tips were terrible this morning.",reveal:"Under RM25"}],
+  yes:"Yeah, this hits the exact spot. Thanks.",
+  no:"A bit too mainstream for me. I'll just keep looking."},
+
+ {key:"maya",name:"Maya",role:"corporate lawyer",skin:"#c99161",hair:"#1a1a22",shirt:"#2b2b33",
+  want:{genres:["crime","thriller","history"],moods:["thrilling","unsettling"],max:70,avoid:["romance","poetry"]},
+  enter:"I spend all day arguing. I want to read about someone actually committing a crime.",
+  probes:[
+   {q:"Messy crime or calculated?",a:"Calculated. I want a genius villain and a protagonist who barely survives.",reveal:"Wants smart thrillers"},
+   {q:"Any limits on how dark it gets?",a:"None. The darker the better. I deal with contracts, I'm already dead inside.",reveal:"Open to very dark/unsettling themes"},
+   {q:"Is budget a concern?",a:"If it keeps me awake past midnight, I don't care what it costs.",reveal:"Not price-sensitive"}],
+  yes:"Brilliant. Put it in a bag, I'm reading this during my next zoom call.",
+  no:"Objection. Too predictable. Next."},
+
+ {key:"wong",name:"Madam Wong",role:"tai chi instructor",skin:"#f1c27d",hair:"#3a3a42",shirt:"#8a6a9a",
+  want:{genres:["nonfiction","history","biography"],moods:["comforting","contemplative"],max:32,avoid:["horror","scifi"]},
+  enter:"Good morning! My knees hurt today, so I need a book that is very gentle.",
+  probes:[
+   {q:"Gentle in what way, Madam?",a:"No loud noises, no running around. Just wise people doing quiet things.",reveal:"Wants slow, contemplative nonfiction"},
+   {q:"Do you like learning about the past?",a:"Yes! How people used to live. The old days were simpler.",reveal:"Prefers history or biography"},
+   {q:"What is your budget today?",a:"Thirty-two ringgit. I must save for my herbal soup later.",reveal:"Under RM32"}],
+  yes:"Wah, so nice. I will read this in the park tomorrow.",
+  no:"Too stressful! My blood pressure will go up. No thank you."},
+
+ {key:"karthik",name:"Karthik",role:"indie musician",skin:"#7a4f30",hair:"#1a1a22",shirt:"#5b6b4a",
+  want:{genres:["literary","poetry","biography"],moods:["melancholy","contemplative"],max:35,avoid:["business","children"]},
+  enter:"Looking for some lyrical inspiration. My lyrics are sounding a bit plastic lately.",
+  probes:[
+   {q:"What kind of inspiration?",a:"Something that hurts a little to read. Beautiful but bruising.",reveal:"Wants melancholy literary or poetry"},
+   {q:"Classic or contemporary?",a:"Classic, I think. The old ghosts knew what they were doing.",reveal:"Prefers older works"},
+   {q:"How much are you looking to spend?",a:"Thirty-five max. Spotify payouts are a joke, man.",reveal:"Under RM35"}],
+  yes:"Man, this is exactly the mood I needed. Bless you.",
+  no:"Nah, it doesn't have the rhythm I'm looking for."},
+
+ {key:"sofia",name:"Sofia",role:"stay-at-home mom",skin:"#c58a5e",hair:"#4a2a2a",shirt:"#c4718a",
+  want:{genres:["romance","funny","fiction"],moods:["comforting","funny","hopeful"],max:40,avoid:["horror","philosophy"]},
+  enter:"The kids are finally at school. I need an escape before 1 PM.",
+  probes:[
+   {q:"What kind of escape?",a:"Somewhere where nobody asks me what's for dinner, and two hot people fall in love.",reveal:"Wants light romance"},
+   {q:"Do you want it to be funny?",a:"Please. I haven't genuinely laughed since Tuesday.",reveal:"Wants humor"},
+   {q:"Budget?",a:"Forty ringgit. Treat myself before the school run.",reveal:"Under RM40"}],
+  yes:"Yes! This is my afternoon sorted. Do not tell my husband.",
+  no:"Too heavy. I have enough drama in my living room."},
+
+ {key:"darren",name:"Darren",role:"crypto investor",skin:"#e0b48c",hair:"#cc7722",shirt:"#4a4a56",
+  want:{genres:["business","biography","history"],moods:["thrilling"],max:80,avoid:["poetry","romance"]},
+  enter:"Yo. Give me something about winners. Empires, billionaires, that sort of thing.",
+  probes:[
+   {q:"Looking for strategy or just the story?",a:"Strategy. I need to know how they crushed the competition.",reveal:"Wants competitive business/history"},
+   {q:"Modern or historical?",a:"Doesn't matter. Genghis Khan or Steve Jobs, alpha is alpha.",reveal:"Open to history or modern biography"},
+   {q:"Budget limit?",a:"Bro, I'm buying the information, not the paper. Price doesn't matter.",reveal:"Not price-sensitive"}],
+  yes:"Bullish on this pick. Ring it up.",
+  no:"Seems a bit weak. Where's the actionable advice?"},
+
+ {key:"chloe",name:"Chloe",role:"art student",skin:"#f1c27d",hair:"#cc7722",shirt:"#3a5a4a",
+  want:{genres:["scifi","fantasy","horror"],moods:["unsettling","contemplative"],max:28,avoid:["business","romance"]},
+  enter:"I'm doing a project on surrealism. Got anything genuinely weird?",
+  probes:[
+   {q:"Weird like magic, or weird like nightmares?",a:"Nightmares that make you think. Reality that's just slightly broken.",reveal:"Wants unsettling scifi/fantasy"},
+   {q:"Do you care about the plot?",a:"Not really. It's all about the atmosphere and the imagery for me.",reveal:"Prioritizes mood over plot"},
+   {q:"Student budget?",a:"Yeah, twenty-eight. Art supplies are bankrupting me.",reveal:"Under RM28"}],
+  yes:"Oh, this is going to mess me up in the best way. Thanks!",
+  no:"It's a bit too normal. I need it to be weirder."},
+
+ {key:"abu",name:"Pak Abu",role:"security guard",skin:"#8b5e3c",hair:"#3a3a42",shirt:"#4a6a7a",
+  want:{genres:["history","crime","biography"],moods:["thrilling","contemplative"],max:20,avoid:["fantasy","scifi"]},
+  enter:"Night shift tonight. I need something real to keep my eyes open.",
+  probes:[
+   {q:"Real life crimes or history?",a:"History. Stories about brave men in difficult times.",reveal:"Wants historical struggles"},
+   {q:"Do you want it action-packed?",a:"Action is good, but it must be true. I don't like made-up magic.",reveal:"Strictly non-fiction or historical realism"},
+   {q:"Budget, Pak?",a:"Twenty ringgit. Just a small book for the guardhouse.",reveal:"Under RM20"}],
+  yes:"Alhamdulillah, this looks like a good companion for the night.",
+  no:"Too expensive, or too fake. It's okay, I'll just drink coffee."},
+
+ {key:"nadiah",name:"Nadiah",role:"food vlogger",skin:"#c99161",hair:"#1e1a24",shirt:"#e8b04b",
+  want:{genres:["biography","nonfiction","history"],moods:["funny","hopeful"],max:45,avoid:["horror"]},
+  enter:"Hi guys! Just taking a break from editing. I need a book about culture or food.",
+  probes:[
+   {q:"Culture in a fun way or an academic way?",a:"Fun! Like, Anthony Bourdain vibes. Traveling, eating, living.",reveal:"Wants upbeat, cultural biographies"},
+   {q:"Are you okay if it gets a bit emotional?",a:"Yeah, I love a good emotional arc, as long as it ends on a high note.",reveal:"Wants hopeful endings"},
+   {q:"Budget for today?",a:"Forty-five! Just got a sponsor payout.",reveal:"Under RM45"}],
+  yes:"Stop, this is perfect! Definitely featuring this in my next vlog.",
+  no:"Not quite the aesthetic I'm going for today, but thanks!"},
+
+ {key:"jason",name:"Jason",role:"personal trainer",skin:"#a97448",hair:"#1a1a22",shirt:"#3f6a63",
+  want:{genres:["philosophy","business","biography"],moods:["contemplative","hopeful"],max:35,avoid:["romance","fantasy"]},
+  enter:"Bro, I train the body all day. Need something to train the mind.",
+  probes:[
+   {q:"Mindset stuff or deep philosophy?",a:"Philosophy. Stoicism, discipline, that kind of hardcore mental training.",reveal:"Wants practical philosophy"},
+   {q:"Are you a fast reader?",a:"Nah, I take it slow. Read a page, think about it during a set.",reveal:"Wants short, dense passages"},
+   {q:"Budget?",a:"Thirty-five. Keep it reasonable.",reveal:"Under RM35"}],
+  yes:"Solid recommendation, bro. Let's get those mental gains.",
+  no:"Too fluffy. I need something with more weight to it."},
+
+ {key:"kavita",name:"Kavita",role:"human rights activist",skin:"#7a4f30",hair:"#4a2a2a",shirt:"#6b7f9e",
+  want:{genres:["history","literary","nonfiction"],moods:["contemplative","melancholy"],max:42,avoid:["funny","business"]},
+  enter:"I need a reminder that people have fought these battles before, and survived.",
+  probes:[
+   {q:"Looking for historical facts or a literary narrative?",a:"Literary narrative. Give me the human cost behind the history.",reveal:"Wants literary history or deep nonfiction"},
+   {q:"Does it need to have a happy ending?",a:"No. It just needs to be honest about the struggle.",reveal:"Accepts melancholy and hard truths"},
+   {q:"Budget constraint?",a:"Forty-two. NGO salaries aren't great, but books are a necessity.",reveal:"Under RM42"}],
+  yes:"Thank you. I think this will give me the grounding I need.",
+  no:"It feels a bit too sanitized. I need the raw truth."},
+
+ {key:"raj",name:"Uncle Raj",role:"e-hailing driver",skin:"#8b5e3c",hair:"#e8e8e8",shirt:"#a0453f",
+  want:{genres:["crime","thriller","mystery"],moods:["thrilling","funny"],max:22,avoid:["literary","poetry"]},
+  enter:"Waiting for a surge at the mall. Give me a quick murder mystery, boss.",
+  probes:[
+   {q:"Classic whodunit or modern thriller?",a:"Classic! Agatha Christie style. I like trying to guess the killer.",reveal:"Wants classic puzzle crimes"},
+   {q:"Do you mind if it's a bit slow?",a:"No slow! Must be fast. I might get a booking any minute.",reveal:"Wants fast pacing"},
+   {q:"Budget, Uncle?",a:"Twenty-two ringgit only. Fares are low today.",reveal:"Under RM22"}],
+  yes:"Very nice. I will read this while waiting for passengers.",
+  no:"Aiyo, too slow. I will fall asleep at the wheel!"},
+
+ {key:"nisa",name:"Nisa",role:"architect",skin:"#c58a5e",hair:"#1e1a24",shirt:"#2b2b33",
+  want:{genres:["scifi","nonfiction","history"],moods:["contemplative","unsettling"],max:55,avoid:["romance","children"]},
+  enter:"I've been designing parking lots for a month. Give me a book about impossible structures.",
+  probes:[
+   {q:"Structures in space, or weird buildings on Earth?",a:"Either. A sci-fi world with crazy cities, or history of forgotten monuments.",reveal:"Wants world-building or spatial themes"},
+   {q:"Should it be hopeful or a dystopia?",a:"Make it dystopian. Let me feel better about my parking lots.",reveal:"Prefers unsettling or dark themes"},
+   {q:"Budget?",a:"Fifty-five. I'll expense it as 'design research'.",reveal:"Under RM55"}],
+  yes:"This is brilliant. The scale of it sounds incredible.",
+  no:"Too grounded. I need something that breaks the rules of physics."},
+
+ {key:"calvin",name:"Calvin",role:"data analyst",skin:"#e0b48c",hair:"#1a1a22",shirt:"#7a9ec4",
+  want:{genres:["fantasy","children","scifi"],moods:["comforting","hopeful"],max:30,avoid:["horror","crime"]},
+  enter:"Staring at numbers all week. I need a cozy fantasy where nothing bad happens.",
+  probes:[
+   {q:"Just a little adventure, or completely zero stakes?",a:"Low stakes. Maybe they open a bakery or go on a gentle quest.",reveal:"Wants very comforting fantasy/scifi"},
+   {q:"Does it have to be for adults?",a:"Honestly, a good children's book works too. Just make it warm.",reveal:"Open to children's books"},
+   {q:"Budget?",a:"Thirty ringgit. Standard book allowance.",reveal:"Under RM30"}],
+  yes:"Ah, this sounds like a warm hug. Perfect.",
+  no:"Too much conflict. My cortisol levels are already peaking."},
+
+ {key:"ani",name:"Makcik Ani",role:"kuih seller",skin:"#c58a5e",hair:"#3a3a42",shirt:"#c4718a",
+  want:{genres:["romance","biography","history"],moods:["comforting","melancholy"],max:25,avoid:["scifi","horror"]},
+  enter:"Assalamualaikum. Stall is closed for the day. Looking for a nice love story.",
+  probes:[
+   {q:"A happy love story, or one that makes you cry?",a:"A bit of crying is good. Reminds you that you are alive, right?",reveal:"Accepts melancholy romance"},
+   {q:"Historical or modern?",a:"Historical. I like reading about how people courted in the old days.",reveal:"Prefers historical settings"},
+   {q:"Budget, Makcik?",a:"Twenty-five only. Small business, small budget.",reveal:"Under RM25"}],
+  yes:"Waalaikumsalam, this is just what I wanted. Thank you, nak.",
+  no:"Too modern for me. People just swipe phones now, no romance."},
+
+ {key:"fiona",name:"Fiona",role:"expat teacher",skin:"#f1c27d",hair:"#4a2a2a",shirt:"#a8556e",
+  want:{genres:["history","literary","biography"],moods:["contemplative","melancholy"],max:50,avoid:["fantasy","ya"]},
+  enter:"Hi! I've been living here for a year and realized I know nothing about local history.",
+  probes:[
+   {q:"Do you want a textbook history or a novel?",a:"A novel, please. Something beautifully written that captures the place.",reveal:"Wants literary historical fiction"},
+   {q:"Are you okay with heavy colonial themes?",a:"Absolutely. I want the unvarnished truth, no matter how sad.",reveal:"Open to heavy/melancholy themes"},
+   {q:"Budget limit?",a:"Fifty ringgit. Happy to pay for a good local author.",reveal:"Under RM50"}],
+  yes:"This sounds incredibly moving. I can't wait to read it.",
+  no:"It seems a bit generic. I really want a strong sense of place."},
+
+ {key:"hakim",name:"Hakim",role:"indie filmmaker",skin:"#a97448",hair:"#2b2b33",shirt:"#22222a",
+  want:{genres:["horror","thriller","literary"],moods:["unsettling","thrilling"],max:40,avoid:["comforting","funny"]},
+  enter:"I'm writing a psychological thriller script. Need a book that makes me deeply uncomfortable.",
+  probes:[
+   {q:"Uncomfortable through gore or through the mind?",a:"The mind. A slow burn of dread. Gaslighting, paranoia, that stuff.",reveal:"Wants psychological horror/thriller"},
+   {q:"Pacing? Fast or slow?",a:"Slow burn. I want to see how the author builds the tension over time.",reveal:"Wants slow-paced dread"},
+   {q:"Budget for research?",a:"Forty. I'll pitch it to the producers later.",reveal:"Under RM40"}],
+  yes:"Yeah, this cover alone is giving me anxiety. Let's do it.",
+  no:"Too jump-scare. I need something that lingers."},
+
+ {key:"grace",name:"Auntie Grace",role:"florist",skin:"#e0b48c",hair:"#e8e8e8",shirt:"#4f9a55",
+  want:{genres:["poetry","children","nature"],moods:["comforting","hopeful"],max:35,avoid:["crime","horror"]},
+  enter:"Hello dear. The flowers are blooming beautifully today. Have you got a book that feels like spring?",
+  probes:[
+   {q:"Are we talking gardening books, or poetry?",a:"Poetry, or a very sweet children's story. Just words about nature and growth.",reveal:"Wants comforting nature/poetry/children"},
+   {q:"Something to read quickly or savor?",a:"To savor. I like to read one page with my morning tea.",reveal:"Wants slow, comforting reading"},
+   {q:"Budget, Auntie?",a:"Thirty-five ringgit. Just a little treat for myself.",reveal:"Under RM35"}],
+  yes:"Oh, how lovely. This will sit perfectly on my bedside table.",
+  no:"Oh dear, that sounds a bit too gloomy for my taste."},
+
+ {key:"tariq",name:"Tariq",role:"job seeker",skin:"#8b5e3c",hair:"#1a1a22",shirt:"#dedede",
+  want:{genres:["business","philosophy","nonfiction"],moods:["hopeful","contemplative"],max:25,avoid:["horror","scifi"]},
+  enter:"Tenth rejection email this month. I need a book that tells me it's going to be okay.",
+  probes:[
+   {q:"Looking for career advice or life philosophy?",a:"Philosophy. I need to know how to handle failure without giving up.",reveal:"Wants hopeful philosophy/nonfiction"},
+   {q:"Do you want a modern author or an ancient thinker?",a:"Ancient is fine if it works. Just give me some timeless resilience.",reveal:"Open to classic philosophy"},
+   {q:"Budget constraint?",a:"Very tight. Twenty-five ringgit maximum, please.",reveal:"Under RM25"}],
+  yes:"Thanks, boss. I really needed this today.",
+  no:"I don't think this will help me right now. But thanks."}
 ];
 
 /* ---------- in-world reviews ---------- */
