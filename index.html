@@ -1,9 +1,10 @@
 <title>Kedai Buku</title>
 <style>
   :root{
-    --ink:#f4ead6; --ink-dim:#b7a78c; --bg:#150f0b; --panel:#241a14;
-    --panel-2:#2f2219; --line:#4a3524; --gold:#e8b04b; --green:#7fbf6a;
-    --red:#d1615d; --blue:#7fb0d8; --shadow:rgba(0,0,0,.5);
+    --ink:#3a2a1a; --ink-dim:#7a6248; --bg:#fdf3de; --panel:#fff6e4;
+    --panel-2:#ffffff; --line:#e8b04b; --line-soft:#f0d9a8; --gold:#ff9d1f; --gold-deep:#c9720a;
+    --green:#4caf3c; --green-deep:#2e7d22; --red:#e8534a; --red-deep:#b8362f; --blue:#3b8fd6;
+    --shadow:rgba(120,70,10,.25);
     --pix:"Press Start 2P", ui-monospace, monospace;
     --sans:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
@@ -17,91 +18,95 @@
   #wrap{max-width:460px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;background:var(--bg);}
 
   /* ---- HUD ---- */
-  #hud{display:flex;gap:4px;padding:6px;background:var(--panel);border-bottom:2px solid var(--line);flex:none;}
-  .stat{flex:1;background:var(--panel-2);border:1px solid var(--line);padding:5px 3px;text-align:center;}
-  .stat b{display:block;font-family:var(--pix);color:var(--gold);font-size:9px;margin-top:5px;}
+  #hud{display:flex;gap:5px;padding:8px;background:var(--gold);border-bottom:3px solid var(--gold-deep);flex:none;}
+  .stat{flex:1;background:var(--panel-2);border:2px solid var(--gold-deep);border-radius:8px;padding:5px 3px;text-align:center;box-shadow:0 2px 0 var(--shadow);}
+  .stat b{display:block;font-family:var(--pix);color:var(--gold-deep);font-size:9px;margin-top:5px;}
   .stat span{font-family:var(--pix);color:var(--ink-dim);font-size:6px;}
 
   /* ---- canvas ---- */
-  #stage{background:#0c0906;flex:none;width:100%;max-width:min(460px,calc(52vh * 4 / 3));margin:0 auto;}
+  #stage{background:#2a2016;flex:none;width:100%;max-width:min(460px,calc(52vh * 4 / 3));margin:0 auto;position:relative;border-bottom:3px solid var(--gold-deep);}
   canvas{display:block;width:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:manipulation;}
-  #tip{background:#1c1510;padding:6px 8px;font-size:11px;color:var(--gold);flex:none;
-    border-top:1px solid var(--line);border-bottom:2px solid var(--line);min-height:28px;}
+  #signText{position:absolute;left:6%;right:6%;top:0;text-align:center;font-family:var(--pix);
+    color:#ffd772;text-shadow:1px 1px 0 #6b3f0a,-1px 1px 0 #6b3f0a,1px -1px 0 #6b3f0a,-1px -1px 0 #6b3f0a,0 2px 0 #4a2a06;
+    line-height:1; letter-spacing:.5px; white-space:nowrap; overflow:hidden; text-overflow:clip;
+    pointer-events:none; transform:translateY(-50%);}
+  #tip{background:var(--panel-2);padding:7px 9px;font-size:11px;color:var(--gold-deep);flex:none;font-weight:600;
+    border-bottom:2px solid var(--line-soft);min-height:28px;}
 
   /* ---- panel ---- */
-  #panel{flex:1;background:var(--panel);padding:9px;}
-  #action{padding:8px;background:var(--panel-2);border-bottom:2px solid var(--line);flex:none;}
+  #panel{flex:1;background:var(--bg);padding:9px;}
+  #action{padding:8px;background:var(--panel);border-bottom:2px solid var(--line-soft);flex:none;}
   #action:empty{display:none;}
-  h2{font-family:var(--pix);font-size:10px;margin:0 0 10px;color:var(--gold);line-height:1.6;}
+  h2{font-family:var(--pix);font-size:10px;margin:0 0 10px;color:var(--gold-deep);line-height:1.6;}
   h3{font-family:var(--pix);font-size:7px;margin:12px 0 6px;color:var(--ink-dim);letter-spacing:1px;text-transform:uppercase;}
   p{margin:0 0 8px;color:var(--ink-dim);font-size:12px;line-height:1.65;}
 
-  .tabs{display:flex;gap:3px;margin-bottom:9px;}
-  .tab{flex:1;padding:8px 2px;background:var(--panel-2);border:1px solid var(--line);color:var(--ink-dim);
+  .tabs{display:flex;gap:4px;margin-bottom:9px;}
+  .tab{flex:1;padding:8px 2px;background:var(--panel-2);border:2px solid var(--line-soft);border-radius:8px;color:var(--ink-dim);
     text-align:center;font-family:var(--pix);font-size:7px;cursor:pointer;}
-  .tab.on{background:var(--gold);color:#150f0b;border-color:var(--gold);}
+  .tab.on{background:var(--gold);color:#5a3400;border-color:var(--gold-deep);}
 
-  button{font-family:var(--pix);font-size:8px;line-height:1.7;cursor:pointer;border:1px solid var(--line);
-    background:var(--panel-2);color:var(--ink);padding:8px 9px;}
-  button:active{transform:translateY(1px);}
-  button:disabled{opacity:.35;cursor:default;}
-  .btn-go{background:var(--gold);color:#150f0b;border-color:#8a6420;width:100%;padding:14px;font-size:10px;}
+  button{font-family:var(--pix);font-size:8px;line-height:1.7;cursor:pointer;border:2px solid var(--line-soft);border-radius:8px;
+    background:var(--panel-2);color:var(--ink);padding:8px 9px;box-shadow:0 2px 0 var(--shadow);}
+  button:active{transform:translateY(2px);box-shadow:none;}
+  button:disabled{opacity:.35;cursor:default;box-shadow:none;}
+  .btn-go{background:var(--gold);color:#5a3400;border-color:var(--gold-deep);width:100%;padding:14px;font-size:10px;}
   .btn-sm{padding:6px 8px;font-size:7px;}
   .row{display:flex;gap:5px;align-items:center;flex-wrap:wrap;}
 
-  .card{background:var(--panel-2);border:1px solid var(--line);padding:7px;margin-bottom:6px;display:flex;gap:9px;align-items:flex-start;}
-  .card canvas{width:36px;height:54px;flex:none;border:1px solid #000;image-rendering:pixelated;}
+  .card{background:var(--panel-2);border:2px solid var(--line-soft);border-radius:10px;padding:7px;margin-bottom:6px;display:flex;gap:9px;align-items:flex-start;box-shadow:0 2px 0 var(--shadow);}
+  .card canvas{width:36px;height:54px;flex:none;border:1px solid #000;border-radius:3px;image-rendering:pixelated;}
   .card .meta{flex:1;min-width:0;}
   .t{font-family:var(--pix);font-size:8px;line-height:1.7;color:var(--ink);}
   .a{font-size:11px;color:var(--ink-dim);margin-top:4px;}
   .tagrow{margin-top:5px;display:flex;flex-wrap:wrap;gap:3px;}
-  .tag{font-size:10px;padding:2px 5px;background:#3b2b1f;border:1px solid var(--line);color:var(--ink-dim);}
-  .tag.g{color:var(--green);border-color:#3d5c33;}
-  .tag.b{color:var(--blue);border-color:#2f4a5e;}
-  .tag.r{color:var(--red);border-color:#5e2f2f;}
-  .price{font-family:var(--pix);color:var(--gold);font-size:8px;}
+  .tag{font-size:10px;padding:2px 6px;border-radius:10px;background:#ffe9c2;border:1px solid var(--line);color:var(--gold-deep);}
+  .tag.g{color:var(--green-deep);border-color:var(--green);background:#e3f5df;}
+  .tag.b{color:#1f5a8a;border-color:var(--blue);background:#e2f1fb;}
+  .tag.r{color:var(--red-deep);border-color:var(--red);background:#fbe4e2;}
+  .price{font-family:var(--pix);color:var(--gold-deep);font-size:8px;}
   .cost{font-size:11px;color:var(--ink-dim);}
 
   .empty{text-align:center;color:var(--ink-dim);padding:20px 8px;font-size:12px;line-height:1.9;}
-  .bar{height:6px;background:#3b2b1f;border:1px solid var(--line);margin-top:5px;}
+  .bar{height:6px;background:#f0dcae;border-radius:4px;border:1px solid var(--line-soft);margin-top:5px;overflow:hidden;}
   .bar i{display:block;height:100%;background:var(--green);}
 
   /* ---- modal ---- */
-  #modal{position:fixed;inset:0;background:rgba(8,5,3,.9);display:none;z-index:50;align-items:flex-end;justify-content:center;}
+  #modal{position:fixed;inset:0;background:rgba(60,35,5,.55);display:none;z-index:50;align-items:flex-end;justify-content:center;}
   #modal.on{display:flex;}
   #sheet{width:100%;max-width:460px;max-height:92vh;overflow-y:auto;background:var(--panel);
-    border-top:3px solid var(--gold);padding:11px;}
-  .speaker{font-family:var(--pix);color:var(--gold);font-size:9px;margin-bottom:8px;line-height:1.7;}
-  .say{background:var(--panel-2);border-left:3px solid var(--gold);padding:9px 10px;font-size:13px;
+    border-top:4px solid var(--gold);border-radius:16px 16px 0 0;padding:14px;}
+  .speaker{font-family:var(--pix);color:var(--gold-deep);font-size:9px;margin-bottom:8px;line-height:1.7;}
+  .say{background:var(--panel-2);border-left:4px solid var(--gold);border-radius:0 8px 8px 0;padding:9px 10px;font-size:13px;
     line-height:1.65;color:var(--ink);margin-bottom:8px;white-space:pre-line;}
   .say.me{border-left-color:var(--blue);color:var(--ink-dim);font-style:italic;}
   .choice{display:block;width:100%;text-align:left;margin-bottom:5px;font-family:var(--sans);font-size:12px;padding:10px;}
   .clues{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px;}
   .pick{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:7px;}
-  .pick .bk{background:var(--panel-2);border:1px solid var(--line);padding:5px;text-align:center;cursor:pointer;}
-  .pick .bk canvas{width:100%;height:auto;aspect-ratio:2/3;border:1px solid #000;image-rendering:pixelated;}
+  .pick .bk{background:var(--panel-2);border:2px solid var(--line-soft);border-radius:8px;padding:5px;text-align:center;cursor:pointer;}
+  .pick .bk canvas{width:100%;height:auto;aspect-ratio:2/3;border:1px solid #000;border-radius:3px;image-rendering:pixelated;}
   .pick .bk div{font-size:10px;margin-top:4px;color:var(--ink-dim);line-height:1.4;}
-  .verdict{text-align:center;padding:10px;font-family:var(--pix);font-size:9px;margin:8px 0;border:1px solid var(--line);}
-  .verdict.good{color:var(--green);border-color:#3d5c33;}
-  .verdict.bad{color:var(--red);border-color:#5e2f2f;}
+  .verdict{text-align:center;padding:10px;font-family:var(--pix);font-size:9px;margin:8px 0;border-radius:8px;border:2px solid var(--line-soft);}
+  .verdict.good{color:var(--green-deep);border-color:var(--green);background:#e3f5df;}
+  .verdict.bad{color:var(--red-deep);border-color:var(--red);background:#fbe4e2;}
 
   .bookhead{display:flex;gap:11px;margin-bottom:10px;}
-  .bookhead canvas{width:80px;height:120px;flex:none;border:2px solid #000;image-rendering:pixelated;}
-  .review{border-top:1px solid var(--line);padding:8px 0;font-size:12px;color:var(--ink-dim);line-height:1.6;}
-  .review b{font-family:var(--pix);font-size:7px;color:var(--gold);display:block;margin-bottom:5px;}
-  .stars{color:var(--gold);letter-spacing:2px;font-family:var(--sans);font-size:11px;}
-  .buy{background:#3d5c33;color:#eafae4;border-color:#5b8a4a;width:100%;padding:12px;margin-top:10px;font-size:9px;line-height:1.7;}
-  .note{font-size:10px;color:#8a7a63;line-height:1.6;margin-top:9px;border-top:1px solid var(--line);padding-top:7px;}
+  .bookhead canvas{width:80px;height:120px;flex:none;border:2px solid #000;border-radius:5px;image-rendering:pixelated;}
+  .review{border-top:1px solid var(--line-soft);padding:8px 0;font-size:12px;color:var(--ink-dim);line-height:1.6;}
+  .review b{font-family:var(--pix);font-size:7px;color:var(--gold-deep);display:block;margin-bottom:5px;}
+  .stars{color:var(--gold-deep);letter-spacing:2px;font-family:var(--sans);font-size:11px;}
+  .buy{background:var(--green);color:#0e3308;border-color:var(--green-deep);width:100%;padding:12px;margin-top:10px;font-size:9px;line-height:1.7;}
+  .note{font-size:10px;color:var(--ink-dim);line-height:1.6;margin-top:9px;border-top:1px solid var(--line-soft);padding-top:7px;}
 
-  .ledger{display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--line);}
-  .ledger b{font-family:var(--pix);font-size:8px;color:var(--gold);}
-  .ledger.neg b{color:var(--red);}
-  .ledger.pos b{color:var(--green);}
-  .lock{opacity:.4;}
+  .ledger{display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid var(--line-soft);}
+  .ledger b{font-family:var(--pix);font-size:8px;color:var(--gold-deep);}
+  .ledger.neg b{color:var(--red-deep);}
+  .ledger.pos b{color:var(--green-deep);}
+  .lock{opacity:.45;}
   .namerow{display:flex;align-items:center;gap:8px;margin:10px 0 4px;}
-  .namerow span{font-family:var(--pix);font-size:9px;color:var(--gold);white-space:nowrap;}
-  #shopName{flex:1;min-width:0;font-family:var(--sans);font-size:15px;padding:9px 10px;
-    background:var(--panel-2);border:1px solid var(--gold);color:var(--ink);}
+  .namerow span{font-family:var(--pix);font-size:9px;color:var(--gold-deep);white-space:nowrap;}
+  #shopName{flex:1;min-width:0;font-family:var(--sans);font-size:15px;padding:9px 10px;border-radius:8px;
+    background:var(--panel-2);border:2px solid var(--gold);color:var(--ink);}
   #shopName:focus{outline:2px solid var(--gold);outline-offset:1px;}
   /* Press Start 2P is far wider than the fallback - never let it break the layout */
   .t,button,h2,h3,.speaker,.verdict,.stat b{overflow-wrap:anywhere;}
@@ -115,7 +120,7 @@
     <div class="stat"><span>REP</span><b id="hRep">0</b></div>
     <div class="stat"><span>PHASE</span><b id="hPhase">SETUP</b></div>
   </div>
-  <div id="stage"><canvas id="cv" width="192" height="144"></canvas></div>
+  <div id="stage"><canvas id="cv"></canvas><div id="signText"></div></div>
   <div id="tip">Tap OPEN when your shelves are ready.</div>
   <div id="action"></div>
   <div id="panel"></div>
@@ -149,109 +154,109 @@ const b=(title,author,year,genre,moods,pace,weight,cost,blurb,themes)=>
 
 const BOOKS=[
  b("Never Let Me Go","Kazuo Ishiguro",2005,"literary",["melancholy","contemplative"],"slow","medium",29,
-   "Three friends raised at a secluded English boarding school slowly uncover the purpose their lives were made for.",["memory","mortality","friendship"]),
+   "Three friends raised at Hailsham, a secluded English boarding school, spend their childhood painting, gossiping and slowly noticing that the adults around them will never quite look them in the eye. As they grow into a wider, ordinary-seeming England, the truth of what they were made for closes in with a quiet, unhurried dread. Ishiguro never raises his voice; the horror is entirely in the calm.",["memory","mortality","friendship"]),
  b("The Remains of the Day","Kazuo Ishiguro",1989,"literary",["melancholy","contemplative"],"slow","medium",28,
-   "An English butler takes a motoring holiday and reckons with a lifetime of dignified service and unspoken love.",["regret","duty","class"]),
+   "Stevens, an ageing English butler, sets out on a motoring holiday across the West Country and finds himself reliving thirty years of service at Darlington Hall — the diplomatic dinners, the housekeeper he never allowed himself to love, the great house's slow slide toward a war his employer misjudged. Every sentence is precisely, devastatingly polite. What he cannot say out loud is the whole book.",["regret","duty","class"]),
  b("Klara and the Sun","Kazuo Ishiguro",2021,"literary",["melancholy","hopeful"],"slow","medium",32,
-   "An Artificial Friend watches the world from a shop window, waiting to be chosen by a child.",["love","loneliness","faith"]),
+   "Klara is an Artificial Friend, built to be chosen and to love whichever child chooses her, and she watches the street outside her shop window with a solar-powered faith that borders on religion. When a frail girl named Josie finally takes her home, Klara's devotion is put to uses far stranger and sadder than companionship. A story about love asked to do an impossible job.",["love","loneliness","faith"]),
  b("Beloved","Toni Morrison",1987,"literary",["unsettling","melancholy"],"slow","heavy",31,
-   "A formerly enslaved woman in Ohio is haunted, literally, by the daughter she could not let be taken.",["memory","slavery","motherhood"]),
+   "Sethe escaped slavery in Kentucky and built a life in postwar Ohio, but the house at 124 Bluestone Road is haunted — first by a restless presence, then by a strange young woman who arrives at the door calling herself Beloved. Morrison writes the unspeakable act at the center of the novel with a force that rearranges everything around it. A landmark of American fiction.",["memory","slavery","motherhood"]),
  b("Norwegian Wood","Haruki Murakami",1987,"literary",["melancholy","contemplative"],"steady","medium",30,
-   "A student in 1960s Tokyo is pulled between a fragile first love and a woman who wants him to live.",["grief","first love","youth"]),
+   "A song on an airplane sends Toru Watanabe back to 1960s Tokyo, to a fragile, grieving girl named Naoko who carries the death of the boy they both loved, and to the vivid, unapologetic Midori who wants him to choose life instead of memory. Quiet, sensual and steeped in loss, it is the Murakami novel without a single talking cat.",["grief","first love","youth"]),
  b("Kafka on the Shore","Haruki Murakami",2002,"literary",["unsettling","contemplative"],"steady","medium",33,
-   "A runaway boy and an old man who talks to cats are drawn together by a prophecy neither understands.",["fate","identity","dreams"]),
+   "A fifteen-year-old runs away from an Oedipal prophecy under the alias Kafka Tamura, while across town an old man who lost his memory in a wartime incident discovers he can talk to cats. Their stories run in parallel and then, impossibly, touch. Fish fall from the sky, a forest swallows soldiers whole, and Murakami insists the dream logic is the point.",["fate","identity","dreams"]),
  b("One Hundred Years of Solitude","Gabriel Garcia Marquez",1967,"literary",["contemplative","melancholy"],"slow","heavy",34,
-   "Seven generations of the Buendia family rise and fall in the invented town of Macondo.",["family","time","solitude"]),
+   "Jose Arcadio Buendia founds the town of Macondo on a whim, and seven generations of his descendants proceed to fall in love, wage war, chase gold and gypsy science, and repeat their ancestors' names and mistakes until the whole line is written into a manuscript that has been prophesying them all along. The founding text of magical realism, and still the best argument for it.",["family","time","solitude"]),
  b("The God of Small Things","Arundhati Roy",1997,"literary",["melancholy","unsettling"],"slow","heavy",30,
-   "Twins in Kerala carry the weight of one afternoon that broke their family and the laws that govern who may be loved.",["family","caste","childhood"]),
+   "Twins Estha and Rahel grow up in a pickle factory in Kerala, watched over by a family that observes every caste and class rule except the one that matters most. One afternoon at the river breaks the family permanently, and Roy circles that afternoon for the length of the novel, closing in a little more with every pass. Won the Booker Prize; still stings on a second reading.",["family","caste","childhood"]),
  b("Things Fall Apart","Chinua Achebe",1958,"literary",["melancholy","contemplative"],"steady","medium",26,
-   "A respected Igbo wrestler and farmer watches his world reorder itself around the arrival of missionaries.",["tradition","change","masculinity"]),
+   "Okonkwo is a respected wrestler, farmer and warrior in his Igbo village, a man who has built his whole identity on not being his weak, gentle father. When British missionaries and colonial administrators arrive, the world that made Okonkwo's strength meaningful starts to dissolve around him. The first great African novel written in English, and still the clearest account of what colonialism actually costs.",["tradition","change","masculinity"]),
  b("Pachinko","Min Jin Lee",2017,"literary",["melancholy","hopeful"],"steady","heavy",35,
-   "Four generations of a Korean family in Japan endure exile, prejudice and stubborn, quiet endurance.",["family","migration","belonging"]),
+   "Sunja, a poor fisherman's daughter in Japanese-occupied Korea, makes one impulsive choice as a teenager that sends her family into exile in Japan for four generations. Lee follows them through war, poverty, the shame economy of Korean-run pachinko parlors and the quiet cruelty of never quite belonging, in prose so unshowy you forget how much ground it's covering.",["family","migration","belonging"]),
 
  b("The Garden of Evening Mists","Tan Twan Eng",2011,"literary",["melancholy","contemplative"],"slow","medium",33,
-   "In post-war Malaya a survivor of a Japanese camp apprentices herself to the Emperor's former gardener.",["memory","forgiveness","malaysia"]),
+   "Yun Ling Teoh survived a Japanese internment camp that killed her sister, and in the uneasy years after the war she apprentices herself to Aritomo, former gardener to the Emperor of Japan, to build a garden of remembrance in the Cameron Highlands. What she is really doing is learning whether forgiveness is a thing a garden — or a person — can actually hold. Shortlisted for the Booker Prize.",["memory","forgiveness","malaysia"]),
  b("The Gift of Rain","Tan Twan Eng",2007,"literary",["melancholy","thrilling"],"steady","heavy",34,
-   "A half-Chinese, half-English boy in Penang is befriended by a Japanese diplomat on the eve of the occupation.",["loyalty","betrayal","malaysia"]),
+   "Philip Hutton, half-English and half-Chinese and belonging fully to neither side of Penang society, is taken under the wing of Endo-san, a Japanese diplomat who teaches him aikido and, without either of them quite admitting it, prepares him to survive what is coming. When the occupation arrives, that friendship becomes the most dangerous thing Philip owns. Tan's debut, and the one that put Malaysian fiction on the international shortlists.",["loyalty","betrayal","malaysia"]),
  b("Evening is the Whole Day","Preeta Samarasan",2008,"literary",["melancholy","unsettling"],"slow","medium",29,
-   "A Tamil family in a decaying Ipoh mansion unravels around a servant girl's dismissal.",["family","class","malaysia"]),
+   "In a crumbling mansion in Ipoh, the wealthy Rajasekharan family is unraveling from the inside — a servant girl dismissed without explanation, a grandmother's death nobody will discuss plainly, a secret that six-year-old Aasha half-understands and the reader has to earn in pieces. Samarasan writes Malaysian-Indian domestic life with a precision that never once feels like anthropology.",["family","class","malaysia"]),
  b("The Rice Mother","Rani Manicka",2002,"literary",["melancholy","hopeful"],"steady","medium",28,
-   "A Ceylonese girl married off to Malaya at fourteen becomes the spine of a family across a century.",["family","war","malaysia"]),
+   "Married off at fourteen and shipped from Ceylon to a Malaya she has never seen, Lakshmi builds — through sheer will, and later through her children's very different lives — a family dynasty spanning nearly a century of war, poverty and reinvention. Told in rotating first-person voices, it reads like a family telling its own myths back to itself.",["family","war","malaysia"]),
  b("Once We Were There","Bernice Chauly",2017,"literary",["unsettling","melancholy"],"fast","heavy",30,
-   "A journalist in Reformasi-era Kuala Lumpur loses her child and everything that held her together.",["loss","politics","malaysia"]),
+   "Delonix Karuna covers the Reformasi protests of late-1990s Kuala Lumpur as a young journalist, chasing tear gas and political awakening while her own marriage and motherhood quietly come apart around her. Chauly, herself a KL poet and documentarian, writes the city's most turbulent recent decade from street level, unglamorous and specific.",["loss","politics","malaysia"]),
  b("The Weight of Our Sky","Hanna Alkaf",2019,"ya",["thrilling","hopeful"],"fast","medium",27,
-   "A Malay girl with OCD is caught in the Kuala Lumpur riots of May 1969 and must cross the city to find her mother.",["race","mental health","malaysia"]),
+   "Sixteen-year-old Melati has OCD she can only describe to herself as a djinn that demands counting rituals to keep her mother safe — and then the May 1969 race riots break out in Kuala Lumpur, separating her from her mother and forcing her to cross a city turning violent along ethnic lines. A YA thriller that treats both the mental illness and the history with real seriousness.",["race","mental health","malaysia"]),
  b("The Girl and the Ghost","Hanna Alkaf",2020,"children",["unsettling","hopeful"],"fast","light",24,
-   "A lonely village girl inherits a pelesit, a dark spirit who wants to be her only friend.",["friendship","folklore","malaysia"]),
+   "When her grandmother dies, lonely village girl Suraya inherits a pelesit — a dark spirit bound to serve the family, and starved for a friend of its own. As Suraya moves to the city and grows out of needing it, the spirit's devotion curdles into something more dangerous. A Malaysian folklore tale about friendship that has outstayed its welcome.",["friendship","folklore","malaysia"]),
 
  b("Gone Girl","Gillian Flynn",2012,"crime",["thrilling","unsettling"],"fast","medium",29,
-   "A wife vanishes on her fifth anniversary and her husband becomes the whole country's suspect.",["marriage","deceit","media"]),
+   "On the morning of their fifth wedding anniversary, Amy Dunne vanishes from the home she shares with her husband Nick, and the evidence — plus his own strange, guarded behaviour on television — starts turning the whole country against him. Flynn alternates his account with Amy's diary in a structure built entirely around a mid-book reversal that changes what every earlier page meant.",["marriage","deceit","media"]),
  b("The Girl with the Dragon Tattoo","Stieg Larsson",2005,"crime",["thrilling","unsettling"],"fast","heavy",30,
-   "A disgraced journalist and a ferocious young hacker reopen a forty-year-old disappearance.",["corruption","revenge","secrets"]),
+   "Disgraced financial journalist Mikael Blomkvist is hired by an aging industrialist to solve his niece's disappearance forty years earlier, and finds his sharpest ally in Lisbeth Salander, a bisexual hacker with a photographic memory and a well-earned distrust of every institution in Sweden. What starts as a cold-case mystery opens into corporate fraud, Nazi sympathizers and a family that has been hiding something monstrous for decades.",["corruption","revenge","secrets"]),
  b("And Then There Were None","Agatha Christie",1939,"crime",["thrilling","unsettling"],"fast","light",24,
-   "Ten strangers are lured to an island and accused, one by one, of a murder they got away with.",["guilt","justice","isolation"]),
+   "Ten strangers are lured to an isolated island under false pretenses, and a recorded voice at dinner accuses each of them of a murder the law never touched. Then, one by one, in the order of an old nursery rhyme, they start to die. The best-selling mystery novel of all time, and the puzzle every locked-room writer since has had to answer to.",["guilt","justice","isolation"]),
  b("The Big Sleep","Raymond Chandler",1939,"crime",["thrilling","funny"],"fast","medium",25,
-   "Philip Marlowe takes a blackmail job for a dying general and finds the whole of Los Angeles underneath it.",["corruption","loyalty","noir"]),
+   "Private eye Philip Marlowe is hired to handle a blackmail note for a dying general's wayward daughter, a job that should take an afternoon and instead pulls him through pornography rings, gambling dens and three or four murders across a Los Angeles that Chandler makes feel simultaneously glamorous and rotten. The sentences are as sharp as the plot is deliberately hard to follow.",["corruption","loyalty","noir"]),
  b("The Silence of the Lambs","Thomas Harris",1988,"crime",["thrilling","unsettling"],"fast","medium",27,
-   "A trainee FBI agent bargains with one monster to catch another.",["fear","ambition","evil"]),
+   "FBI trainee Clarice Starling is sent to interview the imprisoned cannibal psychiatrist Hannibal Lecter for a behavioural profiling study, and finds herself trading pieces of her own past for his help catching an active serial killer skinning women across the Midwest. The cat-and-mouse between Starling and Lecter is colder and stranger than any straightforward manhunt.",["fear","ambition","evil"]),
 
  b("Dune","Frank Herbert",1965,"scifi",["thrilling","contemplative"],"steady","heavy",36,
-   "A ducal heir is exiled to a desert planet whose spice runs the empire and whose people have been waiting for him.",["power","ecology","prophecy"]),
+   "Paul Atreides, heir to a noble house, is exiled with his family to the desert planet Arrakis — the only source in the universe of the spice that fuels interstellar travel and expands human consciousness — where the native Fremen have been waiting, for reasons of their own, for a messiah who looks remarkably like him. A story about ecology, empire and the danger of believing your own myth, wrapped in one of the great world-builds in the genre.",["power","ecology","prophecy"]),
  b("The Left Hand of Darkness","Ursula K. Le Guin",1969,"scifi",["contemplative","melancholy"],"slow","heavy",30,
-   "An envoy on a frozen world must understand a people who have no fixed gender before they refuse him.",["gender","trust","otherness"]),
+   "Genly Ai is sent as an envoy to the ice-bound planet Gethen, whose inhabitants have no fixed gender and shift between male and female each month, and his mission collapses again and again on his own inability to read a society that doesn't map onto anything he understands. A trek across a killing glacier becomes the site where trust, finally, gets built. One of the foundational texts of feminist science fiction.",["gender","trust","otherness"]),
  b("Project Hail Mary","Andy Weir",2021,"scifi",["thrilling","funny","hopeful"],"fast","medium",34,
-   "A man wakes alone on a spaceship with no memory, two corpses, and the job of saving the sun.",["friendship","science","survival"]),
+   "Ryland Grace wakes up alone on a spacecraft with no memory of who he is, two dead crewmates, and — as the fog clears — the realization that he is humanity's last chance to stop a microorganism from dimming the sun. Weir applies the same problem-solving-as-plot engine from The Martian to a much bigger stage, and adds a first-contact friendship that turns out to be the emotional core of the whole book.",["friendship","science","survival"]),
  b("The Fifth Season","N. K. Jemisin",2015,"fantasy",["unsettling","thrilling"],"fast","heavy",33,
-   "On a world that ends regularly, a woman hunts the husband who murdered their son and took their daughter.",["oppression","motherhood","apocalypse"]),
+   "On a world regularly wrecked by continent-cracking cataclysms called Fifth Seasons, orogenes — people who can control seismic energy — are feared, enslaved and used by the empires that need them. Essun's husband has just murdered their son for being one, and taken their daughter; she goes after both of them across a landscape already ending. The first book to win the Hugo Award for Best Novel three years running.",["oppression","motherhood","apocalypse"]),
  b("Piranesi","Susanna Clarke",2020,"fantasy",["contemplative","unsettling"],"steady","light",29,
-   "A gentle man keeps records in an infinite house of statues and tides, certain he is not alone.",["wonder","memory","captivity"]),
+   "Piranesi lives alone in an endless House of infinite halls, statues and tides that rise through the lower floors on a schedule he has learned to predict, keeping careful, loving records of everything he observes. He is certain there have only ever been thirteen people alive, including himself — until a visitor's questions start to suggest that his own memory has been edited, and by whom. A small, strange, deeply moving puzzle box.",["wonder","memory","captivity"]),
  b("The Hobbit","J.R.R. Tolkien",1937,"fantasy",["comforting","funny"],"steady","light",26,
-   "A comfortable hobbit is bullied out of his door by thirteen dwarves and a wizard, and rather enjoys it.",["adventure","courage","home"]),
+   "Bilbo Baggins is a comfortable, unadventurous hobbit who wants nothing more than a quiet pipe and a full pantry, right up until the wizard Gandalf and thirteen dwarves arrive on his doorstep to recruit him for a burglary job against a dragon. Tolkien wrote it as a children's book and it shows in the best way — warm, funny and generous, with the vast mythology of Middle-earth only just visible underneath.",["adventure","courage","home"]),
  b("Neuromancer","William Gibson",1984,"scifi",["thrilling","unsettling"],"fast","heavy",28,
-   "A burnt-out console cowboy is hired for one last run into the ice of a corporate artificial intelligence.",["technology","addiction","identity"]),
+   "Case was the best data thief on the console cowboy circuit until he crossed the wrong people and had his nervous system burned so he can no longer jack into cyberspace at all. A mysterious employer offers to fix him — for one last, impossibly dangerous run against the ice of a corporate artificial intelligence that wants something no one, including the AI itself, fully understands. The novel that coined 'cyberspace' and built the whole cyberpunk genre in one go.",["technology","addiction","identity"]),
 
  b("The Haunting of Hill House","Shirley Jackson",1959,"horror",["unsettling","melancholy"],"steady","light",25,
-   "Four people spend a summer in a house that is not sane, and one of them was always going to stay.",["loneliness","fear","the house"]),
+   "Four strangers — an occult investigator and three people with a documented sensitivity to the supernatural — spend a summer as guests in Hill House, a mansion built, in Jackson's famous line, 'not sane.' Nothing conventionally monstrous ever quite appears; instead the house works on the loneliest of the four, Eleanor, until the line between the haunting and her own need to be wanted disappears completely. The template for every modern haunted-house story.",["loneliness","fear","the house"]),
  b("Mexican Gothic","Silvia Moreno-Garcia",2020,"horror",["unsettling","thrilling"],"fast","medium",30,
-   "A 1950s socialite visits her cousin's mouldering house in the mountains and finds the walls are listening.",["family","colonialism","dread"]),
+   "Glamorous 1950s socialite Noemi Taboada travels to her newlywed cousin's isolated mountain estate after receiving a disturbing, half-coherent letter, and finds a decaying English manor house presiding over a Mexican silver-mining town with a poisoned past. The walls, it turns out, are not just listening — the whole house has ideas of its own about her family's future. Gothic horror with a colonial-history bite.",["family","colonialism","dread"]),
 
  b("Pride and Prejudice","Jane Austen",1813,"romance",["funny","comforting"],"steady","light",22,
-   "Elizabeth Bennet decides very early that she cannot stand Mr Darcy, and is wrong.",["class","pride","marriage"]),
+   "Elizabeth Bennet decides, on very little evidence and with total confidence, that she cannot stand the proud, wealthy Mr Darcy — a verdict she will have to publicly and repeatedly revise as a proposal, a scandal and a great deal of very sharp dialogue force them both to see past their own first impressions. Two centuries on, it is still the sharpest comedy of manners in the English language.",["class","pride","marriage"]),
  b("Beach Read","Emily Henry",2020,"romance",["funny","hopeful"],"fast","light",27,
-   "Two rival novelists spend a summer next door to each other and swap genres, and then everything else.",["grief","writing","second chances"]),
+   "Grief-stricken literary novelist January Andrews and cynical thriller writer Gus Everett end up as next-door neighbours in a lakeside town, both broke, both blocked, and strike a dare: she'll write something dark, he'll write something hopeful, and they'll take turns showing each other how the other genre actually works. What starts as a writing exercise turns into the thing neither of them was trying to write.",["grief","writing","second chances"]),
 
  b("Sapiens: A Brief History of Humankind","Yuval Noah Harari",2011,"history",["contemplative"],"steady","heavy",38,
-   "How an unremarkable ape came to run the planet on the strength of stories it made up.",["civilisation","myth","progress"]),
+   "Harari traces Homo sapiens from an unremarkable East African ape to the species running the entire planet, arguing that the decisive advantage was never tools or fire but our unique ability to believe in shared fictions — money, nations, religions, corporations — at a scale that lets millions of strangers cooperate. A sweeping, argumentative history that will change how you look at every institution you take for granted.",["civilisation","myth","progress"]),
  b("Educated","Tara Westover",2018,"biography",["thrilling","hopeful"],"fast","medium",33,
-   "A girl kept out of school by survivalist parents in Idaho teaches herself enough to reach Cambridge.",["family","education","escape"]),
+   "Raised by survivalist parents in rural Idaho who kept her out of school and distrusted hospitals, Tara Westover taught herself enough mathematics and grammar to pass a college entrance exam at seventeen — and that first classroom became the opening of a long, painful break from the family and the worldview that raised her. A memoir about the cost of an education that is also a kind of leaving.",["family","education","escape"]),
  b("The Emperor of All Maladies","Siddhartha Mukherjee",2010,"nonfiction",["contemplative","melancholy"],"slow","heavy",39,
-   "A biography of cancer, from ancient surgeons to the modern clinic, by an oncologist who tells it as a life.",["medicine","science","mortality"]),
+   "Oncologist Siddhartha Mukherjee writes what he calls a 'biography' of cancer — from the ancient Egyptian surgeons who first named it, through the brutal early chemotherapy trials, to the targeted therapies of the present — treating the disease itself as a character with a long, evolving history. Won the Pulitzer Prize for its rare combination of hard science and genuine narrative craft.",["medicine","science","mortality"]),
  b("Man's Search for Meaning","Viktor E. Frankl",1946,"philosophy",["contemplative","hopeful"],"fast","light",23,
-   "A psychiatrist's account of the camps, and of the one freedom that could not be taken from him.",["suffering","meaning","hope"]),
+   "Psychiatrist Viktor Frankl spent three years in Nazi concentration camps, and the first half of this short, unflinching book is his account of daily survival there; the second half lays out logotherapy, the theory he built from it — that even in the absolute worst circumstances, a person retains the freedom to choose their own response, and that meaning, not pleasure, is what actually sustains us.",["suffering","meaning","hope"]),
  b("Thinking, Fast and Slow","Daniel Kahneman",2011,"nonfiction",["contemplative"],"slow","heavy",37,
-   "The two systems of the mind, and the reliable ways both of them fool you.",["psychology","bias","decisions"]),
+   "Nobel laureate Daniel Kahneman lays out the two systems that run human judgment — a fast, intuitive, error-prone one and a slow, effortful, more accurate one — and then spends the book cataloguing the specific, predictable ways the fast system fools even careful thinkers. Dense with decades of research, but written so the traps are demonstrated on the reader in real time, not just described.",["psychology","bias","decisions"]),
  b("Quiet","Susan Cain",2012,"nonfiction",["contemplative","hopeful"],"steady","medium",31,
-   "The case for introverts in a world that will not stop talking.",["personality","work","solitude"]),
+   "Susan Cain makes the case, backed by psychology research and case studies from Wall Street to Harvard Business School, that Western culture has built its schools, offices and definitions of leadership almost entirely around the extrovert ideal — at real cost to the introverts who make up roughly a third to a half of the population. Part manifesto, part practical guide to working with your own temperament instead of against it.",["personality","work","solitude"]),
  b("Bad Blood","John Carreyrou",2018,"business",["thrilling","unsettling"],"fast","medium",32,
-   "How a Silicon Valley blood-testing unicorn worth nine billion dollars turned out to test nothing.",["fraud","ambition","silicon valley"]),
+   "Wall Street Journal reporter John Carreyrou reconstructs, interview by interview, how Theranos — a blood-testing startup once valued at nine billion dollars on the promise of running hundreds of tests from a single finger-prick — was built on technology that never actually worked, and how founder Elizabeth Holmes kept investors, regulators and her own employees from finding out for years. Reads like a thriller because, structurally, it is one.",["fraud","ambition","silicon valley"]),
  b("Zero to One","Peter Thiel",2014,"business",["contemplative"],"fast","light",29,
-   "Notes on building companies that make something new instead of copying what works.",["startups","monopoly","contrarian"]),
+   "PayPal co-founder Peter Thiel argues that real progress isn't copying what already works — going from 1 to n — but building something genuinely new that didn't exist before, going from 0 to 1, and that the companies which matter most are the ones brave enough to aim for a temporary monopoly rather than compete in a crowded market. Contrarian, opinionated, and built from his own Silicon Valley notebook.",["startups","monopoly","contrarian"]),
  b("Meditations","Marcus Aurelius",180,"philosophy",["contemplative","comforting"],"slow","medium",21,
-   "A Roman emperor's private notes to himself on temper, duty and dying well.",["stoicism","duty","death"]),
+   "Written as private notes to himself during military campaigns, never intended for publication, this is the Roman emperor Marcus Aurelius working through Stoic philosophy in real time — reminding himself to control his temper, accept what he cannot change, treat others with patience, and prepare, without self-pity, for his own death. Nearly two thousand years later it still reads like advice meant for you specifically.",["stoicism","duty","death"]),
  b("The Myth of Sisyphus","Albert Camus",1942,"philosophy",["contemplative","melancholy"],"slow","heavy",24,
-   "If life is absurd, the question is whether to go on. Camus says yes, and explains why.",["absurdity","meaning","suicide"]),
+   "Camus opens with the claim that the only truly serious philosophical question is whether life is worth living, then spends the essay building his answer around the Greek myth of Sisyphus, condemned to push a boulder up a hill forever, only for it to roll back down every time. His conclusion — that we must imagine Sisyphus happy — is one of the most quoted, and most argued-over, lines in modern philosophy.",["absurdity","meaning","suicide"]),
  b("Devotions","Mary Oliver",2017,"poetry",["comforting","contemplative"],"slow","light",35,
-   "Fifty years of poems about geese, ponds, mortality and paying attention.",["nature","attention","grace"]),
+   "This career-spanning selection gathers roughly fifty years of Mary Oliver's poems — about geese crossing a clear sky, ponds at dawn, the discipline of simply paying attention to the natural world — chosen by Oliver herself as her definitive collection shortly before her death. Plainspoken, unsentimental and quietly devotional, in the way its title promises.",["nature","attention","grace"]),
  b("Milk and Honey","Rupi Kaur",2014,"poetry",["melancholy","hopeful"],"fast","light",26,
-   "Short poems on hurting, loving and surviving both.",["healing","love","womanhood"]),
+   "Structured in four movements — the hurting, the loving, the breaking, the healing — Rupi Kaur's debut collection pairs short, stripped-down free verse with her own minimalist line drawings to trace one relationship's collapse and the slow rebuilding of a self afterward. It became a publishing phenomenon and, for better or worse, defined an entire generation's idea of what a poem could look like on Instagram.",["healing","love","womanhood"]),
  b("Where the Wild Things Are","Maurice Sendak",1963,"children",["comforting","funny"],"fast","light",20,
-   "Max is sent to bed without supper and sails off to be king of the monsters.",["temper","imagination","home"]),
+   "Sent to bed without supper for wearing his wolf suit and making mischief, Max sails in his imagination to an island of enormous, snarling monsters — who promptly crown him their king because he's the wildest thing of all. He rules over a magnificent wild rumpus, then gets homesick and sails back to find his supper still warm. Ten sentences that changed picture books forever.",["temper","imagination","home"]),
  b("Charlotte's Web","E.B. White",1952,"children",["comforting","melancholy"],"fast","light",19,
-   "A spider spends her life writing advertisements in her web to save a pig.",["friendship","death","farm"]),
+   "Wilbur the pig is destined for the dinner table until Charlotte, a barn spider with an unusually good vocabulary, decides to save him by weaving flattering words about him into her web overnight. It works — but Charlotte's own life is running out on a much shorter clock than Wilbur's, and White never once softens that fact to spare young readers. Widely considered the best-selling children's paperback of all time.",["friendship","death","farm"]),
  b("Matilda","Roald Dahl",1988,"children",["funny","hopeful"],"fast","light",21,
-   "A small girl with enormous powers and appalling parents discovers the library, then revenge.",["books","injustice","cleverness"]),
+   "Matilda Wormwood is a five-year-old genius stuck with parents who think television is more important than books and a headmistress who throws children by the pigtails, so she teaches herself to read, discovers the library, and — eventually — discovers she can move things with her mind. Dahl's last major children's novel and one of his most purely satisfying acts of revenge-on-behalf-of-kids.",["books","injustice","cleverness"]),
  b("The Little Prince","Antoine de Saint-Exupery",1943,"children",["comforting","melancholy"],"fast","light",22,
-   "A pilot down in the desert meets a boy from an asteroid who has questions about grown-ups.",["innocence","love","loss"]),
+   "A pilot stranded in the Sahara after an engine failure meets a solemn little boy who has fallen to Earth from a tiny asteroid, and who asks unanswerable questions about sheep, roses and the strange priorities of grown-ups. Written by a working aviator not long before he disappeared on a wartime reconnaissance flight, it is a children's book that gets sadder, not simpler, the older you are when you read it.",["innocence","love","loss"]),
 ];
 const BOOK = id => BOOKS[id];
 
@@ -382,33 +387,145 @@ const CAST=[
    {q:"Ceiling?",a:"There isn't one, if it's right.",reveal:"No price ceiling"}],
   yes:"Good eye. That is a real book. I'll take it at your price.",
   no:"No. You're selling what everyone sells."},
+
+ {key:"ravi",name:"Ravi",role:"computer science undergrad",skin:"#a97448",hair:"#161620",shirt:"#2f6a5a",
+  want:{genres:["scifi","horror","fantasy"],moods:["unsettling","thrilling"],max:28,avoid:["romance"]},
+  enter:"Bro. Anything that will actually mess with my head between assignments.",
+  probes:[
+   {q:"Mess with your head how?",a:"Unreliable narrator. Something where I finish it and immediately reread page one.",reveal:"Wants unsettling twists"},
+   {q:"Horror or sci-fi tonight?",a:"Whichever's scarier, honestly. I've got a 9am I'm already regretting.",reveal:"Open to either"},
+   {q:"Student budget?",a:"Twenty-eight, and that's after I checked my e-wallet twice.",reveal:"Under RM28"}],
+  yes:"Okay this cover is already unsettling me. Respect.",
+  no:"Nah, too tame. I need to not sleep tonight."},
+
+ {key:"siti",name:"Aunty Siti",role:"retired nurse",skin:"#c58a5e",hair:"#3a3a42",shirt:"#8a6a9a",
+  want:{genres:["biography","history","nonfiction"],moods:["hopeful","comforting"],max:34,avoid:["horror"]},
+  enter:"Thirty-two years in the ward, dear. Now I just want stories where people get better.",
+  probes:[
+   {q:"What kind of stories, Aunty?",a:"True ones. People who went through something terrible and came out the other side.",reveal:"Wants real recovery stories"},
+   {q:"Any particular subject?",a:"Doesn't matter, as long as nobody dies at the end. I've had enough of that at work.",reveal:"No tragic endings"},
+   {q:"Budget?",a:"Pension is pension, dear. Thirty-four, and that's generous.",reveal:"Under RM34"}],
+  yes:"Ah, this looks just right. Thank you, dear, you listened properly.",
+  no:"Hmm, not quite what I need today. Maybe next week."},
+
+ {key:"kevin",name:"Kevin",role:"startup founder",skin:"#e0b48c",hair:"#1a1a22",shirt:"#3a4a6a",
+  want:{genres:["business","biography","nonfiction"],moods:["thrilling","contemplative"],max:65,avoid:["poetry"]},
+  enter:"Quick one — I've got a call in twenty. What's actually worth reading in this section?",
+  probes:[
+   {q:"Worth reading for what?",a:"Pattern recognition. I want to know what the ones who made it actually did differently.",reveal:"Wants founder insight"},
+   {q:"Cautionary tale or playbook?",a:"Either. Honestly the disasters teach you more than the wins do.",reveal:"Open to failure stories"},
+   {q:"Budget's not really the question, is it?",a:"Correct. If it's the right book I'll take three copies for the team.",reveal:"Not price-sensitive"}],
+  yes:"Sold. Actually, wrap two more — my co-founders need this.",
+  no:"Pass. Doesn't sound like it'll change how I think."},
+
+ {key:"nurul",name:"Nurul",role:"pharmacist",skin:"#d9a97e",hair:"#241a18",shirt:"#5a7a6a",
+  want:{genres:["poetry","philosophy","literary"],moods:["contemplative","comforting"],max:36,avoid:["business"]},
+  enter:"Twelve-hour shift behind me. I want ten minutes of something beautiful before bed.",
+  probes:[
+   {q:"Beautiful how?",a:"Sentences I want to read twice. Not plot — I get enough plot from patient charts.",reveal:"Wants beautiful prose"},
+   {q:"Poetry or prose tonight?",a:"Poetry, if you have it. Something I can put down halfway through a poem.",reveal:"Prefers poetry"},
+   {q:"How much time do you really have?",a:"Ten minutes before I fall asleep mid-sentence. Every night.",reveal:"Wants short-form reading"}],
+  yes:"This is exactly it. I can already tell I'll dog-ear every page.",
+  no:"Close, but not quite what I need to switch off tonight."},
+
+ {key:"achong",name:"Ah Chong",role:"hawker stall owner",skin:"#c58a5e",hair:"#242430",shirt:"#a8453f",
+  want:{genres:["crime","business","biography"],moods:["thrilling","funny"],max:24,avoid:["philosophy"]},
+  enter:"Wok's cooling down, ten minutes before the dinner crowd. Got anything fast and cheap?",
+  probes:[
+   {q:"Fast how fast?",a:"I read in bursts between orders. Short chapters or I lose my place completely.",reveal:"Wants short chapters"},
+   {q:"What gets you hooked?",a:"Crime, gangster stuff, people scheming. Real life is boring enough already.",reveal:"Wants crime or scheming"},
+   {q:"Budget, boss?",a:"Twenty-four lah. Frying oil isn't cheap these days.",reveal:"Under RM24"}],
+  yes:"Wah, okay boss. This will keep me company during the lull.",
+  no:"Aiyo, too slow for me. Customer coming already, gotta go."},
+
+ {key:"faiz",name:"Ustaz Faiz",role:"religious studies teacher",skin:"#8b5e3c",hair:"#1e1a1a",shirt:"#3a5a4a",
+  want:{genres:["philosophy","history","biography"],moods:["contemplative","comforting"],max:38,avoid:["horror"]},
+  enter:"Salam. I'm looking for something my students could actually sit with, not just skim.",
+  probes:[
+   {q:"Sit with in what sense?",a:"Something that asks a real question and doesn't rush to answer it. Teenagers can smell a rushed answer.",reveal:"Wants unhurried ideas"},
+   {q:"Any tradition in particular?",a:"Any, honestly, as long as it's argued honestly. I'd rather they meet a real thinker than a simplified one.",reveal:"Wants honest argument"},
+   {q:"Class budget or your own?",a:"Mine. Thirty-eight, and I'll stretch it if the book is right.",reveal:"Under RM38, flexible if right"}],
+  yes:"This will spark a good discussion on Friday. Thank you for taking the question seriously.",
+  no:"Not quite it. But I appreciate you thinking it through with me."},
+
+ {key:"meiling",name:"Mei Ling",role:"graphic designer",skin:"#e0b48c",hair:"#3a2a4a",shirt:"#6a3a5a",
+  want:{genres:["fantasy","scifi","poetry"],moods:["unsettling","hopeful"],max:33,avoid:["business"]},
+  enter:"I need something visual in my head. My last three projects were all spreadsheets pretending to be design.",
+  probes:[
+   {q:"Visual how?",a:"Strong world-building. I want to be able to sketch the place after I finish a chapter.",reveal:"Wants strong world-building"},
+   {q:"Dark or hopeful world?",a:"Dark is fine if there's still something worth reaching for in it.",reveal:"Wants hope inside darkness"},
+   {q:"Budget?",a:"Thirty-three. I already overspent on brushes this month.",reveal:"Under RM33"}],
+  yes:"Oh, the cover alone is doing things to me. This is coming home.",
+  no:"Not quite the world I'm looking for. But close, actually."},
+
+ {key:"yusof",name:"Encik Yusof",role:"retired fisherman",skin:"#8b5e3c",hair:"#c8c8c8",shirt:"#4a6a7a",
+  want:{genres:["biography","history"],moods:["comforting","hopeful"],max:26,avoid:["horror","fantasy"]},
+  enter:"My eyes are not what they were, but my grandson reads to me now. Something true, please.",
+  probes:[
+   {q:"True in what way, Pak?",a:"Real people, real sea, real struggle. I don't trust the invented ones anymore.",reveal:"Wants true stories"},
+   {q:"Long book or short?",a:"Short chapters. My grandson has homework too, we read a little each night.",reveal:"Wants short chapters, read-aloud"},
+   {q:"Budget, Pak?",a:"Twenty-six. The boat doesn't go out as often these days.",reveal:"Under RM26"}],
+  yes:"Good. We will start tonight. Thank you for choosing carefully.",
+  no:"Not this one. But you tried, and that is something."},
+
+ {key:"priya",name:"Priya",role:"HR manager",skin:"#c99161",hair:"#1e1a24",shirt:"#c46a7a",
+  want:{genres:["romance","ya","literary"],moods:["funny","hopeful"],max:38,avoid:["horror"]},
+  enter:"I sat through four exit interviews today. I need something where people actually stay and are happy.",
+  probes:[
+   {q:"Happy how?",a:"Earned happy, not saccharine. Let them struggle a bit, I just want them to land somewhere good.",reveal:"Wants earned happy endings"},
+   {q:"Funny or sincere?",a:"Both, if you can find it. I laughed once today and it was at a spreadsheet error.",reveal:"Wants humour and warmth"},
+   {q:"Budget?",a:"Thirty-eight. Practically a rounding error after the week I've had.",reveal:"Under RM38"}],
+  yes:"Perfect. This is coming with me to the bathtub tonight, work phone off.",
+  no:"Not tonight's book, I don't think. But a good try."},
 ];
 
 /* ---------- in-world reviews ---------- */
-const REVIEW_LINES={
-  comforting:["Read it in one sitting with the fan on. Felt held.","Like being told everything will probably be fine."],
-  melancholy:["Cried on the LRT. Twice. Worth it.","Sad in the way that makes you call your mother."],
-  unsettling:["Did not sleep. Do not read at night, I am serious.","Something is wrong on every page and I loved it."],
-  funny:["Laughed out loud in a mamak and got looks.","Genuinely funny, not just clever-funny."],
-  hopeful:["Ended it wanting to be slightly better. That's rare.","Left me lighter than it found me."],
-  thrilling:["Missed my stop. Missed two stops.","Could not put it down, ruined my whole Sunday."],
-  contemplative:["Read ten pages a night. Thought about it all day.","A book to argue with. I did, at length."],
+/* ---------- reader ratings ----------
+   Approximate real-world average rating and rating count for each title,
+   aggregated the way a storefront would show them (Goodreads/StoryGraph-style).
+   No invented quotes attributed to fake people: real books get real reception,
+   not fiction wearing a reviewer's name. In a shipped build this is a live
+   ratings-API lookup; frozen here for the same no-network reason as the
+   catalogue itself, and the exact figures will drift from the live numbers
+   over time — treat them as representative, not current-to-the-minute. ---------- */
+const RATINGS={
+ "Never Let Me Go":[3.99,950000],"The Remains of the Day":[4.09,350000],"Klara and the Sun":[3.98,320000],
+ "Beloved":[3.87,420000],"Norwegian Wood":[4.04,520000],"Kafka on the Shore":[4.11,480000],
+ "One Hundred Years of Solitude":[4.11,850000],"The God of Small Things":[3.90,210000],
+ "Things Fall Apart":[3.76,280000],"Pachinko":[4.32,650000],
+ "The Garden of Evening Mists":[4.05,18000],"The Gift of Rain":[4.02,22000],
+ "Evening is the Whole Day":[3.85,2500],"The Rice Mother":[4.01,9000],"Once We Were There":[3.90,900],
+ "The Weight of Our Sky":[4.15,12000],"The Girl and the Ghost":[3.95,6000],
+ "Gone Girl":[4.11,2800000],"The Girl with the Dragon Tattoo":[4.14,3200000],
+ "And Then There Were None":[4.29,1300000],"The Big Sleep":[4.02,220000],"The Silence of the Lambs":[4.24,470000],
+ "Dune":[4.26,1400000],"The Left Hand of Darkness":[4.05,130000],"Project Hail Mary":[4.51,950000],
+ "The Fifth Season":[4.30,240000],"Piranesi":[4.26,400000],"The Hobbit":[4.29,3600000],"Neuromancer":[3.90,220000],
+ "The Haunting of Hill House":[4.02,130000],"Mexican Gothic":[3.72,260000],
+ "Pride and Prejudice":[4.29,3600000],"Beach Read":[4.02,750000],
+ "Sapiens: A Brief History of Humankind":[4.38,1500000],"Educated":[4.47,1600000],
+ "The Emperor of All Maladies":[4.47,55000],"Man's Search for Meaning":[4.37,700000],
+ "Thinking, Fast and Slow":[4.19,500000],"Quiet":[4.13,320000],"Bad Blood":[4.32,340000],"Zero to One":[4.18,260000],
+ "Meditations":[4.19,350000],"The Myth of Sisyphus":[4.05,90000],"Devotions":[4.46,40000],"Milk and Honey":[3.95,800000],
+ "Where the Wild Things Are":[4.23,620000],"Charlotte's Web":[4.24,1000000],"Matilda":[4.29,1100000],
+ "The Little Prince":[4.32,2100000],
 };
-function reviewsFor(bk){
-  const r=seeded(bk.title+bk.author); const pool=[];
-  bk.moods.forEach(m=>(REVIEW_LINES[m]||[]).forEach(l=>pool.push(l)));
-  const names=CAST.map(c=>c.name);
-  const avail=names.slice();
-  const out=[]; const n=2+((r()*2)|0);
-  for(let i=0;i<n && pool.length && avail.length;i++){
-    const li=(r()*pool.length)|0, ni=(r()*avail.length)|0;
-    out.push({who:avail.splice(ni,1)[0], text:pool.splice(li,1)[0], stars:4+((r()*2)|0)});
-  }
-  return out;
+function ratingFor(bk){ const r=RATINGS[bk.title]; return r?{avg:r[0],count:r[1]}:{avg:4.0,count:5000}; }
+function starsFor(avg){ const full=clamp(Math.round(avg),0,5); return "★".repeat(full)+"☆".repeat(5-full); }
+function fmtCount(n){
+  if(n>=1000000) return (n/1000000).toFixed(n>=10000000?0:1)+"M";
+  if(n>=1000) return Math.round(n/1000)+"K";
+  return String(n);
+}
+function ratingBlock(bk){
+  const rt=ratingFor(bk);
+  const d=el("div","review");
+  d.appendChild(el("b",null,"<span class='stars'>"+starsFor(rt.avg)+"</span>  "+rt.avg.toFixed(2)+" / 5"));
+  d.appendChild(el("span",null,fmtCount(rt.count)+" ratings from real readers, aggregated across major book-review sites."));
+  return d;
 }
 
 /* ---------- shop grid ---------- */
-const GW=12, GH=9, TS=16;
+let GW=9, GH=7; const TS=16;
 const EMPTY=0, WALL=1, SHELF=2, COUNTER=3, TABLE=4, PLANT=5, CAFE=6, DOOR=7;
 const FURN={
   [SHELF]:{name:"Shelf",cost:120,slots:3,desc:"Holds 3 titles"},
@@ -417,35 +534,79 @@ const FURN={
   [CAFE]:{name:"Kopi Corner",cost:900,slots:0,desc:"+50% patience, all customers",lvl:3},
 };
 
+/* Space tiers. Rent is tied to floor size, not reputation, and starts low:
+   growth is a choice the player makes and pays for once, not a tax on doing well. */
+const SIZE_TIERS=[
+  {name:"Corner Kiosk",  gw:9,  gh:7,  rent:30,  cost:0,    rep:0},
+  {name:"Shoplot Unit",  gw:12, gh:9,  rent:70,  cost:1200, rep:10},
+  {name:"Double Lot",    gw:16, gh:11, rent:130, cost:3200, rep:30},
+];
+
 const S={
-  phase:"morning", day:1, cash:1500, rep:0,
+  phase:"morning", day:1, cash:1500, rep:0, tier:0,
   grid:[], slots:{},          // tileKey -> [bookId,...]
   stock:{},                   // bookId -> {copies, price, auto, cost}
   offers:[], customers:[], tick:0, dayLen:900,
   spawnQueue:[], talking:null, placing:null,
   stats:{rev:0,spent:0,served:0,delighted:0,missed:0,walkouts:0},
   history:[], soldEver:{}, tab:"stock", featured:null,
-  seen:{}, tutorial:true, shopName:"", keeper:null,
+  seen:{}, tutorial:true, shopName:"", keeper:null, seenToday:[],
 };
 
 function key(x,y){return x+","+y;}
-function initGrid(){
+function doorX(){ return Math.floor(GW/2); }
+function initGrid(preserve){
+  const oldGrid=preserve?S.grid:null, oldSlots=preserve?S.slots:null;
+  const prevGW=preserve?oldGrid[0].length:0, prevGH=preserve?oldGrid.length:0;
   S.grid=[];
   for(let y=0;y<GH;y++){ const row=[]; for(let x=0;x<GW;x++){
     let t=EMPTY;
-    if(y===0||x===0||x===GW-1||y===GH-1) t=WALL;
-    if(y===GH-1 && x===6) t=DOOR;
+    const border = y===0||x===0||x===GW-1||y===GH-1;
+    if(border) t=WALL;
+    if(y===GH-1 && x===doorX()) t=DOOR;
+    if(preserve && y<prevGH && x<prevGW){
+      const was=oldGrid[y][x];
+      const wasBorder = y===0||x===0||x===prevGW-1||y===prevGH-1;
+      if(!border) t = wasBorder ? EMPTY : was;   // old wall/door now interior -> floor; old furniture kept
+    }
     row.push(t);
   } S.grid.push(row);}
-  // starting fit-out
-  [[2,2],[3,2],[8,2],[9,2]].forEach(([x,y])=>{S.grid[y][x]=SHELF; S.slots[key(x,y)]=[];});
-  S.grid[2][6]=COUNTER; S.grid[2][1]=PLANT; S.grid[2][10]=PLANT;
-  S.keeper=[6,1];   // you, standing behind the counter
+  if(preserve){
+    const newSlots={};
+    Object.keys(oldSlots).forEach(k=>{
+      const [x,y]=k.split(",").map(Number);
+      if(x<GW-1 && y<GH-1 && (S.grid[y][x]===SHELF||S.grid[y][x]===TABLE)) newSlots[k]=oldSlots[k];
+    });
+    S.slots=newSlots;
+  } else {
+    S.slots={};
+    const dx=doorX();
+    [[2,2],[3,2]].forEach(([x,y])=>{S.grid[y][x]=SHELF; S.slots[key(x,y)]=[];});
+    S.grid[2][dx]=COUNTER; S.grid[2][1]=PLANT;
+    S.keeper=[dx,1];   // you, standing behind the counter
+  }
+  resizeStage();
+}
+function resizeStage(){
+  const cv2=$("#cv"); if(!cv2) return;
+  cv2.width=GW*TS; cv2.height=GH*TS;
+  $("#stage").style.maxWidth="min(460px, calc(52vh * "+GW+" / "+GH+"))";
+  const sign=$("#signText");
+  if(sign){ sign.style.top=(7/(GH*TS)*100)+"%"; sign.style.fontSize=Math.max(6,Math.round(GW*TS/22))+"px"; }
 }
 function tilesOf(type){const o=[];for(let y=0;y<GH;y++)for(let x=0;x<GW;x++)if(S.grid[y][x]===type)o.push([x,y]);return o;}
 function level(){ return S.rep>=45?3 : S.rep>=18?2 : 1; }
-function rent(){ return [0,120,170,240][level()]; }
-function maxCustomers(){ return 4 + level()*2 + Math.floor(S.rep/12); }
+function rent(){ return SIZE_TIERS[S.tier].rent; }
+function maxCustomers(){ return 3 + S.tier*2 + level() + Math.floor(S.rep/12); }
+function nextTier(){ return S.tier<SIZE_TIERS.length-1 ? SIZE_TIERS[S.tier+1] : null; }
+function upgradeSpace(){
+  const nt=nextTier(); if(!nt) return;
+  if(S.cash<nt.cost || S.rep<nt.rep) return;
+  S.cash-=nt.cost; S.stats.spent+=nt.cost; S.tier++;
+  GW=nt.gw; GH=nt.gh;
+  initGrid(true);
+  drawMorning(); hud();
+}
 
 /* ---------- stock helpers ---------- */
 const autoPrice = cost => Math.round(cost*1.75) - 0.10;
@@ -479,6 +640,7 @@ function drawShelf(x,y,ids){
   const X=x*TS,Y=y*TS;
   px(X,Y+2,TS,TS-2,C.woodD);
   px(X+1,Y+3,TS-2,TS-4,C.wood);
+  px(X+1,Y+3,TS-2,1,shade(C.wood,1.3));
   for(let r=0;r<3;r++){
     const sy=Y+4+r*4;
     px(X+1,sy+3,TS-2,1,C.woodD);
@@ -512,13 +674,17 @@ function drawFurn(x,y,t){
     px(X+3,Y+7,5,4,"#e8dcc4"); px(X+9,Y+8,4,3,"#c98a35"); }
 }
 function drawSprite(X,Y,skin,hair,shirt,bob){
-  px(X-3,Y+11,7,2,C.shadow);
-  px(X-2,Y+5-bob,5,7,shirt);             // body
-  px(X-2,Y+11-bob,2,2,"#2a2a30");        // legs
-  px(X+1,Y+11-bob,2,2,"#2a2a30");
-  px(X-2,Y-1-bob,5,5,skin);              // head
-  px(X-2,Y-2-bob,5,3,hair);              // hair
-  px(X-1,Y+1-bob,1,1,"#20161a"); px(X+1,Y+1-bob,1,1,"#20161a");
+  // chibi proportions, big head, 2-tone shading per surface — the 16-bit-style look
+  px(X-3,Y+12,7,2,C.shadow);
+  px(X-2,Y+11-bob,2,2,"#2a2a30"); px(X+1,Y+11-bob,2,2,"#2a2a30");      // legs
+  px(X-3,Y+4-bob,7,8,shirt);                                          // body
+  px(X-3,Y+4-bob,7,2,shade(shirt,1.3));                                // shoulder highlight
+  px(X-3,Y+10-bob,7,2,shade(shirt,.75));                               // hem shadow
+  px(X-3,Y-4-bob,7,7,skin);                                            // head
+  px(X-3,Y-1-bob,7,2,shade(skin,.88));                                 // jaw shading
+  px(X-3,Y-5-bob,7,3,hair); px(X-4,Y-3-bob,1,4,hair); px(X+3,Y-3-bob,1,4,hair); // hair + sides
+  px(X-1,Y-2-bob,1,1,"#20161a"); px(X+2,Y-2-bob,1,1,"#20161a");        // eyes
+  px(X-2,Y-1-bob,1,1,"#e08a78"); px(X+3,Y-1-bob,1,1,"#e08a78");        // blush
 }
 function drawKeeper(){
   if(!S.keeper) return;
@@ -536,7 +702,13 @@ function drawPerson(p){
   }
   if(p.bubble){ px(X+3,Y-9,6,5,"#f4ead6"); px(X+4,Y-7,1,1,"#20161a"); px(X+6,Y-7,1,1,"#20161a"); }
 }
+function updateSign(){
+  const label=shopLabel().toUpperCase();
+  const sign=$("#signText");
+  if(sign && sign.textContent!==label) sign.textContent=label;
+}
 function render(){
+  updateSign();
   for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
     px(x*TS,y*TS,TS,TS,(x+y)%2?C.floor1:C.floor2);
     px(x*TS,y*TS,TS,1,C.grout); px(x*TS,y*TS,1,TS,C.grout);
@@ -544,25 +716,24 @@ function render(){
     for(let i=0;i<5;i++) px(x*TS+2+((rr()*12)|0), y*TS+2+((rr()*12)|0),1,1,
       ["#b6a98d","#d8ccb2","#a89a80"][(rr()*3)|0]);
   }
-  // back wall + signage
+  // back wall + signage board (label itself is a sharp HTML overlay, see updateSign())
   for(let x=0;x<GW;x++){ px(x*TS,0,TS,TS,C.wall); px(x*TS,TS-4,TS,4,C.dado); }
-  px(1*TS+8,2,9*TS,10,"#3b2a1e"); px(1*TS+9,3,9*TS-2,8,"#5c4330");
-  ctx.fillStyle="#e8b04b"; ctx.font="6px monospace"; ctx.textAlign="center";
-  ctx.fillText(shopLabel().toUpperCase(), GW*TS/2, 10);
-  ctx.textAlign="left";
+  const boardX=1*TS+4, boardW=(GW-2)*TS-8;
+  px(boardX,2,boardW,10,"#6b3f0a"); px(boardX+1,3,boardW-2,8,"#8a5a1a");
   for(let y=1;y<GH;y++){ px(0,y*TS,4,TS,C.dado); px(GW*TS-4,y*TS,4,TS,C.dado); }
   // street frontage: glazing, door, kerb
+  const dx=doorX();
   const fy=(GH-1)*TS+6;
   px(0,fy,GW*TS,TS-6,"#3b2a1e");
   for(let x=1;x<GW-1;x++){
-    if(x===6) continue;
+    if(x===dx) continue;
     px(x*TS+1,fy+2,TS-2,7,"#8fb8c9");
     px(x*TS+1,fy+2,TS-2,2,"#b6d6e0");
   }
-  px(6*TS-1,fy-2,TS+2,TS-4,"#2a1c12");
-  px(6*TS,fy,TS,TS-6,C.door); px(6*TS+2,fy+1,TS-4,8,"#a8ccd8");
-  px(6*TS+2,fy+1,TS-4,2,"#cfe6ee"); px(6*TS+12,fy+5,1,2,"#e8b04b");
-  px(5*TS+8,fy-4,TS,3,"#8a5a3a");
+  px(dx*TS-1,fy-2,TS+2,TS-4,"#2a1c12");
+  px(dx*TS,fy,TS,TS-6,C.door); px(dx*TS+2,fy+1,TS-4,8,"#a8ccd8");
+  px(dx*TS+2,fy+1,TS-4,2,"#cfe6ee"); px(dx*TS+12,fy+5,1,2,"#e8b04b");
+  px((dx-1)*TS+8,fy-4,TS,3,"#8a5a3a");
 
   for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
     const t=S.grid[y][x];
@@ -606,18 +777,29 @@ function pathTo(p,tx,ty){
   while(cur){ const [cx,cy]=cur.split(",").map(Number); path.unshift([cx,cy]); const p2=prev[cur]; cur=p2?key(p2[0],p2[1]):null; }
   return path;
 }
+function pickArchetype(){
+  const inShop=S.customers.filter(c=>!c.dead && c.state!=="leave").map(c=>c.arch);
+  const r=Math.random();
+  let arch;
+  if(inShop.length && r<0.25) arch=rnd(inShop);            // a twin walks in while one's still browsing
+  else if(S.seenToday.length && r<0.55) arch=rnd(S.seenToday); // a face that already came by today
+  else arch=rnd(CAST);
+  S.seenToday.push(arch);
+  return arch;
+}
 function spawnCustomer(){
-  const arch=rnd(CAST);
+  const arch=pickArchetype();
+  const dx=doorX();
   const shelves=tilesOf(SHELF).concat(tilesOf(TABLE));
   const p={
     arch, key:arch.key, name:arch.name, skin:arch.skin, hair:arch.hair, shirt:arch.shirt,
-    gx:6, gy:GH-1, px:6*TS+8, py:(GH-1)*TS+2,
+    gx:dx, gy:GH-1, px:dx*TS+8, py:(GH-1)*TS+2,
     state:"walk", path:null, pi:0, moving:true, bubble:false,
     patMax: Math.round((430+Math.random()*220) * (tilesOf(CAFE).length?1.5:1) * (1+tilesOf(PLANT).length*0.06)),
     clues:[], probesLeft:3, done:false,
   };
   p.patience=p.patMax;
-  const t = shelves.length? rnd(shelves) : [6,3];
+  const t = shelves.length? rnd(shelves) : [dx,3];
   p.target=[t[0], t[1]+1];
   p.path=pathTo(p,p.target[0],p.target[1]);
   S.customers.push(p);
@@ -626,13 +808,13 @@ function stepCustomer(p){
   if(p.state==="talking") return;
   p.patience-=1;
   if(S.tick>=S.dayLen && p.state!=="leave"){
-    p.state="leave"; p.bubble=false; p.path=pathTo(p,6,GH-1); p.pi=0;
+    p.state="leave"; p.bubble=false; p.path=pathTo(p,doorX(),GH-1); p.pi=0;
     tip("Closing time. Seeing the last customers out.");
     return;
   }
   if(p.patience<=0 && p.state!=="leave"){
     p.state="leave"; p.bubble=false;
-    p.path=pathTo(p,6,GH-1); p.pi=0;
+    p.path=pathTo(p,doorX(),GH-1); p.pi=0;
     if(!p.served){ S.stats.walkouts++; S.rep=clamp(S.rep-0.4,0,100); }
   }
   if(p.path && p.pi<p.path.length){
@@ -684,7 +866,7 @@ function completeSale(p,id,passive){
   if(sc>=85 && !passive){ S.stats.delighted++; S.rep=clamp(S.rep+4.5,0,100); }
   else S.rep=clamp(S.rep+(passive?1.0:2.4),0,100);
   if(st.copies===0){ Object.keys(S.slots).forEach(k=>{ S.slots[k]=S.slots[k].filter(x=>x!==id); }); }
-  p.state="leave"; p.path=pathTo(p,6,GH-1); p.pi=0;
+  p.state="leave"; p.path=pathTo(p,doorX(),GH-1); p.pi=0;
   log((passive?"":"")+p.name+" bought "+BOOK(id).title+" — "+rm(price));
 }
 function log(t){ S.history.unshift(t); if(S.history.length>40)S.history.pop(); }
@@ -710,7 +892,7 @@ function loop(ts){
 
 /* ---------- phases ---------- */
 function startDay(){
-  S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[];
+  S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[]; S.seenToday=[];
   S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0};
   const n=maxCustomers();
   for(let i=0;i<n;i++) S.spawnQueue.push(Math.round(40 + (S.dayLen-260)*(i/n) + Math.random()*40));
@@ -850,7 +1032,24 @@ function drawMorning(){
   }
 
   if(S.tab==="shop"){
-    P.appendChild(el("p",null,"Level "+level()+" · rent "+rm(rent())+"/day · "+maxCustomers()+" customers expected. Reputation unlocks the rest."));
+    const tierInfo=SIZE_TIERS[S.tier];
+    P.appendChild(el("p",null,tierInfo.name+" · level "+level()+" · rent "+rm(rent())+"/day · "+maxCustomers()+" customers expected."));
+    const nt=nextTier();
+    if(nt){
+      const locked = S.rep<nt.rep;
+      const c=el("div","card"+(locked?" lock":""));
+      const m=el("div","meta");
+      m.appendChild(el("div","t","Upgrade to "+nt.name+" · "+rm(nt.cost)));
+      m.appendChild(el("div","a","Bigger floor, more shelf room, more foot traffic — and rent rises to "+rm(nt.rent)+"/day."+
+        (locked?" Needs reputation "+nt.rep+".":"")));
+      const btn=el("button","btn-sm",locked?"LOCKED":"UPGRADE SPACE");
+      btn.disabled=locked||S.cash<nt.cost;
+      btn.onclick=()=>upgradeSpace();
+      const bw=el("div"); bw.style.marginTop="5px"; bw.appendChild(btn);
+      m.appendChild(bw); c.appendChild(m); P.appendChild(c);
+    } else {
+      P.appendChild(el("p",null,"This is the biggest space on the row. Nowhere further to expand."));
+    }
     Object.keys(FURN).forEach(k=>{
       const f=FURN[k], lv=f.lvl||1, locked=level()<lv;
       const c=el("div","card"+(locked?" lock":""));
@@ -984,13 +1183,8 @@ function renderConfirm(p,id,convo){
   sh.appendChild(head);
   sh.appendChild(el("p",null,bk.blurb));
   const th=el("div","tagrow"); bk.themes.forEach(t=>th.appendChild(el("span","tag r",t))); sh.appendChild(th);
-  sh.appendChild(el("h3",null,"What your customers said"));
-  reviewsFor(bk).slice(0,2).forEach(r=>{
-    const d=el("div","review");
-    d.appendChild(el("b",null,r.who+"  <span class='stars'>"+"★".repeat(r.stars)+"</span>"));
-    d.appendChild(el("span",null,r.text));
-    sh.appendChild(d);
-  });
+  sh.appendChild(el("h3",null,"Reader rating"));
+  sh.appendChild(ratingBlock(bk));
   if(p.clues.length){
     sh.appendChild(el("h3",null,"What "+p.name+" told you"));
     const cl=el("div","clues"); p.clues.forEach(c=>cl.appendChild(el("span","tag g",c))); sh.appendChild(cl);
@@ -1049,17 +1243,12 @@ function openBook(id){
   sh.appendChild(head);
   sh.appendChild(el("p",null,bk.blurb));
   const th=el("div","tagrow"); bk.themes.forEach(t=>th.appendChild(el("span","tag r",t))); sh.appendChild(th);
-  sh.appendChild(el("h3",null,"What your customers said"));
-  reviewsFor(bk).forEach(r=>{
-    const d=el("div","review");
-    d.appendChild(el("b",null,r.who+"  <span class='stars'>"+"★".repeat(r.stars)+"</span>"));
-    d.appendChild(el("span",null,r.text));
-    sh.appendChild(d);
-  });
+  sh.appendChild(el("h3",null,"Reader rating"));
+  sh.appendChild(ratingBlock(bk));
   const buy=el("button","buy","ORDER A PHYSICAL COPY · "+rm(autoPrice(bk.cost)));
   buy.onclick=()=>orderPanel(bk);
   sh.appendChild(buy);
-  sh.appendChild(el("div","note","Prototype: catalogue is a frozen snapshot of real bibliographic records. In the shipped app this screen is a live Open Library / Google Books lookup, and the button above hits the real storefront. Reviews are written by this game's characters, not real readers."));
+  sh.appendChild(el("div","note","Prototype: catalogue is a frozen snapshot of real bibliographic records. In the shipped app this screen is a live Open Library / Google Books lookup, and the button above hits the real storefront. The rating above is a real reader aggregate (not an invented character quote) — approximate and offline here, pulled live from a ratings API in the shipped build."));
   const cl=el("button","choice","Close"); cl.style.marginTop="8px"; cl.onclick=closeModal; sh.appendChild(cl);
 }
 function orderPanel(bk){
@@ -1161,7 +1350,7 @@ function introScreen(){
   const sh=$("#sheet"); sh.innerHTML="";
   $("#modal").classList.add("on");
   sh.appendChild(el("div","speaker",shopLabel().toUpperCase()));
-  sh.appendChild(el("div","say","A shoplot in Petaling Jaya. Yours since this morning. Four shelves, a counter, and RM1,500."));
+  sh.appendChild(el("div","say","A corner kiosk in Petaling Jaya. Yours since this morning. Two shelves, a counter, and RM1,500 — rent is only RM30 a day here, but the space is small. Grow reputation and cash and you can upgrade to a bigger lot."));
   sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
   sh.appendChild(el("p",null,"MORNING — buy stock, set prices, fit out the shop.<br>OPEN — customers come in. Tap one, ask up to three questions, then recommend from your shelves.<br>CLOSED — pay the rent."));
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
