@@ -1284,13 +1284,20 @@ function buyStock(id){
 }
 
 /* ---------- open ---------- */
+const SHOP_OPEN_MIN=10*60, SHOP_CLOSE_MIN=19*60;       // 10:00am - 7:00pm, ticks down over the 60s trading window
+function shopClock(){
+  const frac=clamp(S.tick/S.dayLen,0,1);
+  const totalMin=Math.floor(SHOP_OPEN_MIN + (SHOP_CLOSE_MIN-SHOP_OPEN_MIN)*frac);
+  const h24=Math.floor(totalMin/60), m=totalMin%60;
+  const ampm=h24<12?"AM":"PM", h12=((h24+11)%12)+1;
+  return h12+":"+String(m).padStart(2,"0")+" "+ampm;
+}
 function drawOpenPanel(){
   if(S.phase!=="open") return;
   const P=$("#panel");
   const inShop=S.customers.filter(c=>!c.dead&&c.state!=="leave");
   P.innerHTML="";
-  const left=Math.max(0,Math.round((S.dayLen-S.tick)/15));
-  P.appendChild(el("h2",null,"TRADING · "+left+"s left"));
+  P.appendChild(el("h2",null,"TRADING · "+shopClock()));
   if(!inShop.length) P.appendChild(el("div","empty","Quiet right now.<br>Someone will come."));
   inShop.forEach(p=>{
     const c=el("div","card");
