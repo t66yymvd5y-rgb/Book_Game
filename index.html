@@ -743,7 +743,7 @@ const S={
   spawnQueue:[], talking:null, placing:null,
   stats:{rev:0,spent:0,served:0,delighted:0,missed:0,walkouts:0},
   history:[], soldEver:{}, tab:"stock", featured:null,
-  seen:{}, tutorial:true, shopName:"", keeper:null, seenToday:[],
+  seen:{}, tutorial:true, shopName:"", keeper:null, seenToday:[], dayCast:[],
 };
 
 function key(x,y){return x+","+y;}
@@ -970,14 +970,20 @@ function pathTo(p,tx,ty){
   while(cur){ const [cx,cy]=cur.split(",").map(Number); path.unshift([cx,cy]); const p2=prev[cur]; cur=p2?key(p2[0],p2[1]):null; }
   return path;
 }
+function shuffled(arr){
+  const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
 function pickArchetype(){
-  const inShop=S.customers.filter(c=>!c.dead && c.state!=="leave").map(c=>c.arch);
-  const r=Math.random();
-  let arch;
-  if(inShop.length && r<0.25) arch=rnd(inShop);            // a twin walks in while one's still browsing
-  else if(S.seenToday.length && r<0.55) arch=rnd(S.seenToday); // a face that already came by today
-  else arch=rnd(CAST);
-  if(!S.seenToday.includes(arch)) S.seenToday.push(arch); // record each face once, not once per visit
+  // Deal today's visitors from a shuffled, no-repeat deck of the whole cast, so
+  // nobody is seen twice in one day and nobody walks in while their twin is
+  // already browsing. Only reshuffle (excluding whoever's currently in the
+  // shop) once every face has had a turn today.
+  const inShopKeys=new Set(S.customers.filter(c=>!c.dead && c.state!=="leave").map(c=>c.arch.key));
+  if(!S.dayCast.length) S.dayCast=shuffled(CAST.filter(a=>!inShopKeys.has(a.key)));
+  const arch=S.dayCast.shift();
+  S.seenToday.push(arch);
   return arch;
 }
 function spawnCustomer(){
@@ -1085,7 +1091,7 @@ function loop(ts){
 
 /* ---------- phases ---------- */
 function startDay(){
-  S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[]; S.seenToday=[];
+  S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[]; S.seenToday=[]; S.dayCast=[];
   S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0};
   const n=maxCustomers();
   for(let i=0;i<n;i++) S.spawnQueue.push(Math.round(40 + (S.dayLen-260)*(i/n) + Math.random()*40));
