@@ -977,7 +977,7 @@ function pickArchetype(){
   if(inShop.length && r<0.25) arch=rnd(inShop);            // a twin walks in while one's still browsing
   else if(S.seenToday.length && r<0.55) arch=rnd(S.seenToday); // a face that already came by today
   else arch=rnd(CAST);
-  S.seenToday.push(arch);
+  if(!S.seenToday.includes(arch)) S.seenToday.push(arch); // record each face once, not once per visit
   return arch;
 }
 function spawnCustomer(){
