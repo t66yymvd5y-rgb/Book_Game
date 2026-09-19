@@ -144,6 +144,9 @@ const el = (t,c,h) => { const e=document.createElement(t); if(c)e.className=c; i
 const rnd = a => a[(Math.random()*a.length)|0];
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
 const rm = n => "RM" + n.toFixed(2);
+// The HUD used to round cash, so a RM43.90 sale read as +44 and the books never tallied.
+// Show the sen, and drop ".00" so a whole-ringgit balance still reads cleanly.
+const money = n => { const t=n.toFixed(2); return t.endsWith(".00") ? t.slice(0,-3) : t; };
 function seeded(str){ let h=2166136261; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
   return ()=>{ h+=0x6D2B79F5; let t=h; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
 
@@ -744,6 +747,8 @@ const S={
   stats:{rev:0,spent:0,served:0,delighted:0,missed:0,walkouts:0},
   history:[], soldEver:{}, tab:"stock", featured:null,
   seen:{}, tutorial:true, shopName:"", keeper:null, seenToday:[], dayCast:[],
+  footfall:0,
+  library:{},                 // archetypeKey -> {bookId: dayBought} — what each reader already owns
 };
 
 function key(x,y){return x+","+y;}
@@ -791,7 +796,13 @@ function resizeStage(){
 function tilesOf(type){const o=[];for(let y=0;y<GH;y++)for(let x=0;x<GW;x++)if(S.grid[y][x]===type)o.push([x,y]);return o;}
 function level(){ return S.rep>=45?3 : S.rep>=18?2 : 1; }
 function rent(){ return SIZE_TIERS[S.tier].rent; }
-function maxCustomers(){ return 3 + S.tier*2 + level() + Math.floor(S.rep/12); }
+function baseFootfall(){ return 4 + S.tier*2 + level() + Math.floor(S.rep/12); }
+// Actual footfall is never the same two days running: the floor, plus a random swing,
+// plus an occasional busy day. A quiet Tuesday and a packed Saturday should feel different.
+function rollFootfall(){
+  const base=baseFootfall();
+  return base + ((Math.random()*4)|0) + (Math.random()<0.18 ? 2+((Math.random()*3)|0) : 0);
+}
 function nextTier(){ return S.tier<SIZE_TIERS.length-1 ? SIZE_TIERS[S.tier+1] : null; }
 function upgradeSpace(){
   const nt=nextTier(); if(!nt) return;
@@ -803,10 +814,20 @@ function upgradeSpace(){
 }
 
 /* ---------- stock helpers ---------- */
-const autoPrice = cost => Math.round(cost*1.75) - 0.10;
+// 1.45x is a real bookshop's margin. 1.75x priced a RM29 title at RM50.90, which is over
+// the ceiling of two thirds of the cast — the shop was unsellable by arithmetic, not by play.
+const autoPrice = cost => Math.round(cost*1.45) - 0.10;
 function shelvedIds(){ const o=[]; Object.keys(S.slots).forEach(k=>S.slots[k].forEach(id=>o.push(id))); return o; }
 function shelfCapacity(){ return tilesOf(SHELF).length*3; }
 function priceOf(id){ const s=S.stock[id]; return s.auto?autoPrice(s.cost):s.price; }
+
+/* ---------- reader memory ---------- */
+// A returning customer remembers what they bought here. They will not buy it again,
+// and they will say so if you try.
+function ownsBook(p,id){ const lib=S.library[p.key]; return !!(lib && lib[id]!==undefined); }
+function ownedDay(p,id){ const lib=S.library[p.key]; return lib?lib[id]:null; }
+function recordPurchase(p,id){ (S.library[p.key]=S.library[p.key]||{})[id]=S.day; }
+function ownedCount(p){ const lib=S.library[p.key]; return lib?Object.keys(lib).length:0; }
 function rollOffers(){
   const have=Object.keys(S.stock).map(Number);
   const pool=BOOKS.filter(x=>!have.includes(x.id)||S.stock[x.id].copies===0);
@@ -1097,36 +1118,47 @@ function stepCustomer(p){
     else if(p.state==="leave"){ p.dead=true; }
   }
   // passive self-serve: small chance if a shelved book fits them well
-  if(p.state==="browse" && !p.served && S.tick%40===0){
+  if(p.state==="browse" && !p.served && S.tick%30===0){
     const best=bestMatchFor(p);
-    if(best && best.score>=78 && Math.random()<0.22) completeSale(p,best.id,true);
+    if(best && best.score>=70 && Math.random()<0.32) completeSale(p,best.id,true);
   }
 }
+const SALE_SCORE=45;                                // score at or above this and they buy
 function scoreMatch(p,id){
   const bk=BOOK(id), w=p.arch.want, price=priceOf(id);
-  let s=10;
-  if(w.genres.includes(bk.genre)) s+=42;
-  else s-=14;
+  let s=18;
+  if(w.genres.includes(bk.genre)) s+=40;
+  else s-=8;                                        // wrong shelf is a miss, not a slammed door
   const moodHits=bk.moods.filter(m=>w.moods.includes(m)).length;
   s+=moodHits*16;
-  if(w.avoid.includes(bk.genre)) s-=55;
-  if(bk.moods.some(m=>w.avoid.includes(m))) s-=30;
-  if(price<=w.max) s+=18; else s-= Math.min(45,(price-w.max)*3.2);
-  const fair=autoPrice(BOOK(id).cost);
-  if(price>fair*1.25) s-=12;
-  if(price<fair*0.85) s+=4;
+  if(w.avoid.includes(bk.genre)) s-=50;
+  if(bk.moods.some(m=>w.avoid.includes(m))) s-=28;
+  // Budget is a soft ceiling: people stretch for the right book, and the penalty scales with
+  // how far past their own number you are, not with flat ringgit.
+  if(price<=w.max) s+=16;
+  else s-= Math.min(42, Math.round(((price-w.max)/w.max)*95));
+  const fair=autoPrice(bk.cost);
+  if(price>fair*1.3) s-=10;
+  if(price<fair*0.9) s+=5;
+  s+=(p.clues?p.clues.length:0)*3;                  // asking earns you the benefit of the doubt
   return Math.round(clamp(s,0,100));
 }
 function bestMatchFor(p){
   let best=null;
   shelvedIds().forEach(id=>{ if(!S.stock[id]||S.stock[id].copies<=0) return;
+    if(ownsBook(p,id)) return;                       // already on their shelf at home
     const sc=scoreMatch(p,id); if(!best||sc>best.score) best={id,score:sc}; });
   return best;
 }
+// Returns true if the sale actually went through. It can fail late: the last copy may have
+// gone to a passive browser while this conversation was open.
 function completeSale(p,id,passive){
-  const st=S.stock[id]; if(!st||st.copies<=0) return;
+  const st=S.stock[id]; if(!st||st.copies<=0) return false;
+  if(ownsBook(p,id)) return false;                // they already own this one
   const price=priceOf(id);
-  st.copies--; S.cash+=price; S.stats.rev+=price; S.stats.served++;
+  st.copies--; S.cash=Math.round((S.cash+price)*100)/100; S.stats.rev+=price; S.stats.served++;
+  recordPurchase(p,id);
+  p.paid=price;
   S.soldEver[id]=(S.soldEver[id]||0)+1;
   p.served=true; p.bubble=false;
   const sc=scoreMatch(p,id);
@@ -1134,7 +1166,8 @@ function completeSale(p,id,passive){
   else S.rep=clamp(S.rep+(passive?1.0:2.4),0,100);
   if(st.copies===0){ Object.keys(S.slots).forEach(k=>{ S.slots[k]=S.slots[k].filter(x=>x!==id); }); }
   p.state="leave"; p.path=pathTo(p,doorX(),GH-1); p.pi=0;
-  log((passive?"":"")+p.name+" bought "+BOOK(id).title+" — "+rm(price));
+  log(p.name+" paid "+rm(price)+" for "+BOOK(id).title);
+  return true;
 }
 function log(t){ S.history.unshift(t); if(S.history.length>40)S.history.pop(); }
 
@@ -1161,7 +1194,8 @@ function loop(ts){
 function startDay(){
   S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[]; S.seenToday=[]; S.dayCast=[];
   S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0};
-  const n=maxCustomers();
+  const n=rollFootfall();
+  S.footfall=n;
   for(let i=0;i<n;i++) S.spawnQueue.push(Math.round(40 + (S.dayLen-260)*(i/n) + Math.random()*40));
   S.spawnQueue.sort((a,b)=>a-b);
   tip("Tap a customer to talk. The bar over their head is patience.");
@@ -1170,7 +1204,7 @@ function startDay(){
 function endDay(){
   S.phase="evening";
   const r=rent();
-  S.cash-=r;
+  S.cash=Math.round((S.cash-r)*100)/100;
   paint();
 }
 function nextDay(){
@@ -1190,7 +1224,7 @@ function setAction(label,fn){
 function shopLabel(){ return "Kedai Buku"+(S.shopName?" "+S.shopName:""); }
 function hud(){
   $("#hDay").textContent=S.day;
-  $("#hCash").textContent=Math.round(S.cash);
+  $("#hCash").textContent=money(S.cash);
   $("#hRep").textContent=Math.round(S.rep);
   $("#hPhase").textContent={morning:"MORNING",open:"OPEN",evening:"CLOSED"}[S.phase];
 }
@@ -1300,7 +1334,7 @@ function drawMorning(){
 
   if(S.tab==="shop"){
     const tierInfo=SIZE_TIERS[S.tier];
-    P.appendChild(el("p",null,tierInfo.name+" · level "+level()+" · rent "+rm(rent())+"/day · "+maxCustomers()+" customers expected."));
+    P.appendChild(el("p",null,tierInfo.name+" · level "+level()+" · rent "+rm(rent())+"/day · "+baseFootfall()+" or more customers expected."));
     const nt=nextTier();
     if(nt){
       const locked = S.rep<nt.rep;
@@ -1371,7 +1405,8 @@ function drawOpenPanel(){
     const c=el("div","card");
     const m=el("div","meta");
     m.appendChild(el("div","t",p.name));
-    m.appendChild(el("div","a",p.arch.role+(p.served?" · served":"")));
+    const owns=ownedCount(p);
+    m.appendChild(el("div","a",p.arch.role+(owns?" · returning, owns "+owns:"")+(p.served?" · served":"")));
     const bar=el("div","bar"); const i=el("i"); i.style.width=Math.round(100*p.patience/p.patMax)+"%";
     bar.appendChild(i); m.appendChild(bar);
     c.appendChild(m);
@@ -1425,7 +1460,9 @@ function renderPick(p,convo){
   const sh=$("#sheet"); sh.innerHTML="";
   sh.appendChild(el("div","speaker","RECOMMEND TO "+p.name.toUpperCase()));
   if(p.clues.length){ const cl=el("div","clues"); p.clues.forEach(c=>cl.appendChild(el("span","tag g",c))); sh.appendChild(cl); }
-  const ids=shelvedIds().filter(id=>S.stock[id]&&S.stock[id].copies>0);
+  const all=shelvedIds().filter(id=>S.stock[id]&&S.stock[id].copies>0);
+  const owned=all.filter(id=>ownsBook(p,id));
+  const ids=all.filter(id=>!ownsBook(p,id));
   const grid=el("div","pick");
   ids.forEach(id=>{
     const bk=BOOK(id);
@@ -1436,6 +1473,13 @@ function renderPick(p,convo){
     grid.appendChild(cell);
   });
   sh.appendChild(grid);
+  if(!ids.length) sh.appendChild(el("div","empty","Nothing on your shelves that "+p.name+" doesn't already own."));
+  if(owned.length){
+    sh.appendChild(el("h3",null,"Already bought here"));
+    const cl=el("div","clues");
+    owned.forEach(id=>cl.appendChild(el("span","tag r",BOOK(id).title+" · day "+ownedDay(p,id))));
+    sh.appendChild(cl);
+  }
   const back=el("button","choice","← Keep talking"); back.onclick=()=>renderTalk(p,convo);
   sh.appendChild(back);
 }
@@ -1477,7 +1521,15 @@ function resolve(p,id,convo){
   const sh=$("#sheet"); sh.innerHTML="";
   sh.appendChild(el("div","speaker",p.name.toUpperCase()));
   sh.appendChild(el("div","say me","> \""+bk.title+"\" — I think this is you."));
-  const bought=sc>=55;
+  if(ownsBook(p,id)){
+    // They bought this from you already. No one buys the same book twice.
+    sh.appendChild(el("div","say","You sold me this one on day "+ownedDay(p,id)+", boss. It's at home on the shelf."));
+    const vv=el("div","verdict bad"); vv.textContent="ALREADY OWNS IT"; sh.appendChild(vv);
+    const ok2=el("button","choice","← Choose another book"); ok2.onclick=()=>renderPick(p,convo);
+    sh.appendChild(ok2);
+    return;
+  }
+  const bought=sc>=SALE_SCORE;
   sh.appendChild(el("div","say", bought? p.arch.yes : p.arch.no));
   const v=el("div","verdict "+(bought?"good":"bad"));
   v.textContent = sc>=85? "PERFECT MATCH · "+sc : bought? "SOLD · "+sc : "NO SALE · "+sc;
@@ -1488,7 +1540,13 @@ function resolve(p,id,convo){
       " · "+w.moods.join(", ")+" · under "+rm(w.max)+
       (w.avoid.length?" · never "+w.avoid.join(", "):"")));
   }
-  if(bought) completeSale(p,id,false);
+  if(bought){
+    const pay=el("div","say");
+    pay.textContent = completeSale(p,id,false)
+      ? "Pays "+rm(p.paid)+". Till: "+rm(S.cash)+"."
+      : "— but that was the last copy, and it just walked out the door. Nothing to sell them.";
+    sh.appendChild(pay);
+  }
   else { p.patience=Math.min(p.patience,60); p.state="browse"; S.rep=clamp(S.rep-0.3,0,100); }
   const ok=el("button","choice","Continue");
   ok.onclick=()=>{ closeModal(); S.talking=null; if(p.state==="talking")p.state="browse"; drawOpenPanel(); };
@@ -1545,7 +1603,7 @@ function drawEvening(){
     ["Net", st.rev-st.spent-r, (st.rev-st.spent-r)>=0?"pos":"neg"]];
   rows.forEach(([l,v,c])=>P.appendChild(el("div","ledger "+c,"<span>"+l+"</span><b>"+(v<0?"-":"")+rm(Math.abs(v))+"</b>")));
   P.appendChild(el("h3",null,"The day"));
-  P.appendChild(el("p",null, st.served+" served · "+st.delighted+" delighted · "+st.walkouts+" walked out unserved."+
+  P.appendChild(el("p",null, S.footfall+" came in · "+st.served+" served · "+st.delighted+" delighted · "+st.walkouts+" walked out unserved."+
     (st.walkouts>2?" You are losing people to impatience. A Kopi Corner or more palms would buy you time.":"")));
   P.appendChild(el("p",null,"Reputation "+Math.round(S.rep)+"/100 · level "+level()+
     (level()<3?" · next unlock at "+(level()===1?18:45):" · everything unlocked")));

@@ -51,11 +51,16 @@ finite (three titles per shelf). What you buy is what this neighbourhood gets to
 the next few days — this is the curation half of the game, and it is a commitment made
 before you know who is coming in.
 
-Pricing is per title: **AUTO** sets 1.75× cost, safe and never greedy; **MANUAL** lets you
+Pricing is per title: **AUTO** sets 1.45× cost, safe and never greedy; **MANUAL** lets you
 chase margin. Manual is not free money — every customer carries a private ceiling, and
-Wei Lun's is RM30 whatever you think the book is worth.
+Wei Lun's is RM30 whatever you think the book is worth. The markup is deliberately modest:
+trade cost runs RM19–39 and the cast's ceilings run RM20–80 with a median near RM34, so a
+fatter markup prices the whole shop out of its own neighbourhood before play even starts.
 
-**OPEN.** The day runs compressed. Customers arrive, walk to a shelf, and browse. Each
+**OPEN.** The day runs compressed. Footfall is never the same two days running — a floor
+that grows with your size, level and reputation, plus a random swing, plus the occasional
+busy day. A quiet Tuesday and a packed Saturday should not feel identical. Customers
+arrive, walk to a shelf, and browse. Each
 carries a **patience bar**; when it empties they leave. More customers arrive than you can
 personally serve, so the moment-to-moment decision is *who do I approach* — and that is the
 whole game in one gesture.
@@ -69,15 +74,30 @@ Staking a recommendation is a decision, so the information belongs at the decisi
 The recommendation is scored against a hidden want vector:
 
 ```
-genre match           +42     genre they refuse      −55
-each mood match       +16     mood they refuse       −30
-within their budget   +18     over budget            −3.2/RM
-                              priced above fair      −12
+base                  +18     genre they refuse      −50
+genre match           +40     mood they refuse       −28
+wrong genre            −8     over budget            −0.95 per 1% over, cap −42
+each mood match       +16     priced above fair      −10
+within their budget   +16
+each clue you earned   +3
 ```
 
-55 or better sells. 85 or better delights them: reputation, a review on the book's page,
-and they come back. Below 55 they decline, and the game tells you what they actually
+45 or better sells. 85 or better delights them: reputation, a review on the book's page,
+and they come back. Below 45 they decline, and the game tells you what they actually
 wanted — the loss is the lesson.
+
+Two things about that table are load-bearing. **Budget is a soft ceiling**, scaled to how
+far past their own number you are rather than a flat penalty per ringgit — people do
+stretch for the right book, and a hard cliff meant a title RM3 over budget was as dead as
+one RM30 over. And **the clue bonus makes the three questions matter**: asking earns the
+benefit of the doubt. Without it the interview was pure information and had no mechanical
+weight at all, which is a strange thing for the game's central gesture to lack.
+
+**Nobody buys the same book twice.** Each customer remembers what they bought here and on
+what day. Titles they already own are held out of the recommend grid, listed underneath as
+*already bought here*, and skipped by passive browsing; the open panel marks them as a
+returning reader and counts their shelf. A regular who keeps coming back is the point of
+building reputation — a regular who re-buys the same novel every Tuesday is a bug.
 
 Books also sell passively at a low rate when a browsing customer happens to be standing
 next to something that suits them. This is deliberate: it means good curation earns money
