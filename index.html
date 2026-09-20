@@ -811,7 +811,7 @@ function upgradeSpace(){
   S.cash-=nt.cost; S.stats.spent+=nt.cost; S.tier++;
   GW=nt.gw; GH=nt.gh;
   initGrid(true);
-  drawMorning(); hud();
+  drawMorning(); hud(); autosave();
 }
 
 /* ---------- stock helpers ---------- */
@@ -1461,11 +1461,11 @@ function endDay(){
   S.phase="evening";
   const r=rent();
   S.cash=Math.round((S.cash-r)*100)/100;
-  paint();
+  paint(); autosave();
 }
 function nextDay(){
   S.day++; S.phase="morning"; S.stats.spent=0; S.tab="stock";
-  rollOffers(); paint();
+  rollOffers(); paint(); autosave();
 }
 
 /* ============================================================
@@ -1560,7 +1560,7 @@ function drawMorning(){
   }
 
   if(S.tab==="price"){
-    P.appendChild(el("p",null,"AUTO prices at 1.75x cost — safe, never greedy. Manual lets you chase margin, but every customer has a ceiling and Wei Lun's is RM30."));
+    P.appendChild(el("p",null,"AUTO prices at 1.45x cost — safe, never greedy. Manual lets you chase margin, but every customer has a ceiling and Wei Lun's is RM30."));
     const ids=Object.keys(S.stock).map(Number).filter(id=>S.stock[id].copies>0);
     if(!ids.length) P.appendChild(el("div","empty","No stock yet.<br>Buy some books first."));
     ids.forEach(id=>{
@@ -1571,11 +1571,11 @@ function drawMorning(){
       const auto=el("button","btn-sm",st.auto?"AUTO":"MANUAL");
       auto.style.background=st.auto?"var(--gold)":"var(--panel-2)";
       auto.style.color=st.auto?"#150f0b":"var(--ink)";
-      auto.onclick=e=>{e.stopPropagation(); st.auto=!st.auto; if(!st.auto)st.price=autoPrice(st.cost); drawMorning();};
+      auto.onclick=e=>{e.stopPropagation(); st.auto=!st.auto; if(!st.auto)st.price=autoPrice(st.cost); drawMorning(); autosave();};
       r.appendChild(auto);
       if(!st.auto){
-        const m=el("button","btn-sm","−"); m.onclick=e=>{e.stopPropagation();st.price=Math.max(st.cost,st.price-2);drawMorning();};
-        const p2=el("button","btn-sm","+"); p2.onclick=e=>{e.stopPropagation();st.price+=2;drawMorning();};
+        const m=el("button","btn-sm","−"); m.onclick=e=>{e.stopPropagation();st.price=Math.max(st.cost,st.price-2);drawMorning();autosave();};
+        const p2=el("button","btn-sm","+"); p2.onclick=e=>{e.stopPropagation();st.price+=2;drawMorning();autosave();};
         r.appendChild(m); r.appendChild(p2);
       }
       const lab=el("span","price",rm(priceOf(id)));
@@ -1620,6 +1620,24 @@ function drawMorning(){
       m.appendChild(bw); c.appendChild(m); P.appendChild(c);
     });
     P.appendChild(el("p",null,"Kopi Corner is the cafe expansion. It does not sell drinks yet — it buys you time, which in this shop is the same thing."));
+
+    P.appendChild(el("h3",null,"This shop"));
+    P.appendChild(el("p",null,saveNote()+" There is nothing to press — the shop is written down each morning and each evening. Close the tab mid-day and you pick that morning up again."));
+    const over=el("button","btn-sm","START OVER");
+    over.onclick=()=>{
+      const sh=$("#sheet"); sh.innerHTML="";
+      $("#modal").classList.add("on");
+      sh.appendChild(el("div","speaker","START OVER?"));
+      sh.appendChild(el("div","say","This erases "+shopLabel()+" — day "+S.day+", "+rm(S.cash)+
+        " in the till and every reader who remembers you — and opens an empty kiosk. It cannot be undone."));
+      const yes=el("button","choice","Erase it and start again");
+      yes.style.borderColor="var(--red)"; yes.style.color="var(--red-deep)";
+      yes.onclick=()=>{ clearSave(); setTimeout(()=>location.reload(),120); };
+      const no=el("button","choice","Keep playing");
+      no.onclick=closeModal;
+      sh.appendChild(yes); sh.appendChild(no);
+    };
+    const ow=el("div"); ow.style.marginTop="4px"; ow.appendChild(over); P.appendChild(ow);
   }
 
   setAction("OPEN THE SHOP",()=>{
@@ -1638,7 +1656,7 @@ function buyStock(id){
   for(const [x,y] of shelves){ const k=key(x,y); S.slots[k]=S.slots[k]||[];
     if(S.slots[k].length<3){ S.slots[k].push(id); break; } }
   S.offers=S.offers.filter(o=>o!==id);
-  drawMorning(); hud();
+  drawMorning(); hud(); autosave();
 }
 
 /* ---------- open ---------- */
@@ -1889,7 +1907,7 @@ cv.addEventListener("click",e=>{
       if(S.cash>=f.cost){ S.cash-=f.cost; S.stats.spent+=f.cost; S.grid[y][x]=S.placing;
         if(f.slots) S.slots[key(x,y)]=[]; }
     }
-    S.placing=null; tip("Placed."); paint(); return;
+    S.placing=null; tip("Placed."); paint(); autosave(); return;
   }
   if(S.phase==="open"){
     let hit=null,bd=99;
@@ -1910,6 +1928,166 @@ cv.addEventListener("click",e=>{
   }
 });
 $("#modal").addEventListener("click",e=>{ if(e.target.id==="modal") { if(!S.talking) closeModal(); } });
+
+/* ============================================================
+   SAVE
+   The whole shop is one plain object, so a save is a snapshot of S taken at a
+   phase boundary — a morning or an evening, when nobody is mid-walk. Quitting
+   during a trading day therefore resumes at that morning and the day replays,
+   which costs a minute and spares us serialising live pathfinding state.
+
+   Two tiers, and the game is playable with neither: localStorage always (same
+   browser, works when the file is opened directly), and the artifact's own db
+   when the page is running inside a viewer that grants it (same save on any
+   device you open the link from). Whichever copy is newer wins at boot.
+   ============================================================ */
+const SAVE_KEY="kedaibuku.save.v1", SAVE_V=1;
+let saveState="local";            // "local" | "synced" | "error"
+
+function takeSnapshot(){
+  return {
+    v:SAVE_V, phase:(S.phase==="evening"?"evening":"morning"),
+    day:S.day, cash:S.cash, rep:S.rep, tier:S.tier, gw:GW, gh:GH,
+    grid:S.grid, slots:S.slots, stock:S.stock, offers:S.offers, keeper:S.keeper,
+    stats:S.stats, history:S.history, soldEver:S.soldEver, featured:S.featured,
+    seen:S.seen, tutorial:S.tutorial, shopName:S.shopName, library:S.library,
+    footfall:S.footfall,
+  };
+}
+function validSave(d){
+  return !!d && d.v===SAVE_V && Number.isFinite(d.day) && Number.isFinite(d.cash)
+    && Number.isFinite(d.gw) && Number.isFinite(d.gh)
+    && Array.isArray(d.grid) && d.grid.length===d.gh
+    && Array.isArray(d.grid[0]) && d.grid[0].length===d.gw
+    && !!d.slots && !!d.stock && Array.isArray(d.offers);
+}
+function applySnapshot(d){
+  GW=d.gw; GH=d.gh;
+  S.day=d.day; S.cash=d.cash; S.rep=d.rep; S.tier=d.tier;
+  S.grid=d.grid; S.slots=d.slots; S.stock=d.stock; S.offers=d.offers;
+  S.keeper=d.keeper; S.stats=d.stats; S.history=d.history||[];
+  S.soldEver=d.soldEver||{}; S.featured=d.featured; S.seen=d.seen||{};
+  S.tutorial=!!d.tutorial; S.shopName=d.shopName||""; S.library=d.library||{};
+  S.footfall=d.footfall||0;
+  S.phase=(d.phase==="evening")?"evening":"morning";
+  // anything that only exists inside a trading day is rebuilt, never restored
+  S.customers=[]; S.spawnQueue=[]; S.talking=null; S.placing=null;
+  S.seenToday=[]; S.dayCast=[]; S.tick=0; S.tab="stock";
+  resizeStage();
+}
+
+/* ---------- browser copy ---------- */
+function localRead(){
+  try{ const raw=localStorage.getItem(SAVE_KEY); return raw?JSON.parse(raw):null; }
+  catch(e){ return null; }               // private window, blocked storage, corrupt JSON
+}
+function localWrite(json){ try{ localStorage.setItem(SAVE_KEY,json); }catch(e){} }
+function localClear(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+
+/* ---------- account copy ---------- */
+let cloudDoc=null, cloudPromise=null, cloudWriting=false, cloudPending=null;
+async function cloudInit(){
+  try{
+    if(!(window.claude && typeof window.claude.use==="function")) return null;  // opened as a file
+    const [db,user]=await Promise.all([claude.use("db"), claude.use("user")]);
+    if(!db||!user) return null;
+    const uid=await user.id();          // per-viewer private subtree; null means no private store
+    if(!uid) return null;
+    cloudDoc=db.doc("data/users/"+uid+"/save");
+    return cloudDoc;
+  }catch(e){ return null; }
+}
+function cloudLoad(){
+  if(!cloudPromise) cloudPromise=cloudInit()
+    .then(doc=>doc?doc.get():null)
+    .then(snap=>{ if(snap){ saveState="synced"; return snap.exists?snap.data():null; } return null; })
+    .catch(()=>null);
+  return cloudPromise;
+}
+async function cloudWrite(d){
+  if(!cloudDoc) return;
+  cloudPending=d;
+  if(cloudWriting) return;              // one write at a time per document
+  cloudWriting=true;
+  try{
+    while(cloudPending){ const body=cloudPending; cloudPending=null; await cloudDoc.set(body); }
+    saveState="synced";
+  }catch(e){
+    cloudPending=null;
+    if(e && (e.code==="revoked"||e.code==="not_granted"||e.code==="capability_disabled"
+             ||e.code==="capability_removed"||e.code==="invalid_argument")) cloudDoc=null;
+    saveState="error";                  // the browser copy still went through
+  }finally{ cloudWriting=false; }
+}
+
+/* ---------- autosave ---------- */
+let saveTimer=null, lastJSON="";
+function autosave(){
+  if(S.phase==="open") return;          // never mid-day: customers do not serialise
+  clearTimeout(saveTimer); saveTimer=setTimeout(saveNow,900);
+}
+function saveNow(){
+  const d=takeSnapshot(), j=JSON.stringify(d);
+  if(j===lastJSON) return;              // nothing actually changed
+  lastJSON=j;
+  d.savedAt=Date.now();
+  localWrite(JSON.stringify(d));
+  cloudWrite(d);
+}
+function clearSave(){
+  clearTimeout(saveTimer); lastJSON="";
+  localClear();
+  if(cloudDoc) cloudDoc.delete().catch(()=>{});
+}
+function saveNote(){
+  if(saveState==="synced") return "Saved automatically · synced to your Claude account, so the same shop opens on any device.";
+  if(saveState==="error")  return "Saved automatically in this browser. Syncing to your account failed this session.";
+  return "Saved automatically in this browser.";
+}
+
+/* ---------- boot ---------- */
+let bootDecided=false;
+function newerSave(a,b){
+  if(!validSave(a)) a=null;
+  if(!validSave(b)) b=null;
+  if(a&&b) return (b.savedAt||0)>(a.savedAt||0) ? b : a;
+  return a||b;
+}
+function showBoot(d){ if(d) continueScreen(d); else nameScreen(); }
+async function boot(){
+  const local=localRead();
+  // don't let a slow or absent viewer hold up the title screen
+  const res=await Promise.race([cloudLoad(), new Promise(r=>setTimeout(()=>r("wait"),2200))]);
+  showBoot(newerSave(local, res==="wait"?null:res));
+  if(res==="wait") cloudLoad().then(c=>{
+    if(!bootDecided && newerSave(local,c)===c && c) showBoot(c);   // the account copy turned up late
+  });
+}
+function continueScreen(d){
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  const portrait=document.createElement("img"); portrait.className="keeper-portrait";
+  portrait.src=KEEPER_PORTRAIT; portrait.alt="You, behind the counter";
+  sh.appendChild(portrait);
+  sh.appendChild(el("div","speaker","WELCOME BACK"));
+  const name="Kedai Buku"+(d.shopName?" "+d.shopName:"");
+  sh.appendChild(el("div","say",name+" is as you left it — "+rm(d.cash)+" in the till, reputation "+
+    Math.round(d.rep||0)+", "+SIZE_TIERS[d.tier||0].name.toLowerCase()+"."+
+    (d.phase==="evening"?" The shutters are down on day "+d.day+".":"")));
+  const go=el("button","choice"); go.style.borderColor="var(--gold)"; go.style.color="var(--gold)";
+  go.textContent=(d.phase==="evening"?"Close out day ":"Open up on day ")+d.day+" →";
+  go.onclick=()=>{
+    bootDecided=true;
+    try{ applySnapshot(d); }catch(e){ nameScreen(); return; }
+    lastJSON=JSON.stringify(takeSnapshot());
+    closeModal(); paint();
+  };
+  sh.appendChild(go);
+  const fresh=el("button","choice","Start a new shop");
+  fresh.onclick=()=>{ bootDecided=true; nameScreen(); };
+  sh.appendChild(fresh);
+  sh.appendChild(el("p",null,"Starting a new shop replaces this save the first time the new one saves."));
+}
 
 /* ---------- boot ---------- */
 initGrid(); rollOffers(); paint();
@@ -1932,7 +2110,7 @@ function nameScreen(){
   sh.appendChild(el("p",null,"Leave it blank and the sign just reads KEDAI BUKU."));
   const go=el("button","choice"); go.style.borderColor="var(--gold)"; go.style.color="var(--gold)";
   go.textContent="Paint the sign →";
-  go.onclick=()=>{ S.shopName=inp.value.trim().slice(0,16); introScreen(); };
+  go.onclick=()=>{ S.shopName=inp.value.trim().slice(0,16); introScreen(); autosave(); };
   sh.appendChild(go);
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter") go.click(); });
   setTimeout(()=>inp.focus(),50);
@@ -1948,7 +2126,7 @@ function introScreen(){
   const go=el("button","choice","Open up →"); go.style.borderColor="var(--gold)"; go.style.color="var(--gold)";
   go.onclick=()=>{ closeModal(); paint(); }; sh.appendChild(go);
 }
-setTimeout(nameScreen,200);
+setTimeout(boot,200);
 </script>
 
 </body></html>

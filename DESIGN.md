@@ -24,6 +24,40 @@ A round of playtest feedback asked for nine specific changes. What actually ship
 
 ---
 
+## Save (day 3)
+
+*"Possible to add a save function, for continue play next time?"*
+
+The whole shop is one plain object (`S`), so a save is a snapshot of it. The only part that
+does not serialise is the live customer list — each carries a reference into the cast and an
+in-flight path — so **snapshots are only ever taken at a phase boundary**, a morning or an
+evening, when nobody is mid-walk. Quitting during a trading day resumes at that morning and
+the day replays. That costs a minute of play and spares a fragile blob of pathfinding state.
+
+Two tiers, and the game is playable with neither:
+
+- **localStorage**, always. Same browser only, but it works when `index.html` is opened
+  directly as a file, outside any viewer.
+- **The artifact's `db` capability**, when the page runs inside a claude.ai viewer that grants
+  it. The save lives at `data/users/<viewer id>/save` — a per-viewer private path — so the
+  same shop opens on any device the owner opens the link from. Declaring `db` makes the
+  artifact organization-internal; it can no longer be shared by public link.
+
+Whichever copy carries the newer `savedAt` wins at boot. The title screen does not wait on the
+viewer: it races the account read against 2.2 seconds and falls through to the browser copy,
+then refreshes itself if the account copy turns up late and the player has not chosen yet.
+
+Autosave fires on real state changes only — buying stock, a price change, placing furniture,
+an upgrade, naming the shop, and each phase transition — debounced, and skipped when the
+snapshot is byte-identical to the last one written. Cloud writes are serialised one at a time
+per document. A save of the largest floor plan with full shelves and a full history measures
+**3.9 KB** against a 256 KiB document cap.
+
+There is one slot, no save button, and a confirmed **Start over** in the morning panel's SHOP
+tab.
+
+---
+
 ## Art pass (day 3)
 
 *"Make the graphics less rough — higher pixels, especially the shopkeeper, the shelves and
