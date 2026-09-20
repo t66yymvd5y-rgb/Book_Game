@@ -24,6 +24,43 @@ A round of playtest feedback asked for nine specific changes. What actually ship
 
 ---
 
+## Art pass (day 3)
+
+*"Make the graphics less rough — higher pixels, especially the shopkeeper, the shelves and
+the floor."*
+
+The scene was authored at 16 game pixels per tile and rasterised at **2** device pixels per
+game pixel, so a tile was 32 device pixels and the smallest mark the art could make was half
+a tile-sixteenth. On a 460px-wide phone canvas that got upscaled, which is where the
+roughness came from — not from the style, from the resolution.
+
+What changed:
+
+- **The canvas now runs at 4 device pixels per game pixel** (`PX=4`), doubling the linear
+  resolution of every tile. Detail is authored down to a quarter of a game pixel (`U`), so a
+  shelf tile carries 64×64 device pixels of art instead of 32×32.
+- **The floor is no longer one flat slab per tile.** It is a terrazzo floor of 4-game-pixel
+  tiles — sixteen to a grid square — each with its own tone, grout line, sheen on the lit
+  edges and a scatter of flecks, plus ambient occlusion where the floor meets the walls.
+- **Shelves are bookcases.** Cornice, grained side stiles, a back panel in shadow, three
+  boards with a shadow under each, and spines of varying width, height and tone with gilt
+  bands and the occasional leaner, instead of five flat bars per row.
+- **The shopkeeper is new art** — 44×56 device pixels per frame against the old 22×28, and
+  redrawn to match the counter portrait (brown hair, blue shirt, tan apron) rather than the
+  generic brown tunic the placeholder sheet had. Four idle frames, including a blink.
+- **Walls, shopfront, counter, display table, palm and kopi corner** were redrawn at the new
+  resolution: plaster mottling, a cornice and a tongue-and-groove dado; glazing with sky,
+  street and pavement bands and thin reflection streaks; contact shadows under everything
+  standing on a counter.
+- **The static parts are baked once.** Floor, walls and shopfront are painted into an
+  offscreen canvas whenever the floor plan changes and blitted each frame, which is what
+  makes detail at this density affordable — a full frame costs well under a millisecond.
+
+The customer sheets are untouched and keep their own authoring scale (`ART=2`), so they draw
+at the same on-screen size as before.
+
+---
+
 ## 1. Decisions taken
 
 | Question | Decision |
