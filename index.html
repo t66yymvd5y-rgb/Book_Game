@@ -144,6 +144,9 @@ const el = (t,c,h) => { const e=document.createElement(t); if(c)e.className=c; i
 const rnd = a => a[(Math.random()*a.length)|0];
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
 const rm = n => "RM" + n.toFixed(2);
+// The HUD used to round cash, so a RM43.90 sale read as +44 and the books never tallied.
+// Show the sen, and drop ".00" so a whole-ringgit balance still reads cleanly.
+const money = n => { const t=n.toFixed(2); return t.endsWith(".00") ? t.slice(0,-3) : t; };
 function seeded(str){ let h=2166136261; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
   return ()=>{ h+=0x6D2B79F5; let t=h; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
 
@@ -718,7 +721,7 @@ function ratingBlock(bk){
 }
 
 /* ---------- shop grid ---------- */
-let GW=9, GH=7; const TS=16, PX=2;
+let GW=9, GH=7; const TS=16, PX=4, ART=2;   // PX: device px per game px (scene detail); ART: the older sheets' own scale
 const EMPTY=0, WALL=1, SHELF=2, COUNTER=3, TABLE=4, PLANT=5, CAFE=6, DOOR=7;
 const FURN={
   [SHELF]:{name:"Shelf",cost:120,slots:3,desc:"Holds 3 titles"},
@@ -744,6 +747,8 @@ const S={
   stats:{rev:0,spent:0,served:0,delighted:0,missed:0,walkouts:0},
   history:[], soldEver:{}, tab:"stock", featured:null,
   seen:{}, tutorial:true, shopName:"", keeper:null, seenToday:[], dayCast:[],
+  footfall:0,
+  library:{},                 // archetypeKey -> {bookId: dayBought} — what each reader already owns
 };
 
 function key(x,y){return x+","+y;}
@@ -782,8 +787,9 @@ function initGrid(preserve){
 }
 function resizeStage(){
   const cv2=$("#cv"); if(!cv2) return;
-  cv2.width=GW*TS*PX; cv2.height=GH*TS*PX;             // 2 device px per game px so sprites keep native detail
+  cv2.width=GW*TS*PX; cv2.height=GH*TS*PX;             // four device px per game px, so the art can carry quarter-pixel detail
   const g=cv2.getContext("2d"); g.setTransform(PX,0,0,PX,0,0); g.imageSmoothingEnabled=false;
+  buildBackdrop();
   $("#stage").style.maxWidth="min(460px, calc(52vh * "+GW+" / "+GH+"))";
   const sign=$("#signText");
   if(sign){ sign.style.top=(7/(GH*TS)*100)+"%"; sign.style.fontSize=Math.max(6,Math.round(GW*TS/22))+"px"; }
@@ -791,7 +797,13 @@ function resizeStage(){
 function tilesOf(type){const o=[];for(let y=0;y<GH;y++)for(let x=0;x<GW;x++)if(S.grid[y][x]===type)o.push([x,y]);return o;}
 function level(){ return S.rep>=45?3 : S.rep>=18?2 : 1; }
 function rent(){ return SIZE_TIERS[S.tier].rent; }
-function maxCustomers(){ return 3 + S.tier*2 + level() + Math.floor(S.rep/12); }
+function baseFootfall(){ return 4 + S.tier*2 + level() + Math.floor(S.rep/12); }
+// Actual footfall is never the same two days running: the floor, plus a random swing,
+// plus an occasional busy day. A quiet Tuesday and a packed Saturday should feel different.
+function rollFootfall(){
+  const base=baseFootfall();
+  return base + ((Math.random()*4)|0) + (Math.random()<0.18 ? 2+((Math.random()*3)|0) : 0);
+}
 function nextTier(){ return S.tier<SIZE_TIERS.length-1 ? SIZE_TIERS[S.tier+1] : null; }
 function upgradeSpace(){
   const nt=nextTier(); if(!nt) return;
@@ -799,14 +811,24 @@ function upgradeSpace(){
   S.cash-=nt.cost; S.stats.spent+=nt.cost; S.tier++;
   GW=nt.gw; GH=nt.gh;
   initGrid(true);
-  drawMorning(); hud();
+  drawMorning(); hud(); autosave();
 }
 
 /* ---------- stock helpers ---------- */
-const autoPrice = cost => Math.round(cost*1.75) - 0.10;
+// 1.45x is a real bookshop's margin. 1.75x priced a RM29 title at RM50.90, which is over
+// the ceiling of two thirds of the cast — the shop was unsellable by arithmetic, not by play.
+const autoPrice = cost => Math.round(cost*1.45) - 0.10;
 function shelvedIds(){ const o=[]; Object.keys(S.slots).forEach(k=>S.slots[k].forEach(id=>o.push(id))); return o; }
 function shelfCapacity(){ return tilesOf(SHELF).length*3; }
 function priceOf(id){ const s=S.stock[id]; return s.auto?autoPrice(s.cost):s.price; }
+
+/* ---------- reader memory ---------- */
+// A returning customer remembers what they bought here. They will not buy it again,
+// and they will say so if you try.
+function ownsBook(p,id){ const lib=S.library[p.key]; return !!(lib && lib[id]!==undefined); }
+function ownedDay(p,id){ const lib=S.library[p.key]; return lib?lib[id]:null; }
+function recordPurchase(p,id){ (S.library[p.key]=S.library[p.key]||{})[id]=S.day; }
+function ownedCount(p){ const lib=S.library[p.key]; return lib?Object.keys(lib).length:0; }
 function rollOffers(){
   const have=Object.keys(S.stock).map(Number);
   const pool=BOOKS.filter(x=>!have.includes(x.id)||S.stock[x.id].copies===0);
@@ -821,82 +843,358 @@ function rollOffers(){
    ============================================================ */
 const cv=$("#cv"), ctx=cv.getContext("2d");
 ctx.imageSmoothingEnabled=false;
+let G=ctx;                     // surface px() paints on — swapped while the static backdrop is baked
 
-const C={floor1:"#cec1a7",floor2:"#c9bca2",wall:"#e3d6bb",dado:"#4d7a63",wood:"#8b5a35",
-  woodD:"#6b4426",woodL:"#a97448",shadow:"rgba(0,0,0,.18)",door:"#3c2a1c",grout:"#bcae92"};
+/* The shop is authored at quarter-game-pixel detail: PX device pixels cover one game pixel,
+   so U is the smallest mark that still lands exactly on a device pixel. */
+const U=1/PX;
+const q=v=>Math.round(v*PX)/PX;                       // snap to the device pixel grid
+
+const C={
+  floorA:"#d9ccb1", floorB:"#d3c5a9", floorC:"#cec0a3", grout:"#b3a488",
+  wall:"#e7dcc4", wallD:"#dbcfb5", wallL:"#f2e9d6", cornice:"#f4ecda",
+  dado:"#4d7a63", dadoD:"#3b6250", dadoL:"#639380", cap:"#8a6a45", capL:"#a5855e",
+  wood:"#8b5a35", woodD:"#6b4426", woodL:"#a97448", woodX:"#4e3220",
+  glass:"#8fb8c9", glassD:"#6d99ad", street:"#c9b489",
+  brass:"#e0b455", door:"#7a4c2c", shadow:"rgba(40,26,12,.22)", soft:"rgba(40,26,12,.13)",
+};
 const SPINE={literary:"#8a4a4a",crime:"#3a3a4a",scifi:"#2f5f7a",fantasy:"#4a6a35",horror:"#2a2028",
   romance:"#a8556e",history:"#7a6030",biography:"#6a5a8a",nonfiction:"#356a6a",philosophy:"#5a4a3a",
   poetry:"#8a6a3a",children:"#c98a35",business:"#405a70",ya:"#7a4a8a"};
 
-function px(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
-
-function drawShelf(x,y,ids){
-  const X=x*TS,Y=y*TS;
-  px(X,Y+2,TS,TS-2,C.woodD);
-  px(X+1,Y+3,TS-2,TS-4,C.wood);
-  px(X+1,Y+3,TS-2,1,shade(C.wood,1.3));
-  for(let r=0;r<3;r++){
-    const sy=Y+4+r*4;
-    px(X+1,sy+3,TS-2,1,C.woodD);
-    const id=ids&&ids[r];
-    if(id!=null){
-      const bk=BOOK(id); const rr=seeded(bk.title);
-      for(let i=0;i<5;i++){
-        const w=1+((rr()*2)|0);
-        const base=SPINE[bk.genre]||"#7a5a4a";
-        px(X+2+i*2.4, sy, w, 3, i%2? base : shade(base,1.25));
-      }
-    }
-  }
-}
+function px(x,y,w,h,c){G.fillStyle=c;G.fillRect(x,y,w,h);}
 function shade(hex,f){
   const n=parseInt(hex.slice(1),16);
   const r=clamp(Math.round((n>>16)*f),0,255),g=clamp(Math.round((n>>8&255)*f),0,255),b2=clamp(Math.round((n&255)*f),0,255);
   return "#"+((r<<16)|(g<<8)|b2).toString(16).padStart(6,"0");
 }
-function drawFurn(x,y,t){
-  const X=x*TS,Y=y*TS;
-  if(t===COUNTER){ px(X,Y+6,TS,TS-6,C.woodD); px(X+1,Y+7,TS-2,TS-9,C.woodL);
-    px(X+3,Y+4,10,3,"#c9b48a"); px(X+11,Y+3,3,2,"#6b6b7a"); }
-  if(t===TABLE){ px(X+1,Y+7,TS-2,7,C.woodD); px(X+2,Y+6,TS-4,6,C.woodL);
-    const id=S.slots[key(x,y)]&&S.slots[key(x,y)][0];
-    if(id!=null){const bk=BOOK(id); px(X+5,Y+2,6,5,SPINE[bk.genre]||"#8a5a4a"); px(X+5,Y+2,6,1,"#f0e6d0");}
+
+/* ---------- static backdrop (floor, walls, shopfront) ----------
+   Painted once per floor plan into an offscreen canvas at full device resolution, then blitted
+   each frame. Baking it is what makes the fine tile-and-plaster detail affordable. */
+let bgCv=null;
+function buildBackdrop(){
+  bgCv=document.createElement("canvas");
+  bgCv.width=GW*TS*PX; bgCv.height=GH*TS*PX;
+  const g=bgCv.getContext("2d");
+  g.setTransform(PX,0,0,PX,0,0); g.imageSmoothingEnabled=false;
+  const prev=G; G=g;
+  drawFloor(); drawWalls(); drawFrontage();
+  G=prev;
+}
+
+const FT=4;                                            // floor tile: 4 game px, sixteen to a grid square
+function drawFloor(){
+  const W=GW*TS, H=GH*TS;
+  for(let ty=0;ty<H/FT;ty++)for(let tx=0;tx<W/FT;tx++){
+    const X=tx*FT, Y=ty*FT, rr=seeded("f"+tx+"_"+ty);
+    const base=[C.floorA,C.floorB,C.floorC][(rr()*3)|0];
+    px(X,Y,FT,FT,base);
+    px(X,Y,FT,U,shade(base,1.05));                     // sheen on the lit edges
+    px(X,Y,U,FT,shade(base,1.03));
+    for(let i=0;i<5;i++)                               // terrazzo flecks
+      px(X+U+((rr()*14)|0)*U, Y+U+((rr()*14)|0)*U, U,U,
+        ["#c2b397","#eae1ca","#b0a084","#cfc1a4","#e2d8bf"][(rr()*5)|0]);
+    px(X,Y+FT-U,FT,U,C.grout);                         // grout
+    px(X+FT-U,Y,U,FT,C.grout);
   }
-  if(t===PLANT){ px(X+6,Y+10,4,5,"#9a5a3a");
-    px(X+4,Y+4,8,6,"#3f7a45"); px(X+6,Y+2,4,4,"#4f9a55"); px(X+3,Y+7,3,3,"#357a3d"); }
-  if(t===CAFE){ px(X,Y+4,TS,TS-4,"#4a3a2a"); px(X+1,Y+5,TS-2,TS-6,"#6a4f36");
-    px(X+3,Y+7,5,4,"#e8dcc4"); px(X+9,Y+8,4,3,"#c98a35"); }
+  // ambient occlusion where the floor meets the walls
+  for(let i=0;i<10;i++){
+    const a=(0.13-i*0.013).toFixed(3);
+    px(0,TS+i*U,W,U,"rgba(46,30,14,"+a+")");
+    px(4+i*U,TS,U,H-TS,"rgba(46,30,14,"+a+")");
+    px(W-4-(i+1)*U,TS,U,H-TS,"rgba(46,30,14,"+a+")");
+  }
 }
+
+function drawWalls(){
+  const W=GW*TS;
+  px(0,0,W,TS,C.wall);
+  for(let y=0;y<TS;y++)for(let x=0;x<W;x++){            // plaster: broad blotches, then a fine tooth
+    const rr=seeded("w"+x+"_"+y);
+    if(rr()<0.22) px(x+((rr()*3)|0)*U, y+((rr()*3)|0)*U, 1,1, rr()<0.5?C.wallL:C.wallD);
+    if(rr()<0.30) px(x+((rr()*4)|0)*U, y+((rr()*4)|0)*U, U,U, rr()<0.5?"#f1e8d6":"#dbcfb6");
+  }
+  for(let i=0;i<9;i++)                                  // light falls off towards the floor
+    px(0,TS-4.5-i*0.75,W,0.75,"rgba(70,48,22,"+(0.015*i).toFixed(3)+")");
+  px(0,0,W,0.5,C.cornice); px(0,0.5,W,0.5,C.wallL);     // cornice
+  px(0,1,W,U,"rgba(70,48,22,.18)");
+  // signboard: painted timber, bevelled, screwed to the wall (the name is a crisp HTML overlay)
+  const bx=TS+4, bw=W-2*TS-8;
+  px(bx+0.5,11.25,bw,0.75,"rgba(60,40,18,.3)");         // drop shadow
+  px(bx,2,bw,9.5,C.woodX);                              // outer frame
+  px(bx+0.5,2.5,bw-1,8.5,"#7d4a12");
+  for(let i=1.5;i<bw-2.5;i+=1.5)                        // grain
+    px(bx+1+i,3.25,U,7,seeded("sb"+i)()<0.5?"#8f5a1c":"#6f410f");
+  px(bx+1,3,bw-2,7.5,"#8a5a1a");
+  px(bx+1,3,bw-2,U,"#b8822f"); px(bx+1,3,U,7.5,"#a87526");
+  px(bx+1,10.25,bw-2,U,"#54300a"); px(bx+bw-1.25,3,U,7.5,"#5f370c");
+  px(bx+1.75,3.75,bw-3.5,U,"rgba(224,180,85,.45)");     // gilt hairline
+  px(bx+1.75,9.75,bw-3.5,U,"rgba(224,180,85,.35)");
+  for(const sx of [bx+1.75,bx+bw-2.5]) for(const sy of [4.5,8.75]){
+    px(sx,sy,0.5,0.5,C.brass); px(sx,sy+0.25,0.5,U,"#8a6320");
+  }
+  // dado: a timber cap rail over tongue-and-groove boarding
+  px(0,TS-4.75,W,0.5,C.capL); px(0,TS-4.25,W,0.75,C.cap); px(0,TS-3.5,W,U,shade(C.cap,.6));
+  px(0,TS-3.25,W,3.25,C.dado);
+  for(let x=0;x<W;x+=2){                                // bead between each board
+    px(x,TS-3.25,U,2.75,shade(C.dadoD,.82)); px(x+U,TS-3.25,U,2.75,C.dadoL);
+  }
+  px(0,TS-3.25,W,U,shade(C.dadoD,.7));
+  px(0,TS-0.75,W,0.75,shade(C.dadoD,.8));               // skirting
+  px(0,TS-0.75,W,U,C.dadoL); px(0,TS-U,W,U,"rgba(30,20,8,.4)");
+  // side walls
+  const H=GH*TS;
+  px(0,TS,4,H-TS,C.dado); px(W-4,TS,4,H-TS,C.dado);
+  for(let y=TS;y<H;y+=2){                               // the same boarding, seen edge-on
+    px(0.5,y,3.25,U,shade(C.dadoD,.82)); px(0.5,y+U,3.25,U,C.dadoL);
+    px(W-3.75,y,3.25,U,shade(C.dadoD,.82)); px(W-3.75,y+U,3.25,U,C.dadoL);
+  }
+  px(0,TS,U,H-TS,C.dadoL); px(W-U,TS,U,H-TS,shade(C.dadoD,.72));
+  px(3.75,TS,U,H-TS,"rgba(30,20,8,.35)"); px(W-4,TS,U,H-TS,"rgba(30,20,8,.35)");
+}
+
+function drawFrontage(){
+  const W=GW*TS, dx=doorX(), fy=(GH-1)*TS+5;
+  px(0,fy-1,W,1,C.soft);                                // the shopfront's shadow falls back into the room
+  px(0,fy,W,0.5,"#8a5a34"); px(0,fy+0.5,W,1.25,"#5e3a22");   // head beam
+  for(let x=0;x<W;x+=2) px(x+((seeded("hb"+x)()*4)|0)*U,fy+0.75,U,0.75,"#4d2f1b");
+  px(0,fy+1.75,W,U,"#36200f");
+  px(0,fy+2,W,TS-7,"#4a2e1a");                          // frame behind the glazing
+  for(let x=1;x<GW-1;x++){
+    if(x===dx) continue;
+    const X=x*TS;
+    px(X+1,fy+2.5,TS-2,1.75,"#a9cbd6");                 // sky
+    px(X+1,fy+4.25,TS-2,3.5,C.glass);                   // buildings across the street
+    px(X+2,fy+5,2.5,2.75,shade(C.glass,.88));
+    px(X+9,fy+4.75,3,3,shade(C.glass,.93));
+    px(X+1,fy+7.75,TS-2,1.25,C.street);                 // pavement
+    px(X+1,fy+9,TS-2,0.5,shade(C.street,.8));
+    for(let i=0;i<9;i++)                                // two thin reflection streaks
+      px(X+2+i*0.5, fy+7.75-i*0.5, 0.5,U,"rgba(255,255,255,.34)");
+    for(let i=0;i<5;i++)
+      px(X+6.5+i*0.5, fy+7.25-i*0.5, 0.5,U,"rgba(255,255,255,.22)");
+    px(X+1,fy+2.5,TS-2,U,"rgba(255,255,255,.5)");       // glass edges
+    px(X+1,fy+2.5,U,7,"rgba(255,255,255,.28)");
+    px(X+TS-1.25,fy+2.5,U,7,C.glassD);
+    px(X+1,fy+9.5,TS-2,U,C.glassD);
+    px(X,fy+2,1,8,"#5e3a22"); px(X,fy+2,U,8,"#7d5130");  // mullion
+    px(X+TS-1,fy+2,1,8,"#5e3a22"); px(X+TS-1,fy+2,U,8,"#7d5130");
+  }
+  // door
+  const DX=dx*TS;
+  px(DX-0.5,fy+1,TS+1,TS-6,"#33200f");
+  px(DX,fy+1.5,TS,TS-7,C.door);
+  px(DX,fy+1.5,TS,U,"#9a6438"); px(DX,fy+1.5,U,TS-7,"#9a6438");
+  px(DX+TS-U,fy+1.5,U,TS-7,"#4e2f18");
+  px(DX+1,fy+2.5,TS-2,5.25,"#a8ccd8");                  // glazed upper panel
+  px(DX+1,fy+2.5,TS-2,1.25,"#d3e8ef");
+  px(DX+1,fy+6.75,TS-2,1,C.street);
+  px(DX+7.5,fy+2.5,U,5.25,C.door);                      // glazing bar
+  px(DX+1,fy+5,U,2.75,C.door);
+  px(DX+1,fy+2.5,TS-2,U,"rgba(255,255,255,.5)");
+  px(DX+1,fy+7.75,TS-2,U,"#6d99ad");
+  px(DX+1.5,fy+8.5,TS-3,2,"#6b4023");                   // lower panel
+  px(DX+1.5,fy+8.5,TS-3,U,"#8d5a31"); px(DX+1.5,fy+10.25,TS-3,U,"#4e2f18");
+  px(DX+TS-3,fy+5.25,0.75,1.75,C.brass); px(DX+TS-3,fy+5.25,U,1.75,"#f2d089");
+  px(DX+2,fy+3.25,4,1.25,"#f0e3c6");                    // OPEN card
+  px(DX+2,fy+3.25,4,U,"#fdf5e2"); px(DX+2.5,fy+3.6,3,0.5,"#b8402f");
+  // sill, kerb and doormat
+  px(0,fy+TS-6,W,0.5,"#6b4526"); px(0,fy+TS-5.5,W,0.5,"#3a2415");
+  px(DX+1,(GH-1)*TS+3,TS-2,2,"#7d5a3a");
+  px(DX+1,(GH-1)*TS+3,TS-2,U,"#96704b"); px(DX+1,(GH-1)*TS+4.75,TS-2,U,"#5c4028");
+  for(let i=0;i<6;i++) px(DX+2+i*2,(GH-1)*TS+3.5,U,1.25,"#6b4a30");
+}
+
+/* ---------- shelving ---------- */
+function drawShelf(x,y,ids){
+  const X=x*TS, Y=y*TS;
+  px(X+0.5,Y+2.5,TS-1,TS-2,C.shadow);                 // cast shadow on the floor
+  px(X,Y+1,TS,TS-1,C.woodD);                          // carcass
+  px(X+1.25,Y+2.5,TS-2.5,TS-3.5,shade(C.woodD,.78));  // back panel in shadow
+  px(X+1.25,Y+2.5,TS-2.5,0.5,shade(C.woodD,.6));      // cornice casts onto it
+  for(let i=0;i<9;i++)                                // grain on the side stiles
+    px(X+0.25+ (i%2?TS-1.5:0), Y+2.5+i*1.4, U, 1, shade(C.wood, i%2?.82:1.12));
+  px(X,Y+1,TS,0.5,C.woodL);                           // cornice
+  px(X,Y+0.75,TS,0.25,shade(C.woodL,1.2));
+  px(X,Y+1.5,TS,U,C.woodX);
+  px(X,Y+1,1.25,TS-1,C.wood); px(X+TS-1.25,Y+1,1.25,TS-1,C.wood);
+  px(X,Y+1,U,TS-1,C.woodL); px(X+TS-U,Y+1,U,TS-1,C.woodX);
+
+  const rowTop=[2.75,7.25,11.75], rowH=3.5;
+  for(let r=0;r<3;r++){
+    const sy=Y+rowTop[r];
+    const id=ids&&ids[r];
+    if(id!=null){
+      const bk=BOOK(id), base=SPINE[bk.genre]||"#7a5a4a", rr=seeded(bk.title+"#"+x+y+r);
+      let bx=X+1.5;
+      while(bx<X+TS-2){
+        const w=q(0.75+rr()*0.75), h=q(rowH-0.5-rr()*1), lean=rr()<0.08 && bx>X+TS-6;
+        if(bx+w>X+TS-1.5) break;
+        const col=shade(base, 0.8+rr()*0.5);
+        const top=sy+rowH-h;
+        px(bx,top,w,h,col);
+        px(bx,top,U,h,shade(col,1.3));                // lit edge of the spine
+        px(bx+w-U,top,U,h,shade(col,.66));
+        px(bx,top,w,U,shade(col,1.18));               // head of the block
+        if(rr()<0.45) px(bx+U,top+h*0.3,w-2*U,U,C.brass);   // gilt band
+        if(rr()<0.3)  px(bx+U,top+h*0.55,w-2*U,U,shade(col,1.45));
+        if(lean) px(bx+w,sy+rowH-1,q(1.25),1,shade(base,.9));
+        bx+=w+U;
+      }
+    }
+    px(X+1.25,sy+rowH,TS-2.5,0.5,C.wood);             // shelf board
+    px(X+1.25,sy+rowH,TS-2.5,U,C.woodL);
+    px(X+1.25,sy+rowH+0.5,TS-2.5,U,C.woodX);
+    px(X+1.25,sy+rowH+0.75,TS-2.5,U,"rgba(40,26,12,.2)");
+  }
+  px(X,Y+TS-0.75,TS,0.75,C.woodX);                    // plinth
+  px(X+0.25,Y+TS-0.5,TS-0.5,U,"rgba(0,0,0,.25)");
+}
+
+/* ---------- counter, display table, palm, kopi corner ---------- */
+function drawFurn(x,y,t){
+  const X=x*TS, Y=y*TS;
+  if(t===COUNTER){
+    px(X+0.5,Y+7,TS-1,TS-6.5,C.shadow);
+    px(X,Y+6.5,TS,TS-6.5,C.woodD);                    // carcass
+    px(X+0.5,Y+7.5,TS-1,TS-8.5,C.woodL);              // front face
+    px(X+1.5,Y+8.5,5.5,4.5,shade(C.woodL,.84));       // recessed panels
+    px(X+9,Y+8.5,5.5,4.5,shade(C.woodL,.84));
+    px(X+1.5,Y+8.5,5.5,U,shade(C.woodL,.62)); px(X+9,Y+8.5,5.5,U,shade(C.woodL,.62));
+    px(X+1.5,Y+12.75,5.5,U,shade(C.woodL,1.22)); px(X+9,Y+12.75,5.5,U,shade(C.woodL,1.22));
+    px(X,Y+TS-1,TS,1,C.woodX);                        // plinth
+    px(X,Y+5.5,TS,1.5,"#c9b48a");                     // counter top
+    px(X,Y+5.5,TS,U,"#e6d6b2");
+    px(X,Y+6.75,TS,U,"#8f7a52");
+    px(X+1.75,Y+5.25,12.5,U,"rgba(40,26,12,.22)");    // things standing on it cast onto the top
+    px(X+9.25,Y+2.25,5.5,3.25,"rgba(40,26,12,.18)");
+    px(X+9.5,Y+2,5,3.25,"#6f7280");                   // till
+    px(X+9.5,Y+2,5,U,"#a3a8b4"); px(X+9.5,Y+5,5,U,"#494c56");
+    px(X+9.5,Y+2,U,3.25,"#8c909b"); px(X+14.25,Y+2,U,3.25,"#4f525c");
+    px(X+10.25,Y+2.5,3.5,1,"#cfe4d8");                // its little screen
+    px(X+10.25,Y+2.5,3.5,U,"#8fb0a4");
+    for(let i=0;i<3;i++) px(X+10.25+i*1.25,Y+4,0.75,0.5,"#40434d");
+    px(X+2,Y+3.25,3.75,0.75,"#356a6a");               // a stack of books
+    px(X+2,Y+3.25,3.75,U,"#4b8888");
+    px(X+1.75,Y+4,4,0.75,"#8a4a4a"); px(X+1.75,Y+4,4,U,"#a86060");
+    px(X+2.25,Y+4.75,3.5,0.5,"#5a4a3a"); px(X+2.25,Y+4.75,3.5,U,"#7a6450");
+    px(X+7,Y+3.75,1.75,1.5,"#b9c9c4");                // pen jar
+    px(X+7,Y+3.75,U,1.5,"#dcebe6"); px(X+8.5,Y+3.75,U,1.5,"#8fa19c");
+    px(X+7.4,Y+2.5,0.3,1.4,"#2f5f7a"); px(X+8,Y+2.75,0.3,1.2,"#8a4a4a");
+  }
+  if(t===TABLE){
+    px(X+1.5,Y+8.25,TS-3,TS-8.25,C.shadow);
+    px(X+2.5,Y+9,1,4.5,C.woodD); px(X+TS-3.5,Y+9,1,4.5,C.woodD);   // legs
+    px(X+2.5,Y+9,U,4.5,C.wood);  px(X+TS-3.5,Y+9,U,4.5,C.wood);
+    px(X+1,Y+7,TS-2,2,C.wood);                        // top
+    px(X+1,Y+7,TS-2,U,C.woodL);
+    px(X+1,Y+8.75,TS-2,0.25,C.woodX);
+    px(X+1.75,Y+8.25,TS-3.5,0.5,"#9a4a48");           // runner cloth
+    px(X+1.75,Y+8.25,TS-3.5,U,"#b45e5a");
+    const id=S.slots[key(x,y)]&&S.slots[key(x,y)][0];
+    if(id!=null){
+      const bk=BOOK(id), col=SPINE[bk.genre]||"#8a5a4a";
+      px(X+4.5,Y+6.5,7,0.5,"rgba(40,26,12,.25)");     // the featured title, stood face-out
+      px(X+5.25,Y+1.5,0.75,5.25,"#efe6d2");           // page block behind the cover
+      px(X+5.25,Y+1.5,0.75,U,"#fffaf0");
+      px(X+6,Y+1.25,5,5.5,col);                       // cover
+      px(X+6,Y+1.25,5,U,shade(col,1.45)); px(X+6,Y+1.25,U,5.5,shade(col,1.4));
+      px(X+10.75,Y+1.25,U,5.5,shade(col,.62)); px(X+6,Y+6.5,5,U,shade(col,.68));
+      px(X+6.75,Y+2.25,3.5,0.75,"#f2e9d6");           // title band
+      px(X+6.75,Y+4,2.5,U,"rgba(255,255,255,.5)");
+      px(X+6.75,Y+4.75,3,U,"rgba(255,255,255,.35)");
+      px(X+8.25,Y+5.5,1.25,0.5,C.brass);
+      px(X+4.75,Y+5.5,1.5,1.5,"#7d5a3a");             // the little easel
+      px(X+4.75,Y+5.5,U,1.5,"#9a734d");
+    }
+  }
+  if(t===PLANT){
+    px(X+4.25,Y+13.25,7.5,1.25,C.shadow);
+    px(X+5.5,Y+9.5,5,4,"#a9613a");                    // terracotta pot
+    px(X+5.5,Y+9.5,U,4,"#c97b4c"); px(X+10.25,Y+9.5,U,4,"#8a4b2b");
+    px(X+5.5,Y+13,5,0.75,"#84472a");
+    px(X+5,Y+8.75,6,1,"#bc6c42");                     // rim
+    px(X+5,Y+8.75,6,U,"#d98a58"); px(X+5,Y+9.5,6,U,"#8a4b2b");
+    px(X+6,Y+8.25,4,0.5,"#4a3524");                   // soil
+    px(X+7.5,Y+5,1,3.5,"#4a6b35"); px(X+7.5,Y+5,U,3.5,"#5f8748");  // stem
+    // six fronds arcing out of the crown, each a rib with tapering leaflets
+    const cx=X+8, cy=Y+5;
+    const dirs=[[-1,-0.25],[1,-0.25],[-0.8,-0.75],[0.8,-0.75],[-0.35,-1],[0.35,-1]];
+    dirs.forEach((d,i)=>{
+      const tone=["#3f7a45","#4f9a55","#37703e"][i%3], lit=shade(tone,1.2);
+      const len=d[1]<-0.9?5:6;
+      for(let s=1;s<=len;s++){
+        const t2=s/len;
+        const fx=q(cx+d[0]*s*0.8), fy=q(cy+d[1]*s*0.62+t2*t2*1.3);
+        px(fx,fy,0.5,0.25,shade(tone,.78));           // rib
+        const lw=q(1.5*Math.sin(Math.PI*Math.min(1,t2*1.15)));
+        if(lw>=0.25){
+          px(d[0]<0?fx-lw:fx+0.5, fy-0.5, lw,0.25, lit);
+          px(d[0]<0?fx-lw*0.8:fx+0.5, fy+0.25, q(lw*0.8),0.25, tone);
+        }
+      }
+    });
+  }
+  if(t===CAFE){
+    px(X+0.5,Y+5,TS-1,TS-4.5,C.shadow);
+    px(X,Y+4.5,TS,TS-4.5,"#4a3527");                  // counter
+    px(X+0.5,Y+5.5,TS-1,TS-6.5,"#6d4e34");
+    px(X+1.5,Y+6.75,5.5,4,shade("#6d4e34",.82)); px(X+9,Y+6.75,5.5,4,shade("#6d4e34",.82));
+    px(X+1.5,Y+6.75,5.5,U,shade("#6d4e34",.6)); px(X+9,Y+6.75,5.5,U,shade("#6d4e34",.6));
+    px(X,Y+4,TS,1,"#8f6a45"); px(X,Y+4,TS,U,"#b08a5e"); px(X,Y+4.75,TS,U,"#6a4c30");
+    px(X+1.75,Y+3.75,12.5,U,"rgba(30,20,10,.28)");    // contact shadows on the counter top
+    px(X+1.75,Y+0.5,4.5,3.5,"rgba(30,20,10,.16)");
+    px(X+2,Y+0.5,4,3.5,"#cfd4da");                    // kopi urn
+    px(X+2,Y+0.5,4,U,"#eef1f4"); px(X+2,Y+3.75,4,U,"#868d96");
+    px(X+2,Y+0.5,U,3.5,"#e4e8ec"); px(X+5.75,Y+0.5,U,3.5,"#9aa1a9");
+    px(X+3,Y+2,2,0.75,"#4a3527"); px(X+5.75,Y+1.75,0.75,1,"#8d949c");
+    px(X+3.25,Y+3.75,1.5,0.5,"#6b4a2e");              // spout drip tray
+    px(X+7.5,Y+2.75,1.75,1.25,"#f2ead8");             // cups
+    px(X+7.5,Y+2.75,1.75,U,"#ffffff"); px(X+7.5,Y+3.75,1.75,U,"#cdc4b0");
+    px(X+9.25,Y+3,0.4,0.6,"#e4dcc8");
+    px(X+10,Y+2.75,1.75,1.25,"#f2ead8"); px(X+10,Y+2.75,1.75,U,"#ffffff");
+    px(X+10,Y+3.75,1.75,U,"#cdc4b0");
+    px(X+12.5,Y+0.75,3,3.25,"#3c2a1c");               // little menu board
+    px(X+12.5,Y+0.75,3,U,"#5e4630"); px(X+12.75,Y+1,2.5,2.75,"#241a12");
+    px(X+13,Y+1.5,2,U,"#dcc88e"); px(X+13,Y+2.25,1.5,U,"#b8a070");
+    px(X+13,Y+3,1.75,U,"#b8a070");
+  }
+}
+
 function drawSprite(X,Y,skin,hair,shirt,bob){
-  // chibi proportions, big head, 2-tone shading per surface — the 16-bit-style look
+  // fallback chibi, only seen if a sprite sheet has not decoded yet
   px(X-3,Y+12,7,2,C.shadow);
-  px(X-2,Y+11-bob,2,2,"#2a2a30"); px(X+1,Y+11-bob,2,2,"#2a2a30");      // legs
-  px(X-3,Y+4-bob,7,8,shirt);                                          // body
-  px(X-3,Y+4-bob,7,2,shade(shirt,1.3));                                // shoulder highlight
-  px(X-3,Y+10-bob,7,2,shade(shirt,.75));                               // hem shadow
-  px(X-3,Y-4-bob,7,7,skin);                                            // head
-  px(X-3,Y-1-bob,7,2,shade(skin,.88));                                 // jaw shading
-  px(X-3,Y-5-bob,7,3,hair); px(X-4,Y-3-bob,1,4,hair); px(X+3,Y-3-bob,1,4,hair); // hair + sides
-  px(X-1,Y-2-bob,1,1,"#20161a"); px(X+2,Y-2-bob,1,1,"#20161a");        // eyes
-  px(X-2,Y-1-bob,1,1,"#e08a78"); px(X+3,Y-1-bob,1,1,"#e08a78");        // blush
+  px(X-2,Y+11-bob,2,2,"#2a2a30"); px(X+1,Y+11-bob,2,2,"#2a2a30");
+  px(X-3,Y+4-bob,7,8,shirt);
+  px(X-3,Y+4-bob,7,2,shade(shirt,1.3));
+  px(X-3,Y+10-bob,7,2,shade(shirt,.75));
+  px(X-3,Y-4-bob,7,7,skin);
+  px(X-3,Y-1-bob,7,2,shade(skin,.88));
+  px(X-3,Y-5-bob,7,3,hair); px(X-4,Y-3-bob,1,4,hair); px(X+3,Y-3-bob,1,4,hair);
+  px(X-1,Y-2-bob,1,1,"#20161a"); px(X+2,Y-2-bob,1,1,"#20161a");
+  px(X-2,Y-1-bob,1,1,"#e08a78"); px(X+3,Y-1-bob,1,1,"#e08a78");
 }
-// Shopkeeper sprite sheet: 4 front-facing idle frames at native resolution, each KEEPER_FW x KEEPER_FH device px
-const KEEPER_FW=22, KEEPER_FH=28;
-const KEEPER_SPRITE="data:image/png;base64,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";
+// Shopkeeper sprite sheet: four idle frames (breathe, breathe, blink, breathe) drawn at the
+// scene's own resolution — KEEPER_FW x KEEPER_FH device px, i.e. 11 x 14 game px on screen.
+const KEEPER_FW=44, KEEPER_FH=56, KEEPER_SEQ=[0,1,0,2,0,1,0,3];
+const KEEPER_SPRITE="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALAAAAA4CAYAAABdVHLrAAADZUlEQVR42u2cvYoUQRSF5zXczGTZQDcSFBGNNFjUyNTIZKLVWMRATIwGDAwMRDA2MzLwBQRDn8BYjExXbsOVmrKqpmfae6vvztdwmJ+q6Trzcaq7uru6FwsWFpbF4vjihbOaoAPf2YN9v7xa1MnxwSxBRwkEfDuAfXrvaE1zAh0lEPA1NlkzWAJcAk0g4NuFr5qsQRwjb8iRAgHfmcP1hhwpEPAFMH7xa2NWDKbvVZamIwGGb8cAp8Bq+v7u8d8xj7z/8OTE1HS0QMDXuMOpYW0obVyAjVEKWwBbDuKjBgK+hgGWBn5+Wa01npuqQc3reAGOFAj4Gp6VUMClxncVgYCvF99/AIt+//oxSMrktWS4VYdAtPlOFXxHBFivprQCXKvjHYhIHU63SqlKflt14FswnEKaEmDvXXKUDlcL6raCb8WwvH57uRzUglcr09/q+jwDEaHDwTdQgC0nc0QNBHyNT6Xpqx59bjKZfy+fva7RRwoEfB3nC0sjJVP5AUWtjtfso0iBgK/zopDHHnRo3V5zVSMEAr4djG8CnYLtOQs/UiDg6whX9OjV50GlHie6fPt0FvdERQsEfA2NKlTRneXbQbVdhJRpXYVNIODb7ZaiFGqqFuBU3pAjBQK+neCq4ZJKdb2MRwoEfB12ETWzb57frwKWsppp65PtUQIB31PbCxjpLkIaKwEugax9n6/vf5uPFAj4Gne43GgL8NdPz9bUAmzV+6IFAr7GHW4bwB9fP1xTT8DRAgFfo+HEGMNiLoererG8SSDg243vuQSM3/3xC2D8nu8At8zWTAMYvgQYv/gFMH4JMIDxGy3AejpkVwEYvgQYv/gda1jueVKlEzLG9LZSr8vXt++BgK9DgEtT4gSwgBurFLDVfVGyLoGQamog8vVZBBi+Nnw3As6lMEvfewFubdF2DYTlFg2+dnzDAsYvfpuGdXcx1nC62wAwfF0DXJpVPwVwvr59DwR8V7bPikhny+tAe5sBezpwTwfqVnc4RAMM35Xfw04UyjaD9VQezxgr3co9JRCWWzT4+vJd+yNHl24Mun7rwSD9vKnMw1uuqYHwfpYBfPcYMH7xC2D8EmAA45cA4xe/FmavHB6c3b12WJSU18rkdz0eGo1f/AIYvwQYwPidTYBrGlOOX/xO9fsHedbdWNNIaf8AAAAASUVORK5CYII=";
 const keeperImg=new Image(); keeperImg.src=KEEPER_SPRITE;
 function drawKeeper(){
   if(!S.keeper) return;
   const [kx,ky]=S.keeper;
   const X=kx*TS+8, Y=ky*TS+3;
-  if(!keeperImg.complete || !keeperImg.naturalWidth){   // sheet not decoded yet -> old placeholder
+  if(!keeperImg.complete || !keeperImg.naturalWidth){   // sheet not decoded yet -> placeholder
     const bob=((S.tick>>4)&1)?1:0;
-    drawSprite(X, Y, "#c58a5e", "#241a18", "#7a5a8a", bob);
+    drawSprite(X, Y, "#d69e6f", "#7a4a2a", "#46689a", bob);
     return;
   }
-  px(X-4,Y+12,9,2,C.shadow);
-  const frame=(S.tick>>4)&1;                     // slow idle shift of weight between frames 0 and 1
-  // canvas runs at PX device px per game px, so drawing at 1/PX game px shows the sprite 1:1, no resampling
-  ctx.drawImage(keeperImg, frame*KEEPER_FW,0,KEEPER_FW,KEEPER_FH, kx*TS+3, ky*TS+TS-KEEPER_FH/PX, KEEPER_FW/PX, KEEPER_FH/PX);
+  const fx=kx*TS+(TS-KEEPER_FW/PX)/2, fy=ky*TS+TS-KEEPER_FH/PX;
+  px(fx+2.25,fy+KEEPER_FH/PX-1,6.5,0.75,C.shadow);
+  px(fx+1.5,fy+KEEPER_FH/PX-0.75,8,0.5,C.shadow);
+  const frame=KEEPER_SEQ[(S.tick>>4)%KEEPER_SEQ.length];
+  // the sheet is authored at PX device px per game px, so this draws it 1:1 with no resampling
+  ctx.drawImage(keeperImg, frame*KEEPER_FW,0,KEEPER_FW,KEEPER_FH, fx, fy, KEEPER_FW/PX, KEEPER_FH/PX);
 }
 
 // ---- Customer sprites: five body types cut from the character sheets (rows: down, up, left, right;
@@ -961,8 +1259,8 @@ function drawPerson(p){
   if(sheet){
     px(X-4,Y+12,9,2,C.shadow);
     const row=NPC_ROW[p.dir]||0, frame=p.moving?1+((S.tick>>1)%8):0;
-    // sheet is native-resolution device px; drawn at 1/PX game px so it stays 1:1 like the keeper
-    ctx.drawImage(sheet, frame*NPC_FW,row*NPC_FH,NPC_FW,NPC_FH, Math.round(X)-6, Y+13-NPC_FH/PX, NPC_FW/PX, NPC_FH/PX);
+    // these sheets are authored at ART device px per game px, so they keep their on-screen size
+    ctx.drawImage(sheet, frame*NPC_FW,row*NPC_FH,NPC_FW,NPC_FH, Math.round(X)-6, Y+13-NPC_FH/ART, NPC_FW/ART, NPC_FH/ART);
   } else drawSprite(X,Y,p.skin,p.hair,p.shirt,bob);
   if(p.state==="browse"||p.state==="walk"){
     const pat=p.patience/p.patMax;
@@ -978,32 +1276,8 @@ function updateSign(){
 }
 function render(){
   updateSign();
-  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
-    px(x*TS,y*TS,TS,TS,(x+y)%2?C.floor1:C.floor2);
-    px(x*TS,y*TS,TS,1,C.grout); px(x*TS,y*TS,1,TS,C.grout);
-    const rr=seeded("t"+x+"_"+y);
-    for(let i=0;i<5;i++) px(x*TS+2+((rr()*12)|0), y*TS+2+((rr()*12)|0),1,1,
-      ["#b6a98d","#d8ccb2","#a89a80"][(rr()*3)|0]);
-  }
-  // back wall + signage board (label itself is a sharp HTML overlay, see updateSign())
-  for(let x=0;x<GW;x++){ px(x*TS,0,TS,TS,C.wall); px(x*TS,TS-4,TS,4,C.dado); }
-  const boardX=1*TS+4, boardW=(GW-2)*TS-8;
-  px(boardX,2,boardW,10,"#6b3f0a"); px(boardX+1,3,boardW-2,8,"#8a5a1a");
-  for(let y=1;y<GH;y++){ px(0,y*TS,4,TS,C.dado); px(GW*TS-4,y*TS,4,TS,C.dado); }
-  // street frontage: glazing, door, kerb
-  const dx=doorX();
-  const fy=(GH-1)*TS+6;
-  px(0,fy,GW*TS,TS-6,"#3b2a1e");
-  for(let x=1;x<GW-1;x++){
-    if(x===dx) continue;
-    px(x*TS+1,fy+2,TS-2,7,"#8fb8c9");
-    px(x*TS+1,fy+2,TS-2,2,"#b6d6e0");
-  }
-  px(dx*TS-1,fy-2,TS+2,TS-4,"#2a1c12");
-  px(dx*TS,fy,TS,TS-6,C.door); px(dx*TS+2,fy+1,TS-4,8,"#a8ccd8");
-  px(dx*TS+2,fy+1,TS-4,2,"#cfe6ee"); px(dx*TS+12,fy+5,1,2,"#e8b04b");
-  px((dx-1)*TS+8,fy-4,TS,3,"#8a5a3a");
-
+  if(!bgCv) buildBackdrop();
+  ctx.drawImage(bgCv,0,0,GW*TS,GH*TS);          // baked floor, walls and shopfront
   for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
     const t=S.grid[y][x];
     if(t===SHELF) drawShelf(x,y,S.slots[key(x,y)]);
@@ -1011,13 +1285,16 @@ function render(){
   }
   if(S.placing!=null){
     for(let y=1;y<GH-1;y++)for(let x=1;x<GW-1;x++)
-      if(S.grid[y][x]===EMPTY) px(x*TS+6,y*TS+6,4,4,"rgba(232,176,75,.5)");
+      if(S.grid[y][x]===EMPTY){
+        px(x*TS+5.5,y*TS+5.5,5,5,"rgba(232,176,75,.45)");
+        px(x*TS+5.5,y*TS+5.5,5,U,"rgba(255,228,175,.85)");
+      }
   }
   drawKeeper();
   S.customers.forEach(drawPerson);
   if(S.phase==="open"){
     const w=Math.round(GW*TS*(S.tick/S.dayLen));
-    px(0,0,GW*TS,3,"#20161a"); px(0,0,w,3,"#e8b04b");
+    px(0,0,GW*TS,0.75,"#20161a"); px(0,0,w,0.75,"#e8b04b");
   }
 }
 
@@ -1106,36 +1383,47 @@ function stepCustomer(p){
     else if(p.state==="leave"){ p.dead=true; }
   }
   // passive self-serve: small chance if a shelved book fits them well
-  if(p.state==="browse" && !p.served && S.tick%40===0){
+  if(p.state==="browse" && !p.served && S.tick%30===0){
     const best=bestMatchFor(p);
-    if(best && best.score>=78 && Math.random()<0.22) completeSale(p,best.id,true);
+    if(best && best.score>=70 && Math.random()<0.32) completeSale(p,best.id,true);
   }
 }
+const SALE_SCORE=45;                                // score at or above this and they buy
 function scoreMatch(p,id){
   const bk=BOOK(id), w=p.arch.want, price=priceOf(id);
-  let s=10;
-  if(w.genres.includes(bk.genre)) s+=42;
-  else s-=14;
+  let s=18;
+  if(w.genres.includes(bk.genre)) s+=40;
+  else s-=8;                                        // wrong shelf is a miss, not a slammed door
   const moodHits=bk.moods.filter(m=>w.moods.includes(m)).length;
   s+=moodHits*16;
-  if(w.avoid.includes(bk.genre)) s-=55;
-  if(bk.moods.some(m=>w.avoid.includes(m))) s-=30;
-  if(price<=w.max) s+=18; else s-= Math.min(45,(price-w.max)*3.2);
-  const fair=autoPrice(BOOK(id).cost);
-  if(price>fair*1.25) s-=12;
-  if(price<fair*0.85) s+=4;
+  if(w.avoid.includes(bk.genre)) s-=50;
+  if(bk.moods.some(m=>w.avoid.includes(m))) s-=28;
+  // Budget is a soft ceiling: people stretch for the right book, and the penalty scales with
+  // how far past their own number you are, not with flat ringgit.
+  if(price<=w.max) s+=16;
+  else s-= Math.min(42, Math.round(((price-w.max)/w.max)*95));
+  const fair=autoPrice(bk.cost);
+  if(price>fair*1.3) s-=10;
+  if(price<fair*0.9) s+=5;
+  s+=(p.clues?p.clues.length:0)*3;                  // asking earns you the benefit of the doubt
   return Math.round(clamp(s,0,100));
 }
 function bestMatchFor(p){
   let best=null;
   shelvedIds().forEach(id=>{ if(!S.stock[id]||S.stock[id].copies<=0) return;
+    if(ownsBook(p,id)) return;                       // already on their shelf at home
     const sc=scoreMatch(p,id); if(!best||sc>best.score) best={id,score:sc}; });
   return best;
 }
+// Returns true if the sale actually went through. It can fail late: the last copy may have
+// gone to a passive browser while this conversation was open.
 function completeSale(p,id,passive){
-  const st=S.stock[id]; if(!st||st.copies<=0) return;
+  const st=S.stock[id]; if(!st||st.copies<=0) return false;
+  if(ownsBook(p,id)) return false;                // they already own this one
   const price=priceOf(id);
-  st.copies--; S.cash+=price; S.stats.rev+=price; S.stats.served++;
+  st.copies--; S.cash=Math.round((S.cash+price)*100)/100; S.stats.rev+=price; S.stats.served++;
+  recordPurchase(p,id);
+  p.paid=price;
   S.soldEver[id]=(S.soldEver[id]||0)+1;
   p.served=true; p.bubble=false;
   const sc=scoreMatch(p,id);
@@ -1143,7 +1431,8 @@ function completeSale(p,id,passive){
   else S.rep=clamp(S.rep+(passive?1.0:2.4),0,100);
   if(st.copies===0){ Object.keys(S.slots).forEach(k=>{ S.slots[k]=S.slots[k].filter(x=>x!==id); }); }
   p.state="leave"; p.path=pathTo(p,doorX(),GH-1); p.pi=0;
-  log((passive?"":"")+p.name+" bought "+BOOK(id).title+" — "+rm(price));
+  log(p.name+" paid "+rm(price)+" for "+BOOK(id).title);
+  return true;
 }
 function log(t){ S.history.unshift(t); if(S.history.length>40)S.history.pop(); }
 
@@ -1170,7 +1459,8 @@ function loop(ts){
 function startDay(){
   S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[]; S.seenToday=[]; S.dayCast=[];
   S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0};
-  const n=maxCustomers();
+  const n=rollFootfall();
+  S.footfall=n;
   for(let i=0;i<n;i++) S.spawnQueue.push(Math.round(40 + (S.dayLen-260)*(i/n) + Math.random()*40));
   S.spawnQueue.sort((a,b)=>a-b);
   tip("Tap a customer to talk. The bar over their head is patience.");
@@ -1179,12 +1469,12 @@ function startDay(){
 function endDay(){
   S.phase="evening";
   const r=rent();
-  S.cash-=r;
-  paint();
+  S.cash=Math.round((S.cash-r)*100)/100;
+  paint(); autosave();
 }
 function nextDay(){
   S.day++; S.phase="morning"; S.stats.spent=0; S.tab="stock";
-  rollOffers(); paint();
+  rollOffers(); paint(); autosave();
 }
 
 /* ============================================================
@@ -1199,7 +1489,7 @@ function setAction(label,fn){
 function shopLabel(){ return "Kedai Buku"+(S.shopName?" "+S.shopName:""); }
 function hud(){
   $("#hDay").textContent=S.day;
-  $("#hCash").textContent=Math.round(S.cash);
+  $("#hCash").textContent=money(S.cash);
   $("#hRep").textContent=Math.round(S.rep);
   $("#hPhase").textContent={morning:"MORNING",open:"OPEN",evening:"CLOSED"}[S.phase];
 }
@@ -1279,7 +1569,7 @@ function drawMorning(){
   }
 
   if(S.tab==="price"){
-    P.appendChild(el("p",null,"AUTO prices at 1.75x cost — safe, never greedy. Manual lets you chase margin, but every customer has a ceiling and Wei Lun's is RM30."));
+    P.appendChild(el("p",null,"AUTO prices at 1.45x cost — safe, never greedy. Manual lets you chase margin, but every customer has a ceiling and Wei Lun's is RM30."));
     const ids=Object.keys(S.stock).map(Number).filter(id=>S.stock[id].copies>0);
     if(!ids.length) P.appendChild(el("div","empty","No stock yet.<br>Buy some books first."));
     ids.forEach(id=>{
@@ -1290,11 +1580,11 @@ function drawMorning(){
       const auto=el("button","btn-sm",st.auto?"AUTO":"MANUAL");
       auto.style.background=st.auto?"var(--gold)":"var(--panel-2)";
       auto.style.color=st.auto?"#150f0b":"var(--ink)";
-      auto.onclick=e=>{e.stopPropagation(); st.auto=!st.auto; if(!st.auto)st.price=autoPrice(st.cost); drawMorning();};
+      auto.onclick=e=>{e.stopPropagation(); st.auto=!st.auto; if(!st.auto)st.price=autoPrice(st.cost); drawMorning(); autosave();};
       r.appendChild(auto);
       if(!st.auto){
-        const m=el("button","btn-sm","−"); m.onclick=e=>{e.stopPropagation();st.price=Math.max(st.cost,st.price-2);drawMorning();};
-        const p2=el("button","btn-sm","+"); p2.onclick=e=>{e.stopPropagation();st.price+=2;drawMorning();};
+        const m=el("button","btn-sm","−"); m.onclick=e=>{e.stopPropagation();st.price=Math.max(st.cost,st.price-2);drawMorning();autosave();};
+        const p2=el("button","btn-sm","+"); p2.onclick=e=>{e.stopPropagation();st.price+=2;drawMorning();autosave();};
         r.appendChild(m); r.appendChild(p2);
       }
       const lab=el("span","price",rm(priceOf(id)));
@@ -1309,7 +1599,7 @@ function drawMorning(){
 
   if(S.tab==="shop"){
     const tierInfo=SIZE_TIERS[S.tier];
-    P.appendChild(el("p",null,tierInfo.name+" · level "+level()+" · rent "+rm(rent())+"/day · "+maxCustomers()+" customers expected."));
+    P.appendChild(el("p",null,tierInfo.name+" · level "+level()+" · rent "+rm(rent())+"/day · "+baseFootfall()+" or more customers expected."));
     const nt=nextTier();
     if(nt){
       const locked = S.rep<nt.rep;
@@ -1339,6 +1629,24 @@ function drawMorning(){
       m.appendChild(bw); c.appendChild(m); P.appendChild(c);
     });
     P.appendChild(el("p",null,"Kopi Corner is the cafe expansion. It does not sell drinks yet — it buys you time, which in this shop is the same thing."));
+
+    P.appendChild(el("h3",null,"This shop"));
+    P.appendChild(el("p",null,saveNote()+" There is nothing to press — the shop is written down each morning and each evening. Close the tab mid-day and you pick that morning up again."));
+    const over=el("button","btn-sm","START OVER");
+    over.onclick=()=>{
+      const sh=$("#sheet"); sh.innerHTML="";
+      $("#modal").classList.add("on");
+      sh.appendChild(el("div","speaker","START OVER?"));
+      sh.appendChild(el("div","say","This erases "+shopLabel()+" — day "+S.day+", "+rm(S.cash)+
+        " in the till and every reader who remembers you — and opens an empty kiosk. It cannot be undone."));
+      const yes=el("button","choice","Erase it and start again");
+      yes.style.borderColor="var(--red)"; yes.style.color="var(--red-deep)";
+      yes.onclick=()=>{ clearSave(); setTimeout(()=>location.reload(),120); };
+      const no=el("button","choice","Keep playing");
+      no.onclick=closeModal;
+      sh.appendChild(yes); sh.appendChild(no);
+    };
+    const ow=el("div"); ow.style.marginTop="4px"; ow.appendChild(over); P.appendChild(ow);
   }
 
   setAction("OPEN THE SHOP",()=>{
@@ -1357,7 +1665,7 @@ function buyStock(id){
   for(const [x,y] of shelves){ const k=key(x,y); S.slots[k]=S.slots[k]||[];
     if(S.slots[k].length<3){ S.slots[k].push(id); break; } }
   S.offers=S.offers.filter(o=>o!==id);
-  drawMorning(); hud();
+  drawMorning(); hud(); autosave();
 }
 
 /* ---------- open ---------- */
@@ -1380,7 +1688,8 @@ function drawOpenPanel(){
     const c=el("div","card");
     const m=el("div","meta");
     m.appendChild(el("div","t",p.name));
-    m.appendChild(el("div","a",p.arch.role+(p.served?" · served":"")));
+    const owns=ownedCount(p);
+    m.appendChild(el("div","a",p.arch.role+(owns?" · returning, owns "+owns:"")+(p.served?" · served":"")));
     const bar=el("div","bar"); const i=el("i"); i.style.width=Math.round(100*p.patience/p.patMax)+"%";
     bar.appendChild(i); m.appendChild(bar);
     c.appendChild(m);
@@ -1434,7 +1743,9 @@ function renderPick(p,convo){
   const sh=$("#sheet"); sh.innerHTML="";
   sh.appendChild(el("div","speaker","RECOMMEND TO "+p.name.toUpperCase()));
   if(p.clues.length){ const cl=el("div","clues"); p.clues.forEach(c=>cl.appendChild(el("span","tag g",c))); sh.appendChild(cl); }
-  const ids=shelvedIds().filter(id=>S.stock[id]&&S.stock[id].copies>0);
+  const all=shelvedIds().filter(id=>S.stock[id]&&S.stock[id].copies>0);
+  const owned=all.filter(id=>ownsBook(p,id));
+  const ids=all.filter(id=>!ownsBook(p,id));
   const grid=el("div","pick");
   ids.forEach(id=>{
     const bk=BOOK(id);
@@ -1445,6 +1756,13 @@ function renderPick(p,convo){
     grid.appendChild(cell);
   });
   sh.appendChild(grid);
+  if(!ids.length) sh.appendChild(el("div","empty","Nothing on your shelves that "+p.name+" doesn't already own."));
+  if(owned.length){
+    sh.appendChild(el("h3",null,"Already bought here"));
+    const cl=el("div","clues");
+    owned.forEach(id=>cl.appendChild(el("span","tag r",BOOK(id).title+" · day "+ownedDay(p,id))));
+    sh.appendChild(cl);
+  }
   const back=el("button","choice","← Keep talking"); back.onclick=()=>renderTalk(p,convo);
   sh.appendChild(back);
 }
@@ -1486,7 +1804,15 @@ function resolve(p,id,convo){
   const sh=$("#sheet"); sh.innerHTML="";
   sh.appendChild(el("div","speaker",p.name.toUpperCase()));
   sh.appendChild(el("div","say me","> \""+bk.title+"\" — I think this is you."));
-  const bought=sc>=55;
+  if(ownsBook(p,id)){
+    // They bought this from you already. No one buys the same book twice.
+    sh.appendChild(el("div","say","You sold me this one on day "+ownedDay(p,id)+", boss. It's at home on the shelf."));
+    const vv=el("div","verdict bad"); vv.textContent="ALREADY OWNS IT"; sh.appendChild(vv);
+    const ok2=el("button","choice","← Choose another book"); ok2.onclick=()=>renderPick(p,convo);
+    sh.appendChild(ok2);
+    return;
+  }
+  const bought=sc>=SALE_SCORE;
   sh.appendChild(el("div","say", bought? p.arch.yes : p.arch.no));
   const v=el("div","verdict "+(bought?"good":"bad"));
   v.textContent = sc>=85? "PERFECT MATCH · "+sc : bought? "SOLD · "+sc : "NO SALE · "+sc;
@@ -1497,7 +1823,13 @@ function resolve(p,id,convo){
       " · "+w.moods.join(", ")+" · under "+rm(w.max)+
       (w.avoid.length?" · never "+w.avoid.join(", "):"")));
   }
-  if(bought) completeSale(p,id,false);
+  if(bought){
+    const pay=el("div","say");
+    pay.textContent = completeSale(p,id,false)
+      ? "Pays "+rm(p.paid)+". Till: "+rm(S.cash)+"."
+      : "— but that was the last copy, and it just walked out the door. Nothing to sell them.";
+    sh.appendChild(pay);
+  }
   else { p.patience=Math.min(p.patience,60); p.state="browse"; S.rep=clamp(S.rep-0.3,0,100); }
   const ok=el("button","choice","Continue");
   ok.onclick=()=>{ closeModal(); S.talking=null; if(p.state==="talking")p.state="browse"; drawOpenPanel(); };
@@ -1554,7 +1886,7 @@ function drawEvening(){
     ["Net", st.rev-st.spent-r, (st.rev-st.spent-r)>=0?"pos":"neg"]];
   rows.forEach(([l,v,c])=>P.appendChild(el("div","ledger "+c,"<span>"+l+"</span><b>"+(v<0?"-":"")+rm(Math.abs(v))+"</b>")));
   P.appendChild(el("h3",null,"The day"));
-  P.appendChild(el("p",null, st.served+" served · "+st.delighted+" delighted · "+st.walkouts+" walked out unserved."+
+  P.appendChild(el("p",null, S.footfall+" came in · "+st.served+" served · "+st.delighted+" delighted · "+st.walkouts+" walked out unserved."+
     (st.walkouts>2?" You are losing people to impatience. A Kopi Corner or more palms would buy you time.":"")));
   P.appendChild(el("p",null,"Reputation "+Math.round(S.rep)+"/100 · level "+level()+
     (level()<3?" · next unlock at "+(level()===1?18:45):" · everything unlocked")));
@@ -1584,7 +1916,7 @@ cv.addEventListener("click",e=>{
       if(S.cash>=f.cost){ S.cash-=f.cost; S.stats.spent+=f.cost; S.grid[y][x]=S.placing;
         if(f.slots) S.slots[key(x,y)]=[]; }
     }
-    S.placing=null; tip("Placed."); paint(); return;
+    S.placing=null; tip("Placed."); paint(); autosave(); return;
   }
   if(S.phase==="open"){
     let hit=null,bd=99;
@@ -1605,6 +1937,166 @@ cv.addEventListener("click",e=>{
   }
 });
 $("#modal").addEventListener("click",e=>{ if(e.target.id==="modal") { if(!S.talking) closeModal(); } });
+
+/* ============================================================
+   SAVE
+   The whole shop is one plain object, so a save is a snapshot of S taken at a
+   phase boundary — a morning or an evening, when nobody is mid-walk. Quitting
+   during a trading day therefore resumes at that morning and the day replays,
+   which costs a minute and spares us serialising live pathfinding state.
+
+   Two tiers, and the game is playable with neither: localStorage always (same
+   browser, works when the file is opened directly), and the artifact's own db
+   when the page is running inside a viewer that grants it (same save on any
+   device you open the link from). Whichever copy is newer wins at boot.
+   ============================================================ */
+const SAVE_KEY="kedaibuku.save.v1", SAVE_V=1;
+let saveState="local";            // "local" | "synced" | "error"
+
+function takeSnapshot(){
+  return {
+    v:SAVE_V, phase:(S.phase==="evening"?"evening":"morning"),
+    day:S.day, cash:S.cash, rep:S.rep, tier:S.tier, gw:GW, gh:GH,
+    grid:S.grid, slots:S.slots, stock:S.stock, offers:S.offers, keeper:S.keeper,
+    stats:S.stats, history:S.history, soldEver:S.soldEver, featured:S.featured,
+    seen:S.seen, tutorial:S.tutorial, shopName:S.shopName, library:S.library,
+    footfall:S.footfall,
+  };
+}
+function validSave(d){
+  return !!d && d.v===SAVE_V && Number.isFinite(d.day) && Number.isFinite(d.cash)
+    && Number.isFinite(d.gw) && Number.isFinite(d.gh)
+    && Array.isArray(d.grid) && d.grid.length===d.gh
+    && Array.isArray(d.grid[0]) && d.grid[0].length===d.gw
+    && !!d.slots && !!d.stock && Array.isArray(d.offers);
+}
+function applySnapshot(d){
+  GW=d.gw; GH=d.gh;
+  S.day=d.day; S.cash=d.cash; S.rep=d.rep; S.tier=d.tier;
+  S.grid=d.grid; S.slots=d.slots; S.stock=d.stock; S.offers=d.offers;
+  S.keeper=d.keeper; S.stats=d.stats; S.history=d.history||[];
+  S.soldEver=d.soldEver||{}; S.featured=d.featured; S.seen=d.seen||{};
+  S.tutorial=!!d.tutorial; S.shopName=d.shopName||""; S.library=d.library||{};
+  S.footfall=d.footfall||0;
+  S.phase=(d.phase==="evening")?"evening":"morning";
+  // anything that only exists inside a trading day is rebuilt, never restored
+  S.customers=[]; S.spawnQueue=[]; S.talking=null; S.placing=null;
+  S.seenToday=[]; S.dayCast=[]; S.tick=0; S.tab="stock";
+  resizeStage();
+}
+
+/* ---------- browser copy ---------- */
+function localRead(){
+  try{ const raw=localStorage.getItem(SAVE_KEY); return raw?JSON.parse(raw):null; }
+  catch(e){ return null; }               // private window, blocked storage, corrupt JSON
+}
+function localWrite(json){ try{ localStorage.setItem(SAVE_KEY,json); }catch(e){} }
+function localClear(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+
+/* ---------- account copy ---------- */
+let cloudDoc=null, cloudPromise=null, cloudWriting=false, cloudPending=null;
+async function cloudInit(){
+  try{
+    if(!(window.claude && typeof window.claude.use==="function")) return null;  // opened as a file
+    const [db,user]=await Promise.all([claude.use("db"), claude.use("user")]);
+    if(!db||!user) return null;
+    const uid=await user.id();          // per-viewer private subtree; null means no private store
+    if(!uid) return null;
+    cloudDoc=db.doc("data/users/"+uid+"/save");
+    return cloudDoc;
+  }catch(e){ return null; }
+}
+function cloudLoad(){
+  if(!cloudPromise) cloudPromise=cloudInit()
+    .then(doc=>doc?doc.get():null)
+    .then(snap=>{ if(snap){ saveState="synced"; return snap.exists?snap.data():null; } return null; })
+    .catch(()=>null);
+  return cloudPromise;
+}
+async function cloudWrite(d){
+  if(!cloudDoc) return;
+  cloudPending=d;
+  if(cloudWriting) return;              // one write at a time per document
+  cloudWriting=true;
+  try{
+    while(cloudPending){ const body=cloudPending; cloudPending=null; await cloudDoc.set(body); }
+    saveState="synced";
+  }catch(e){
+    cloudPending=null;
+    if(e && (e.code==="revoked"||e.code==="not_granted"||e.code==="capability_disabled"
+             ||e.code==="capability_removed"||e.code==="invalid_argument")) cloudDoc=null;
+    saveState="error";                  // the browser copy still went through
+  }finally{ cloudWriting=false; }
+}
+
+/* ---------- autosave ---------- */
+let saveTimer=null, lastJSON="";
+function autosave(){
+  if(S.phase==="open") return;          // never mid-day: customers do not serialise
+  clearTimeout(saveTimer); saveTimer=setTimeout(saveNow,900);
+}
+function saveNow(){
+  const d=takeSnapshot(), j=JSON.stringify(d);
+  if(j===lastJSON) return;              // nothing actually changed
+  lastJSON=j;
+  d.savedAt=Date.now();
+  localWrite(JSON.stringify(d));
+  cloudWrite(d);
+}
+function clearSave(){
+  clearTimeout(saveTimer); lastJSON="";
+  localClear();
+  if(cloudDoc) cloudDoc.delete().catch(()=>{});
+}
+function saveNote(){
+  if(saveState==="synced") return "Saved automatically · synced to your Claude account, so the same shop opens on any device.";
+  if(saveState==="error")  return "Saved automatically in this browser. Syncing to your account failed this session.";
+  return "Saved automatically in this browser.";
+}
+
+/* ---------- boot ---------- */
+let bootDecided=false;
+function newerSave(a,b){
+  if(!validSave(a)) a=null;
+  if(!validSave(b)) b=null;
+  if(a&&b) return (b.savedAt||0)>(a.savedAt||0) ? b : a;
+  return a||b;
+}
+function showBoot(d){ if(d) continueScreen(d); else nameScreen(); }
+async function boot(){
+  const local=localRead();
+  // don't let a slow or absent viewer hold up the title screen
+  const res=await Promise.race([cloudLoad(), new Promise(r=>setTimeout(()=>r("wait"),2200))]);
+  showBoot(newerSave(local, res==="wait"?null:res));
+  if(res==="wait") cloudLoad().then(c=>{
+    if(!bootDecided && newerSave(local,c)===c && c) showBoot(c);   // the account copy turned up late
+  });
+}
+function continueScreen(d){
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  const portrait=document.createElement("img"); portrait.className="keeper-portrait";
+  portrait.src=KEEPER_PORTRAIT; portrait.alt="You, behind the counter";
+  sh.appendChild(portrait);
+  sh.appendChild(el("div","speaker","WELCOME BACK"));
+  const name="Kedai Buku"+(d.shopName?" "+d.shopName:"");
+  sh.appendChild(el("div","say",name+" is as you left it — "+rm(d.cash)+" in the till, reputation "+
+    Math.round(d.rep||0)+", "+SIZE_TIERS[d.tier||0].name.toLowerCase()+"."+
+    (d.phase==="evening"?" The shutters are down on day "+d.day+".":"")));
+  const go=el("button","choice"); go.style.borderColor="var(--gold)"; go.style.color="var(--gold)";
+  go.textContent=(d.phase==="evening"?"Close out day ":"Open up on day ")+d.day+" →";
+  go.onclick=()=>{
+    bootDecided=true;
+    try{ applySnapshot(d); }catch(e){ nameScreen(); return; }
+    lastJSON=JSON.stringify(takeSnapshot());
+    closeModal(); paint();
+  };
+  sh.appendChild(go);
+  const fresh=el("button","choice","Start a new shop");
+  fresh.onclick=()=>{ bootDecided=true; nameScreen(); };
+  sh.appendChild(fresh);
+  sh.appendChild(el("p",null,"Starting a new shop replaces this save the first time the new one saves."));
+}
 
 /* ---------- boot ---------- */
 initGrid(); rollOffers(); paint();
@@ -1627,7 +2119,7 @@ function nameScreen(){
   sh.appendChild(el("p",null,"Leave it blank and the sign just reads KEDAI BUKU."));
   const go=el("button","choice"); go.style.borderColor="var(--gold)"; go.style.color="var(--gold)";
   go.textContent="Paint the sign →";
-  go.onclick=()=>{ S.shopName=inp.value.trim().slice(0,16); introScreen(); };
+  go.onclick=()=>{ S.shopName=inp.value.trim().slice(0,16); introScreen(); autosave(); };
   sh.appendChild(go);
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter") go.click(); });
   setTimeout(()=>inp.focus(),50);
@@ -1643,5 +2135,8 @@ function introScreen(){
   const go=el("button","choice","Open up →"); go.style.borderColor="var(--gold)"; go.style.color="var(--gold)";
   go.onclick=()=>{ closeModal(); paint(); }; sh.appendChild(go);
 }
-setTimeout(nameScreen,200);
+setTimeout(boot,200);
 </script>
+
+</body></html>
+</body></html>

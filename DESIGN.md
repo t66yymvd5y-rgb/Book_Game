@@ -51,7 +51,7 @@ finite (three titles per shelf). What you buy is what this neighbourhood gets to
 the next few days — this is the curation half of the game, and it is a commitment made
 before you know who is coming in.
 
-Pricing is per title: **AUTO** sets 1.75× cost, safe and never greedy; **MANUAL** lets you
+Pricing is per title: **AUTO** sets 1.45× cost, safe and never greedy; **MANUAL** lets you
 chase margin. Manual is not free money — every customer carries a private ceiling, and
 Wei Lun's is RM30 whatever you think the book is worth.
 
