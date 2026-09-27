@@ -1937,6 +1937,11 @@ cv.addEventListener("click",e=>{
   }
 });
 $("#modal").addEventListener("click",e=>{ if(e.target.id==="modal") { if(!S.talking) closeModal(); } });
+// A button that silently does nothing is undiagnosable from a report. If a script error
+// escapes, say so in the tip line, in words a player can pass back.
+function reportError(msg){ tip("Something went wrong: "+(msg||"unknown error")+". Please report this line."); }
+window.addEventListener("error",e=>reportError(e.message));
+window.addEventListener("unhandledrejection",e=>reportError(e.reason&&e.reason.message||String(e.reason)));
 
 /* ============================================================
    SAVE
