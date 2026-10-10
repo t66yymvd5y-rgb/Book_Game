@@ -1,6 +1,6 @@
 # Kedai Buku
 
-A 16-bit-style bookshop simulator set in a Petaling Jaya shoplot, where every book is a
+A flat, cartoon-style bookshop simulator set in a Petaling Jaya shoplot, where every book is a
 real book and the player can order a physical copy.
 
 Playable prototype: open `index.html` in any browser, desktop or phone. No build step,
