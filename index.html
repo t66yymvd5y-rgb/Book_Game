@@ -621,10 +621,10 @@ const CAST=[
   no:"A bit too mainstream for me. I'll just keep looking."},
 
  {key:"maya",name:"Maya",role:"corporate lawyer",skin:"#c99161",hair:"#1a1a22",shirt:"#2b2b33",
-  want:{genres:["crime","thriller","history"],moods:["thrilling","unsettling"],max:70,avoid:["romance","poetry"]},
+  want:{genres:["crime","horror","history"],moods:["thrilling","unsettling"],max:70,avoid:["romance","poetry"]},
   enter:"I spend all day arguing. I want to read about someone actually committing a crime.",
   probes:[
-   {q:"Messy crime or calculated?",a:"Calculated. I want a genius villain and a protagonist who barely survives.",reveal:"Wants smart thrillers"},
+   {q:"Messy crime or calculated?",a:"Calculated. I want a genius villain and a protagonist who barely survives.",reveal:"Wants clever crime thrillers"},
    {q:"Any limits on how dark it gets?",a:"None. The darker the better. I deal with contracts, I'm already dead inside.",reveal:"Open to very dark/unsettling themes"},
    {q:"Is budget a concern?",a:"If it keeps me awake past midnight, I don't care what it costs.",reveal:"Not price-sensitive"}],
   yes:"Brilliant. Put it in a bag, I'm reading this during my next zoom call.",
@@ -651,7 +651,7 @@ const CAST=[
   no:"Nah, it doesn't have the rhythm I'm looking for."},
 
  {key:"sofia",name:"Sofia",role:"stay-at-home mom",skin:"#c58a5e",hair:"#4a2a2a",shirt:"#c4718a",
-  want:{genres:["romance","funny","fiction"],moods:["comforting","funny","hopeful"],max:40,avoid:["horror","philosophy"]},
+  want:{genres:["romance","literary"],moods:["comforting","funny","hopeful"],max:40,avoid:["horror","philosophy"]},
   enter:"The kids are finally at school. I need an escape before 1 PM.",
   probes:[
    {q:"What kind of escape?",a:"Somewhere where nobody asks me what's for dinner, and two hot people fall in love.",reveal:"Wants light romance"},
@@ -721,7 +721,7 @@ const CAST=[
   no:"It feels a bit too sanitized. I need the raw truth."},
 
  {key:"raj",name:"Uncle Raj",role:"e-hailing driver",skin:"#8b5e3c",hair:"#e8e8e8",shirt:"#a0453f",
-  want:{genres:["crime","thriller","mystery"],moods:["thrilling","funny"],max:22,avoid:["literary","poetry"]},
+  want:{genres:["crime","horror"],moods:["thrilling","funny"],max:22,avoid:["literary","poetry"]},
   enter:"Waiting for a surge at the mall. Give me a quick murder mystery, boss.",
   probes:[
    {q:"Classic whodunit or modern thriller?",a:"Classic! Agatha Christie style. I like trying to guess the killer.",reveal:"Wants classic puzzle crimes"},
@@ -771,7 +771,7 @@ const CAST=[
   no:"It seems a bit generic. I really want a strong sense of place."},
 
  {key:"hakim",name:"Hakim",role:"indie filmmaker",skin:"#a97448",hair:"#2b2b33",shirt:"#22222a",
-  want:{genres:["horror","thriller","literary"],moods:["unsettling","thrilling"],max:40,avoid:["comforting","funny"]},
+  want:{genres:["horror","crime","literary"],moods:["unsettling","thrilling"],max:40,avoid:["comforting","funny"]},
   enter:"I'm writing a psychological thriller script. Need a book that makes me deeply uncomfortable.",
   probes:[
    {q:"Uncomfortable through gore or through the mind?",a:"The mind. A slow burn of dread. Gaslighting, paranoia, that stuff.",reveal:"Wants psychological horror/thriller"},
@@ -781,10 +781,10 @@ const CAST=[
   no:"Too jump-scare. I need something that lingers."},
 
  {key:"grace",name:"Auntie Grace",role:"florist",skin:"#e0b48c",hair:"#e8e8e8",shirt:"#4f9a55",
-  want:{genres:["poetry","children","nature"],moods:["comforting","hopeful"],max:35,avoid:["crime","horror"]},
+  want:{genres:["poetry","children","nonfiction"],moods:["comforting","hopeful"],max:35,avoid:["crime","horror"]},
   enter:"Hello dear. The flowers are blooming beautifully today. Have you got a book that feels like spring?",
   probes:[
-   {q:"Are we talking gardening books, or poetry?",a:"Poetry, or a very sweet children's story. Just words about nature and growth.",reveal:"Wants comforting nature/poetry/children"},
+   {q:"Are we talking gardening books, or poetry?",a:"Poetry, a very sweet children's story, or a gentle true book about growing things. Just words about nature and growth.",reveal:"Wants poetry, children's or gentle non-fiction"},
    {q:"Something to read quickly or savor?",a:"To savor. I like to read one page with my morning tea.",reveal:"Wants slow, comforting reading"},
    {q:"Budget, Auntie?",a:"Thirty-five ringgit. Just a little treat for myself.",reveal:"Under RM35"}],
   yes:"Oh, how lovely. This will sit perfectly on my bedside table.",
@@ -1784,7 +1784,7 @@ function resolve(p,id,convo){
   sh.appendChild(v);
   if(!bought){
     const w=p.arch.want;
-    sh.appendChild(el("p",null,"They wanted: "+w.genres.map(g=>GENRE_LABEL[g]).join(", ")+
+    sh.appendChild(el("p",null,"They wanted: "+w.genres.map(g=>GENRE_LABEL[g]||g).join(", ")+
       " · "+w.moods.join(", ")+" · under "+rm(w.max)+
       (w.avoid.length?" · never "+w.avoid.join(", "):"")));
   }
