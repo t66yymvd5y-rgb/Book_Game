@@ -1,7 +1,24 @@
-# Kedai Buku — design record
+# Corner Books — design record
 
-A mobile 16-bit bookshop simulator set in a Petaling Jaya shoplot, in which every book
+A mobile 16-bit bookshop simulator set on an old shopping street, in which every book
 is a real book and the player can order a physical copy.
+
+## International edition
+
+The game began as **Kedai Buku**, a Petaling Jaya shoplot priced in ringgit. It is now set in
+an unnamed city's old quarter, so it reads the same anywhere. Older sections of this record
+keep their original RM figures and names as history; the numbers carry over unchanged.
+
+| Area | Now |
+|---|---|
+| Name | **Corner Books** by default. The player names the whole sign (up to 24 characters) instead of adding a name after "Kedai Buku". |
+| Currency | `$`. Every number (costs, budgets, rent, the $1,500 start) is the same as the old RM figure, so balance is unchanged. |
+| Space tiers | Corner Kiosk → Shopfront → Double Shopfront (were Shoplot Unit and Double Lot). |
+| Cafe | Coffee Corner (was Kopi Corner). Courier is "Standard courier" (was Klang Valley). |
+| Customers | All 40 keep their wants, budget and patience; local roles became their nearest equivalent (kopitiam → café, hawker stall → food truck, kuih seller → pastry stall). Twelve with Malaysian names were renamed (e.g. Puan Rosnah → Mrs Ferreira, Uncle Lim → Mr Rossi, Wei Lun → Kenji) and three lost a local honorific (Madam Wong → Mrs Wong, Uncle Raj → Raj, Auntie Grace → Grace), and Manglish and Malaysia-specific lines were rewritten in plain English. |
+| Zaid | Still the curation test, now asking for **books in translation** rather than Malaysian authors. |
+| Catalogue | The seven Malaysian titles were removed (123 books). *The Hunger Games* and *The Book Thief* moved to YA, which would otherwise be empty. |
+| Saves | New save key (`cornerbooks.save.v1`): Kedai Buku saves do not carry over, because they reference removed books by index. |
 
 This document records the decisions taken during the design session and the reasoning
 behind them, so the prototype can be argued with rather than just played.
@@ -66,7 +83,7 @@ A round of playtest feedback asked for nine specific changes. What actually ship
 | Store view | Top-down tile grid with placeable furniture. Expansion = more tiles. |
 | Core skill | **Matching people to books, plus curation** — what you choose to stock. Pricing is a real system but not the skill being tested. |
 | Stakes | Soft pressure. Rent and stock costs bite, but the shop cannot be lost. |
-| Setting | Malaysian shoplot bookstore, RM currency. The player names the shop; it is painted on the sign above the shelves. |
+| Setting | Originally a Malaysian shoplot bookstore in RM; now an unnamed city's old quarter in $ (see International edition). The player names the shop; it is painted on the sign above the shelves. |
 
 The purpose decision is load-bearing. Because the sim comes first, the commerce layer is
 placed where a bookshop would place it — on the book itself, reached by curiosity — and
@@ -83,7 +100,7 @@ before you know who is coming in.
 
 Pricing is per title: **AUTO** sets 1.75× cost, safe and never greedy; **MANUAL** lets you
 chase margin. Manual is not free money — every customer carries a private ceiling, and
-Wei Lun's is RM30 whatever you think the book is worth.
+Kenji's is $30 whatever you think the book is worth.
 
 **OPEN.** The day runs compressed. Customers arrive, walk to a shelf, and browse. Each
 carries a **patience bar**; when it empties they leave. More customers arrive than you can
@@ -101,7 +118,7 @@ The recommendation is scored against a hidden want vector:
 ```
 genre match           +42     genre they refuse      −55
 each mood match       +16     mood they refuse       −30
-within their budget   +18     over budget            −3.2/RM
+within their budget   +18     over budget            −3.2/$
                               priced above fair      −12
 ```
 
@@ -133,17 +150,17 @@ raises how many customers show up.
 |---|---|---|
 | 1 | 0 | Shelf, counter |
 | 2 | 18 | Display table |
-| 3 | 45 | **Kopi Corner** (cafe) |
+| 3 | 45 | **Coffee Corner** (cafe) |
 
 **Floor space** is a separate, player-chosen purchase: the shop starts on the smallest lot
-and rent starts low, because RM150/day before the player has sold a single book was crushing
+and rent starts low, because $150/day before the player has sold a single book was crushing
 a prototype that is meant to teach the matching loop, not punish it before it starts.
 
 | Tier | Size | Cost to buy | Needs rep | Rent |
 |---|---|---|---|---|
-| Corner Kiosk | 9×7, 2 shelves | — (starting lot) | — | **RM30/day** |
-| Shoplot Unit | 12×9 | RM1,200 | 10 | RM70/day |
-| Double Lot | 16×11 | RM3,200 | 30 | RM130/day |
+| Corner Kiosk | 9×7, 2 shelves | — (starting lot) | — | **$30/day** |
+| Shopfront | 12×9 | $1,200 | 10 | $70/day |
+| Double Shopfront | 16×11 | $3,200 | 30 | $130/day |
 
 Upgrading is a morning-only action in the SHOP tab. It keeps every shelf, the counter and
 everything already stocked exactly where they are and simply extends the floor around them
@@ -181,25 +198,26 @@ with a live call to a ratings API and the number would simply be current instead
 approximate. The NPCs no longer author reviews at all; they only give you clue chips in
 conversation, which is the part of them that was never claiming to be a real reader.
 
-**On the catalogue.** 49 real titles with accurate authors and publication years, weighted
-towards a shelf a Malaysian independent would actually keep — Tan Twan Eng, Preeta
-Samarasan, Hanna Alkaf, Bernice Chauly, Rani Manicka alongside the international spine.
-Zaid the unpublished novelist exists specifically to punish a shop that stocks only the
-international list; he is the game telling you that curation has a point of view.
+**On the catalogue.** Real titles with accurate authors and publication years. The first
+cut of 49 leaned towards a shelf a Malaysian independent would keep; those seven local
+titles were removed for the international edition. Zaid the unpublished novelist exists
+specifically to punish a shop that stocks only the obvious list — he now asks for books in
+translation — and he is the game telling you that curation has a point of view.
 
-**The Hundred Shelf.** The catalogue now holds 130 titles: the original 49 plus 81 from a
+**The Hundred Shelf.** The catalogue grew to 130 titles (123 after the Malaysian titles were removed): the original 49 plus 81 from a
 "hundred books" list of classics, modern fiction and non-fiction (19 of its hundred were
-already stocked). New titles are appended to `BOOKS`, never inserted, because saves key
-stock by array index. Each keeps the source list's genre where the game has that shelf;
+already stocked). Saves key stock by array index, so new titles go at the end of `BOOKS`;
+removing titles shifts indexes, which is why the international edition uses a fresh save key. Each keeps the source list's genre where the game has that shelf;
 genres the game does not have are mapped to the nearest one a customer actually asks for:
 
 | Source genre | Shelf |
 |---|---|
 | Gothic fiction | Horror (Frankenstein, Dorian Gray, Rebecca); Romance (Wuthering Heights) |
 | Adventure, Satire, Fable | Literary |
-| Historical fiction | History — 14 customers ask for History, and before this it held one book |
+| Historical fiction | History — 14 customers ask for History, and before this it held one book. *The Book Thief* later moved to YA. |
 | Mystery, Thriller, True crime | Crime |
 | Epic poetry | Poetry |
+| Science fiction | Sci-Fi (*The Hunger Games* later moved to YA) |
 | Science, Psychology | Non-Fiction |
 | Memoir, Autobiography | Biography |
 | Self-help, Economics, Finance, Strategy | Business |
