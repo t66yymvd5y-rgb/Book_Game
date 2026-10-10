@@ -17,7 +17,8 @@ cash and reputation together unlock bigger lots — rent only rises when you cho
 expand into one.
 
 The skills the game tests are matching people to books, and choosing what to stock.
-Pricing is a real system but not the point. You cannot go bankrupt. Each book's page
+Pricing is a real system but not the point. You cannot go bankrupt. Progress saves
+automatically, and regulars remember what they've already bought from you. Each book's page
 carries a real-world reader-rating aggregate (stars + rating count), not an invented
 character quote — see DESIGN.md §4 for what that does and doesn't mean offline.
 
