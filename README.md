@@ -1,6 +1,6 @@
-# Kedai Buku
+# Corner Books
 
-A flat, cartoon-style bookshop simulator set in a Petaling Jaya shoplot, where every book is a
+A flat, cartoon-style bookshop simulator set on an old shopping street, where every book is a
 real book and the player can order a physical copy.
 
 Playable prototype: open `index.html` in any browser, desktop or phone. No build step,
@@ -19,8 +19,8 @@ that). The note button in the top bar mutes it, and the choice is remembered on 
 The title screen has Continue, New shop and How to play; the menu button (or Esc) pauses
 a trading day and offers Resume, How to play, Back to title and Start over.
 
-You start on a small corner kiosk at RM30/day rent. Reputation unlocks better furniture;
-cash and reputation together unlock bigger lots — rent only rises when you choose to
+You start on a small corner kiosk at $30/day rent. Reputation unlocks better furniture;
+cash and reputation together unlock bigger shopfronts — rent only rises when you choose to
 expand into one.
 
 The skills the game tests are matching people to books, and choosing what to stock.

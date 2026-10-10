@@ -1,4 +1,4 @@
-<title>Kedai Buku</title>
+<title>Corner Books</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   /* Flat, outlined UI: white cards with a navy ink outline, each sitting on an offset coloured
@@ -238,7 +238,7 @@
 <div id="wrap">
   <header id="top">
     <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6a2 2 0 0 1 2-2h13v13H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/></svg></div>
-    <div id="brand"><small>Petaling Jaya · bookshop</small><b id="brandName">Kedai Buku</b></div>
+    <div id="brand"><small>Old Quarter · bookshop</small><b id="brandName">Corner Books</b></div>
     <button id="music" type="button" aria-label="Music on" aria-pressed="true"></button>
     <div id="me"></div>
     <button id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
@@ -246,7 +246,7 @@
   <audio id="bgm" src="audio/paperback-afternoon.mp3" loop preload="auto"></audio>
   <div id="hud">
     <div class="stat"><span>Day</span><b id="hDay">1</b></div>
-    <div class="stat"><span>Cash</span><b id="hCash">RM1500</b></div>
+    <div class="stat"><span>Cash</span><b id="hCash">$1500</b></div>
     <div class="stat"><span>Reputation</span><b id="hRep">0</b></div>
     <div class="stat"><span>Phase</span><b id="hPhase">Setup</b></div>
   </div>
@@ -262,7 +262,7 @@
 <script>
 "use strict";
 /* ============================================================
-   KEDAI BUKU — a bookshop simulator set in a Petaling Jaya shoplot
+   CORNER BOOKS — a bookshop simulator set on an old shopping street
    Prototype build. Single file, no dependencies, no network.
    ============================================================ */
 
@@ -272,9 +272,9 @@ const $ = s => document.querySelector(s);
 const el = (t,c,h) => { const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e; };
 const rnd = a => a[(Math.random()*a.length)|0];
 const clamp = (v,a,b) => v<a?a:v>b?b:v;
-const rm = n => "RM" + n.toFixed(2);
-// The HUD used to round cash, so a RM43.90 sale read as +44 and the books never tallied.
-// Show the sen, and drop ".00" so a whole-ringgit balance still reads cleanly.
+const rm = n => "$" + n.toFixed(2);
+// The HUD used to round cash, so a $43.90 sale read as +44 and the books never tallied.
+// Show the cents, and drop ".00" so a whole-dollar balance still reads cleanly.
 const money = n => { const t=n.toFixed(2); return t.endsWith(".00") ? t.slice(0,-3) : t; };
 function seeded(str){ let h=2166136261; for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
   return ()=>{ h+=0x6D2B79F5; let t=h; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
@@ -309,20 +309,6 @@ const BOOKS=[
  b("Pachinko","Min Jin Lee",2017,"literary",["melancholy","hopeful"],"steady","heavy",35,
    "Sunja, a poor fisherman's daughter in Japanese-occupied Korea, makes one impulsive choice as a teenager that sends her family into exile in Japan for four generations. Lee follows them through war, poverty, the shame economy of Korean-run pachinko parlors and the quiet cruelty of never quite belonging, in prose so unshowy you forget how much ground it's covering.",["family","migration","belonging"]),
 
- b("The Garden of Evening Mists","Tan Twan Eng",2011,"literary",["melancholy","contemplative"],"slow","medium",33,
-   "Yun Ling Teoh survived a Japanese internment camp that killed her sister, and in the uneasy years after the war she apprentices herself to Aritomo, former gardener to the Emperor of Japan, to build a garden of remembrance in the Cameron Highlands. What she is really doing is learning whether forgiveness is a thing a garden — or a person — can actually hold. Shortlisted for the Booker Prize.",["memory","forgiveness","malaysia"]),
- b("The Gift of Rain","Tan Twan Eng",2007,"literary",["melancholy","thrilling"],"steady","heavy",34,
-   "Philip Hutton, half-English and half-Chinese and belonging fully to neither side of Penang society, is taken under the wing of Endo-san, a Japanese diplomat who teaches him aikido and, without either of them quite admitting it, prepares him to survive what is coming. When the occupation arrives, that friendship becomes the most dangerous thing Philip owns. Tan's debut, and the one that put Malaysian fiction on the international shortlists.",["loyalty","betrayal","malaysia"]),
- b("Evening is the Whole Day","Preeta Samarasan",2008,"literary",["melancholy","unsettling"],"slow","medium",29,
-   "In a crumbling mansion in Ipoh, the wealthy Rajasekharan family is unraveling from the inside — a servant girl dismissed without explanation, a grandmother's death nobody will discuss plainly, a secret that six-year-old Aasha half-understands and the reader has to earn in pieces. Samarasan writes Malaysian-Indian domestic life with a precision that never once feels like anthropology.",["family","class","malaysia"]),
- b("The Rice Mother","Rani Manicka",2002,"literary",["melancholy","hopeful"],"steady","medium",28,
-   "Married off at fourteen and shipped from Ceylon to a Malaya she has never seen, Lakshmi builds — through sheer will, and later through her children's very different lives — a family dynasty spanning nearly a century of war, poverty and reinvention. Told in rotating first-person voices, it reads like a family telling its own myths back to itself.",["family","war","malaysia"]),
- b("Once We Were There","Bernice Chauly",2017,"literary",["unsettling","melancholy"],"fast","heavy",30,
-   "Delonix Karuna covers the Reformasi protests of late-1990s Kuala Lumpur as a young journalist, chasing tear gas and political awakening while her own marriage and motherhood quietly come apart around her. Chauly, herself a KL poet and documentarian, writes the city's most turbulent recent decade from street level, unglamorous and specific.",["loss","politics","malaysia"]),
- b("The Weight of Our Sky","Hanna Alkaf",2019,"ya",["thrilling","hopeful"],"fast","medium",27,
-   "Sixteen-year-old Melati has OCD she can only describe to herself as a djinn that demands counting rituals to keep her mother safe — and then the May 1969 race riots break out in Kuala Lumpur, separating her from her mother and forcing her to cross a city turning violent along ethnic lines. A YA thriller that treats both the mental illness and the history with real seriousness.",["race","mental health","malaysia"]),
- b("The Girl and the Ghost","Hanna Alkaf",2020,"children",["unsettling","hopeful"],"fast","light",24,
-   "When her grandmother dies, lonely village girl Suraya inherits a pelesit — a dark spirit bound to serve the family, and starved for a friend of its own. As Suraya moves to the city and grows out of needing it, the spirit's devotion curdles into something more dangerous. A Malaysian folklore tale about friendship that has outstayed its welcome.",["friendship","folklore","malaysia"]),
 
  b("Gone Girl","Gillian Flynn",2012,"crime",["thrilling","unsettling"],"fast","medium",29,
    "On the morning of their fifth wedding anniversary, Amy Dunne vanishes from the home she shares with her husband Nick, and the evidence — plus his own strange, guarded behaviour on television — starts turning the whole country against him. Flynn alternates his account with Amy's diary in a structure built entirely around a mid-book reversal that changes what every earlier page meant.",["marriage","deceit","media"]),
@@ -392,6 +378,170 @@ const BOOKS=[
    "Matilda Wormwood is a five-year-old genius stuck with parents who think television is more important than books and a headmistress who throws children by the pigtails, so she teaches herself to read, discovers the library, and — eventually — discovers she can move things with her mind. Dahl's last major children's novel and one of his most purely satisfying acts of revenge-on-behalf-of-kids.",["books","injustice","cleverness"]),
  b("The Little Prince","Antoine de Saint-Exupery",1943,"children",["comforting","melancholy"],"fast","light",22,
    "A pilot stranded in the Sahara after an engine failure meets a solemn little boy who has fallen to Earth from a tiny asteroid, and who asks unanswerable questions about sheep, roses and the strange priorities of grown-ups. Written by a working aviator not long before he disappeared on a wartime reconnaissance flight, it is a children's book that gets sadder, not simpler, the older you are when you read it.",["innocence","love","loss"]),
+ /* The Hundred Shelf (added 10.10.2026). Genres follow the source sheet; where the sheet's
+    genre has no shelf in the game it is mapped to the nearest one (see DESIGN.md §4). */
+ b("Jane Eyre","Charlotte Brontë",1847,"romance",["melancholy","hopeful"],"steady","medium",24,
+   "Orphaned, unloved and sent to the grim charity school at Lowood, Jane Eyre grows up plain, poor and absolutely unwilling to be anyone's lesser. As governess at Thornfield Hall she falls for its brooding master, Mr Rochester, but something in the house — a laugh in the night, a locked upper floor — keeps getting between them and happiness. A love story whose heroine insists, at great cost, on keeping her own soul.",["independence","love","conscience"]),
+ b("Wuthering Heights","Emily Brontë",1847,"romance",["unsettling","melancholy"],"steady","medium",23,
+   "On the wind-scoured Yorkshire moors, the foundling Heathcliff and Catherine Earnshaw grow up wild together and become something fiercer than lovers. When she marries for position instead, he disappears, returns rich, and sets about destroying both their families across a generation. Less a romance than a storm: nobody behaves well, and that is the point.",["obsession","revenge","class"]),
+ b("Great Expectations","Charles Dickens",1861,"literary",["contemplative","funny"],"steady","medium",24,
+   "Pip, a blacksmith's boy on the Kent marshes, is frightened half to death by an escaped convict, summoned to play at the decaying house of the jilted Miss Havisham, and then told that a secret benefactor will make him a gentleman in London. Dickens follows his rise with comedy and a slow-building ache, as Pip learns what his snobbery has cost the people who loved him first. A coming-of-age novel about money, shame and gratitude.",["ambition","class","guilt"]),
+ b("A Tale of Two Cities","Charles Dickens",1859,"history",["thrilling","melancholy"],"steady","medium",24,
+   "London and Paris, from 1775 to the Terror. A doctor freed after eighteen years in the Bastille, his devoted daughter, a French aristocrat who has renounced his name and a dissolute English lawyer who happens to look exactly like him are all drawn toward the guillotine as the Revolution turns on itself. Dickens at his most theatrical, with one of the most famous openings — and closings — in English.",["revolution","sacrifice","resurrection"]),
+ b("Moby-Dick","Herman Melville",1851,"literary",["contemplative","thrilling"],"slow","heavy",28,
+   "Call him Ishmael. A restless young man signs onto the Nantucket whaler Pequod and discovers that its captain, Ahab, has a single purpose for the voyage: to hunt down the white whale that took his leg. Melville crams whaling lore, sermons, comedy, philosophy and stage drama around the chase, and the result is strange, sprawling and thunderous. Patience is rewarded with some of the most electric prose in English.",["obsession","nature","fate"]),
+ b("Frankenstein","Mary Shelley",1818,"horror",["unsettling","melancholy"],"steady","medium",22,
+   "Victor Frankenstein, a brilliant young student, discovers how to give life to dead matter — and flees in horror from the creature he has made. Abandoned, articulate and increasingly desperate, the creature teaches himself to read, learns what people think of him, and comes looking for his maker. Begun when Mary Shelley was eighteen, it is less a monster story than an argument about who the monster really is.",["creation","responsibility","isolation"]),
+ b("Dracula","Bram Stoker",1897,"horror",["unsettling","thrilling"],"steady","medium",23,
+   "A young English solicitor travels to Transylvania to help a reclusive count buy a house in London, and slowly realises he is a prisoner in the castle. Told through diaries, letters, telegrams and newspaper cuttings, the story follows the count to England and the small band — a Dutch professor, a doctor, a fiancée — who set out to stop him. The book that made the vampire, and still genuinely creepy at night.",["fear","desire","modernity"]),
+ b("War and Peace","Leo Tolstoy",1869,"history",["contemplative","melancholy"],"slow","heavy",38,
+   "Russia, 1805 to 1812: the awkward, searching Pierre Bezukhov, the proud Prince Andrei Bolkonsky and the impulsive young Natasha Rostova live through balls, duels, ruin, love affairs and Napoleon's invasion. Tolstoy moves from drawing rooms to battlefields to his own essays on why history happens, with hundreds of characters who each feel like a real person. Enormous, yes — and far more readable than its reputation.",["war","love","meaning"]),
+ b("Anna Karenina","Leo Tolstoy",1878,"literary",["melancholy","contemplative"],"slow","heavy",34,
+   "Anna, the beautiful wife of a cold St Petersburg official, falls into a passionate affair with the dashing officer Vronsky, and a society that tolerated discretion will not forgive honesty. Running beside hers is the story of Levin, an awkward landowner trying to farm well, love well and find something to believe in. 'Happy families are all alike' — and Tolstoy spends eight hundred pages showing how differently unhappy people can be.",["love","society","faith"]),
+ b("Crime and Punishment","Fyodor Dostoevsky",1867,"literary",["unsettling","contemplative"],"steady","heavy",28,
+   "Raskolnikov, a starving former student in a feverish St Petersburg summer, convinces himself that an extraordinary man may step over the moral law, and murders an old pawnbroker to prove it. What follows is not a whodunit but a will-he-break, as a patient, cheerful detective circles him and a young woman named Sonya offers something harder than escape. A psychological thriller written a century before the term existed.",["guilt","redemption","morality"]),
+ b("The Brothers Karamazov","Fyodor Dostoevsky",1880,"literary",["contemplative","unsettling"],"slow","heavy",34,
+   "Fyodor Karamazov is a vulgar, greedy father, and his sons — passionate Dmitri, intellectual Ivan and gentle Alyosha, a novice monk — each have reasons to wish him dead. When someone does kill him, the trial becomes a trial of faith, reason and freedom itself. Dostoevsky's last and greatest novel, home to 'The Grand Inquisitor', and the book philosophers keep arguing with.",["faith","doubt","family"]),
+ b("Les Misérables","Victor Hugo",1862,"history",["hopeful","melancholy"],"slow","heavy",37,
+   "Jean Valjean, released after nineteen years in the galleys for stealing bread, is shown a single act of mercy by a bishop and spends the rest of his life trying to deserve it, hunted all the while by the implacable Inspector Javert. Around him Hugo builds a whole France — the orphan Cosette, the student revolutionaries at the barricades of 1832, the sewers of Paris. Huge, digressive and unashamedly moving.",["mercy","justice","poverty"]),
+ b("The Count of Monte Cristo","Alexandre Dumas",1844,"literary",["thrilling","contemplative"],"fast","heavy",32,
+   "On the eve of his wedding, the young sailor Edmond Dantès is framed by jealous rivals and thrown without trial into the island fortress of the Château d'If. Fourteen years later he escapes with a fortune and a new name, and returns to Paris to take apart, slowly and elegantly, the lives of the men who buried him. The original revenge thriller — a page-turner at a thousand pages.",["revenge","justice","patience"]),
+ b("Don Quixote","Miguel de Cervantes",1605,"literary",["funny","contemplative"],"slow","heavy",30,
+   "A gentleman of La Mancha reads so many tales of chivalry that he renames himself Don Quixote, puts on rusty armour and rides out on a bony horse to right the world's wrongs, with the practical farmer Sancho Panza as his squire. He charges windmills he takes for giants and flocks of sheep he takes for armies, and the comedy turns slowly into something tender. Often called the first modern novel, and still very funny.",["imagination","idealism","friendship"]),
+ b("Madame Bovary","Gustave Flaubert",1857,"literary",["melancholy","contemplative"],"slow","medium",24,
+   "Emma Bovary, raised on romantic novels, marries a dull, kindly country doctor and finds provincial Normandy unbearable. She looks for the life she has read about in love affairs, fine fabrics and debts she cannot pay, and Flaubert watches it all with a precision that got him put on trial for offending public morals. The novel that taught modern fiction how to look at ordinary people without blinking.",["desire","boredom","illusion"]),
+ b("The Great Gatsby","F. Scott Fitzgerald",1925,"literary",["melancholy","contemplative"],"fast","light",22,
+   "Nick Carraway rents a cottage on Long Island in the summer of 1922 and finds himself next door to Jay Gatsby, a mysterious millionaire who throws enormous parties for strangers. Gatsby wants only one thing: Nick's cousin Daisy, the girl he lost five years earlier, now married to the brutish Tom Buchanan. Short, glittering and sad, it is the definitive novel of the American dream curdling.",["wealth","longing","illusion"]),
+ b("Nineteen Eighty-Four","George Orwell",1949,"scifi",["unsettling","melancholy"],"steady","medium",24,
+   "In Airstrip One, a province of the superstate Oceania, Winston Smith rewrites old newspapers so that the Party has always been right. He starts a forbidden diary, then a forbidden love affair, in a world where the telescreen is always watching and thoughtcrime is the only crime. The book that gave us Big Brother, doublethink and Room 101, and it grows more relevant every decade.",["surveillance","truth","power"]),
+ b("Animal Farm","George Orwell",1945,"literary",["funny","unsettling"],"fast","light",19,
+   "The animals of Manor Farm drive out their drunken farmer and set up a society in which all animals are equal. Then the pigs, who are cleverer than the rest, start changing the rules — quietly at first, and then not quietly at all. A short, sharp fable of the Russian Revolution that works just as well for any revolution, office or committee.",["power","propaganda","revolution"]),
+ b("Brave New World","Aldous Huxley",1932,"scifi",["unsettling","contemplative"],"steady","medium",24,
+   "In the World State, babies are grown in bottles and conditioned into castes, everyone is happy, and any flicker of discomfort is dissolved with a dose of soma. When Bernard Marx brings back John, a 'savage' raised on a reservation with only Shakespeare for company, the perfect society has to explain itself. The other great dystopia — and arguably the one we are closer to.",["control","pleasure","freedom"]),
+ b("To Kill a Mockingbird","Harper Lee",1960,"literary",["hopeful","melancholy"],"steady","medium",25,
+   "In 1930s Maycomb, Alabama, six-year-old Scout Finch and her brother Jem spend their summers daring each other to approach the house of the reclusive Boo Radley. Then their father, the lawyer Atticus Finch, agrees to defend a Black man falsely accused of raping a white woman, and the town shows the children what it really is. Warm, funny and morally serious; a book many people first loved at school.",["justice","prejudice","childhood"]),
+ b("The Catcher in the Rye","J. D. Salinger",1951,"literary",["melancholy","funny"],"fast","light",22,
+   "Sixteen-year-old Holden Caulfield has just been expelled from another prep school, and rather than go home he spends three days drifting around a cold New York, calling everyone a phony. His voice — sardonic, wounded, endlessly digressive — is the whole book. Readers either recognise themselves completely or want to shake him, and both are the right response.",["alienation","grief","adolescence"]),
+ b("Of Mice and Men","John Steinbeck",1937,"literary",["melancholy"],"fast","light",19,
+   "George and Lennie, two itinerant ranch hands in Depression-era California, share a dream of owning a little place of their own, where Lennie — a gentle giant who doesn't know his own strength — can tend the rabbits. They find work on a ranch near Soledad, and for a while the dream almost looks possible. Barely a hundred pages, and it hits like a much longer book.",["friendship","loneliness","dreams"]),
+ b("The Grapes of Wrath","John Steinbeck",1939,"literary",["melancholy","hopeful"],"slow","heavy",30,
+   "The Joad family lose their Oklahoma farm to drought, debt and the banks, pile everything onto a battered truck and head west on Route 66 toward the work they have been promised in California. What they find is a land of plenty that does not want them. Steinbeck alternates their journey with sweeping chapters on a whole displaced people, and the anger in it still burns.",["poverty","dignity","solidarity"]),
+ b("Ulysses","James Joyce",1922,"literary",["funny","contemplative"],"slow","heavy",33,
+   "A single day in Dublin, 16 June 1904: the advertising canvasser Leopold Bloom attends a funeral, fries a kidney, wanders the city and puts off going home, while the young Stephen Dedalus broods on art and his dead mother. Joyce changes style with every chapter, from newspaper headlines to a play script to Molly Bloom's famous unpunctuated monologue. Difficult, bawdy, funny and enormous — the summit of modernism.",["everyday life","identity","Dublin"]),
+ b("Mrs Dalloway","Virginia Woolf",1925,"literary",["contemplative","melancholy"],"slow","light",22,
+   "On a June day in London after the Great War, Clarissa Dalloway goes out to buy the flowers for the party she is giving that evening. Across the city, Septimus Warren Smith, a shell-shocked veteran, is coming apart. Woolf moves between their minds and a dozen others in a single flowing current, and an ordinary day becomes a meditation on time, memory and the courage it takes simply to go on.",["time","memory","mental health"]),
+ b("Heart of Darkness","Joseph Conrad",1902,"literary",["unsettling","contemplative"],"steady","light",19,
+   "On a boat anchored in the Thames at dusk, the sailor Marlow tells of the time he took a steamer up the Congo River for a Belgian trading company, in search of Kurtz, an ivory agent rumoured to have become something terrible. A short, dense, nightmarish voyage into colonial greed — argued over ever since, not least by Chinua Achebe, who called it racist — and still impossible to ignore.",["colonialism","evil","civilisation"]),
+ b("The Picture of Dorian Gray","Oscar Wilde",1891,"horror",["unsettling","contemplative"],"steady","light",21,
+   "A beautiful young man sits for his portrait and, under the spell of the witty, poisonous Lord Henry Wotton, wishes that the picture would grow old instead of him. The wish comes true. As Dorian sinks into a life of pleasure and cruelty in fashionable London, his face stays perfect while the painting, locked away upstairs, records everything. Wilde's only novel: epigrams on the surface, Gothic horror underneath.",["beauty","corruption","vanity"]),
+ b("Little Women","Louisa May Alcott",1868,"literary",["comforting","hopeful"],"steady","medium",22,
+   "While their father is away at the American Civil War, the four March sisters — responsible Meg, fiery, bookish Jo, gentle Beth and vain little Amy — grow up in genteel poverty in New England with their mother, Marmee. Their plays, quarrels, friendships and first loves fill a book that has comforted readers for over 150 years. Jo March remains a patron saint for anyone who wants to write.",["sisterhood","family","growing up"]),
+ b("Adventures of Huckleberry Finn","Mark Twain",1884,"literary",["funny","thrilling"],"steady","medium",22,
+   "Huck Finn fakes his own death to escape his drunken, violent father and drifts down the Mississippi on a raft with Jim, an enslaved man running for his freedom. Along the river they meet con men, feuding families and lynch mobs, and Huck — told all his life that helping Jim is a sin — has to decide for himself. Funny, vernacular and morally fierce; Hemingway said all modern American literature comes from it.",["freedom","conscience","friendship"]),
+ b("The Scarlet Letter","Nathaniel Hawthorne",1850,"history",["melancholy","contemplative"],"slow","medium",21,
+   "In seventeenth-century Puritan Boston, Hester Prynne is made to stand on the scaffold with her baby and wear a scarlet A for adultery, and she refuses to name the father. Her long-lost husband arrives in disguise and sets out, quietly, to find out who he is. Hawthorne's dark romance about public shame and private guilt — and which of the two does more damage.",["shame","sin","hypocrisy"]),
+ b("Lord of the Flies","William Golding",1954,"literary",["unsettling","thrilling"],"fast","light",22,
+   "A planeload of British schoolboys crash-lands on a deserted tropical island during a war, with no adults left alive. At first they elect a leader, build shelters and keep a signal fire burning; then the hunters break away, the fire goes out, and something in the forest begins to be worshipped. A short, brutal fable about how thin the civilised layer really is.",["savagery","power","innocence"]),
+ b("Fahrenheit 451","Ray Bradbury",1953,"scifi",["unsettling","hopeful"],"fast","light",21,
+   "Guy Montag is a fireman, which in his future America means he burns books, and the houses that hide them. Everyone around him is happily plugged into wall-sized televisions — until a strange teenage neighbour asks whether he is happy, and he steals a book. Bradbury's short, urgent novel about censorship, distraction and the people who memorise what is about to be lost.",["censorship","knowledge","conformity"]),
+ b("The Odyssey","Homer",-725,"poetry",["thrilling","hopeful"],"steady","medium",25,
+   "Ten years after the fall of Troy, Odysseus still has not come home. He has outwitted a Cyclops, sailed past the Sirens and been held for years by a nymph, while back in Ithaca his wife Penelope stalls a hall full of suitors and his son Telemachus sets out to find him. The oldest adventure story in Western literature, and the model for every hero's journey since.",["homecoming","cunning","loyalty"]),
+ b("Gone with the Wind","Margaret Mitchell",1936,"history",["thrilling","melancholy"],"steady","heavy",35,
+   "Scarlett O'Hara, the spoilt and spirited daughter of a Georgia plantation owner, loves a man she cannot have and marries men she does not love, as the American Civil War burns her world down. Surviving the siege of Atlanta and the hunger that follows, she becomes ruthless, and the roguish Rhett Butler is the only one who sees her clearly. A huge, gripping romance, though its nostalgia for the slave-owning South is hard for many readers to stomach today.",["survival","love","loss"]),
+ b("Rebecca","Daphne du Maurier",1938,"horror",["unsettling","thrilling"],"steady","medium",25,
+   "A shy young woman working as a paid companion in Monte Carlo marries the wealthy widower Maxim de Winter and goes home with him to Manderley, his great house on the Cornish coast. Everything there still belongs to his first wife, Rebecca — her monogram, her rooms, her devoted housekeeper Mrs Danvers. 'Last night I dreamt I went to Manderley again': a psychological Gothic that tightens like a noose.",["jealousy","identity","secrets"]),
+ b("The Lord of the Rings","J. R. R. Tolkien",1954,"fantasy",["thrilling","hopeful"],"steady","heavy",39,
+   "Frodo Baggins inherits a plain gold ring from his uncle Bilbo and learns that it is the One Ring of the Dark Lord Sauron, who is searching for it. With a fellowship of hobbits, men, an elf, a dwarf and the wizard Gandalf, Frodo sets out to destroy it in the fire where it was forged. The founding text of modern fantasy, full of songs, languages and history, and a story of very small people doing very large things.",["courage","friendship","temptation"]),
+ b("Catch-22","Joseph Heller",1961,"literary",["funny","unsettling"],"steady","heavy",27,
+   "On a small Mediterranean island in the Second World War, the bombardier Yossarian is convinced that everyone is trying to kill him — the enemy, and his own colonels, who keep raising the number of missions needed to go home. He tries to be declared insane, but anyone who asks to be excused from combat must be sane. That's the catch. A furious, circular black comedy about bureaucracy and war.",["war","absurdity","bureaucracy"]),
+ b("Slaughterhouse-Five","Kurt Vonnegut",1969,"literary",["funny","melancholy"],"fast","light",24,
+   "Billy Pilgrim has come unstuck in time. He drifts between his childhood, his life as an optometrist in Ilium, New York, his abduction by aliens from Tralfamadore and the firebombing of Dresden, which he survived as a prisoner of war in an underground meat locker — as Vonnegut himself did. So it goes. A short, wry, heartbroken anti-war novel that refuses to tell its story in order.",["war","trauma","free will"]),
+ b("The Stranger","Albert Camus",1942,"literary",["contemplative","unsettling"],"fast","light",20,
+   "'Mother died today. Or maybe yesterday; I can't be sure.' Meursault, a clerk in French Algiers, attends his mother's funeral without weeping, starts an affair, and weeks later shoots a man on a blazing beach for no reason he can name. His trial turns out to be less about the killing than about his refusal to feel what society expects. Camus' short, cool novel of the absurd.",["absurdity","alienation","judgement"]),
+ b("The Metamorphosis","Franz Kafka",1915,"literary",["unsettling","funny"],"fast","light",19,
+   "Gregor Samsa, a travelling salesman who supports his whole family, wakes one morning to find he has been transformed into a monstrous insect. His first worry is that he will be late for work. Kafka's novella follows his family's reaction — horror, then resentment, then something worse — and is by turns absurd, darkly comic and deeply sad.",["alienation","family","duty"]),
+ b("Invisible Man","Ralph Ellison",1952,"literary",["contemplative","unsettling"],"steady","heavy",28,
+   "From an underground room lit by 1,369 stolen light bulbs, an unnamed Black narrator tells how he went from a Southern college to Harlem, joining and leaving one movement after another, only to find that no one ever really sees him. Surreal, angry and as rhythmic as jazz, Ellison's novel won the National Book Award in 1953.",["identity","race","visibility"]),
+ b("The Old Man and the Sea","Ernest Hemingway",1952,"literary",["contemplative","hopeful"],"fast","light",19,
+   "Santiago, an old Cuban fisherman, has gone eighty-four days without a catch. He rows far out into the Gulf Stream alone and hooks a giant marlin that tows his skiff for days. Hemingway's spare, luminous novella of endurance won him the Pulitzer Prize and helped win him the Nobel.",["endurance","pride","nature"]),
+ b("The Hound of the Baskervilles","Arthur Conan Doyle",1902,"crime",["thrilling","unsettling"],"fast","light",21,
+   "Sir Charles Baskerville is found dead at the edge of Dartmoor with a look of terror on his face, and near the body are the footprints of a gigantic hound. The family legend calls it a curse. Sherlock Holmes sends Dr Watson to guard the heir at a fog-bound manor among bogs, an escaped convict and suspicious neighbours. The best Holmes story, and the most atmospheric.",["deduction","superstition","inheritance"]),
+ b("Their Eyes Were Watching God","Zora Neale Hurston",1937,"literary",["hopeful","melancholy"],"steady","medium",24,
+   "Janie Crawford tells her friend Pheoby the story of her life: the marriage her grandmother arranged for her, a second husband who becomes mayor of an all-Black Florida town and silences her, and at last Tea Cake, a younger, laughing man who takes her down to the Everglades to work the muck. Hurston's rich Southern vernacular sings. A love story, and a story of a woman finding her own voice.",["independence","love","voice"]),
+ b("The Handmaid's Tale","Margaret Atwood",1985,"scifi",["unsettling","melancholy"],"steady","medium",27,
+   "In the Republic of Gilead, a theocracy that has overthrown the United States, fertile women are assigned to the households of powerful men to bear their children. Offred remembers her daughter, her husband, her job, her own name — all taken from her. Atwood said she put nothing in it that had not already happened somewhere in history, which is exactly what makes it frightening.",["control","gender","resistance"]),
+ b("The Name of the Rose","Umberto Eco",1980,"crime",["contemplative","thrilling"],"slow","heavy",30,
+   "In 1327 the English Franciscan William of Baskerville and his young novice Adso arrive at a wealthy Benedictine abbey in northern Italy for a theological debate, and find the monks dying one by one. The clues lead into the abbey's labyrinthine library and a forbidden book. A murder mystery wrapped in medieval philosophy and heresy — demanding, and hugely rewarding.",["knowledge","faith","laughter"]),
+ b("Midnight's Children","Salman Rushdie",1981,"literary",["funny","contemplative"],"slow","heavy",30,
+   "Saleem Sinai is born at the stroke of midnight on 15 August 1947, the moment India becomes independent, and discovers that he is telepathically linked to the 1,001 children born in that first hour. His life becomes chained to his nation's — Partition, war, the Emergency — told in a riotous, digressive, pickle-scented voice. Rushdie's Booker winner, later named the best of all Booker winners.",["history","identity","India"]),
+ b("The Kite Runner","Khaled Hosseini",2003,"literary",["melancholy","hopeful"],"fast","medium",29,
+   "Amir, the son of a wealthy Kabul businessman, and Hassan, the son of his father's servant, are inseparable friends and kite-fighters in 1970s Afghanistan — until one winter afternoon when Amir fails Hassan in the worst way imaginable. Decades later, settled in California, he is called back to a Taliban-ruled Kabul with a chance to be good again. A wrenching, hugely popular story of guilt and atonement.",["guilt","redemption","friendship"]),
+ b("Life of Pi","Yann Martel",2001,"literary",["hopeful","contemplative"],"steady","medium",28,
+   "Pi Patel, the son of a zookeeper in Pondicherry, is sixteen when the ship carrying his family and their animals to Canada sinks in the Pacific. He finds himself in a lifeboat with a zebra, a hyena, an orangutan and a 450-pound Bengal tiger named Richard Parker. What follows is 227 days of survival, and a story that asks which version of the truth you would rather believe.",["faith","survival","storytelling"]),
+ b("The Road","Cormac McCarthy",2006,"literary",["melancholy","unsettling"],"fast","medium",26,
+   "A father and his young son walk south through a burned, ash-covered America years after an unnamed catastrophe, pushing a shopping trolley of supplies and carrying a pistol with two bullets. They scavenge, hide from roving bands and keep 'carrying the fire'. McCarthy's spare, bleak Pulitzer winner is also, unexpectedly, one of the most tender books about parenthood ever written.",["survival","parenthood","hope"]),
+ b("Atonement","Ian McEwan",2001,"literary",["melancholy","contemplative"],"steady","medium",29,
+   "On a hot summer's day in 1935 at an English country house, thirteen-year-old Briony Tallis, an aspiring writer, sees something pass between her older sister Cecilia and Robbie, the housekeeper's son, that she does not understand — and that night she tells a lie that will change three lives. The novel follows them into the Second World War, Dunkirk and the London hospitals. A story about guilt, and about the power and the limits of fiction.",["guilt","love","storytelling"]),
+ b("The Alchemist","Paulo Coelho",1988,"literary",["hopeful","contemplative"],"fast","light",24,
+   "Santiago, an Andalusian shepherd boy, dreams twice of treasure hidden near the Egyptian pyramids and sets out across the desert to find it. On the way he meets a king, a crystal merchant, an Englishman and an alchemist, who teach him to read omens and follow his 'Personal Legend'. A short, simple fable that has become one of the best-selling books in the world.",["destiny","dreams","journey"]),
+ b("The Hitchhiker's Guide to the Galaxy","Douglas Adams",1979,"scifi",["funny","thrilling"],"fast","light",22,
+   "Seconds before Earth is demolished to make way for a hyperspace bypass, Arthur Dent is rescued by his friend Ford Prefect, who turns out to be a researcher for the bestselling Hitchhiker's Guide to the Galaxy. Still in his dressing gown, Arthur is swept across the universe with a two-headed galactic president, a depressed robot and the answer to life, the universe and everything. Don't panic.",["absurdity","meaning","friendship"]),
+ b("Harry Potter and the Philosopher's Stone","J. K. Rowling",1997,"fantasy",["comforting","funny"],"fast","light",25,
+   "Harry Potter has spent ten years sleeping in a cupboard under the stairs of his awful aunt and uncle's house, until a giant called Hagrid tells him he is a wizard with a place at Hogwarts School of Witchcraft and Wizardry. There he finds friends, Quidditch, a three-headed dog and the truth about the scar on his forehead. The book that turned a generation into readers.",["friendship","belonging","courage"]),
+ b("The Da Vinci Code","Dan Brown",2003,"crime",["thrilling"],"fast","medium",27,
+   "The curator of the Louvre is found murdered in the Grand Gallery, his body posed like a Leonardo drawing and a cipher scrawled beside him. Harvard symbologist Robert Langdon and cryptologist Sophie Neveu follow a trail of codes through Paris and London toward a secret that a shadowy group will kill to protect. Short chapters, cliffhangers and conspiracies: the ultimate airport thriller.",["codes","conspiracy","faith"]),
+ b("The Hunger Games","Suzanne Collins",2008,"ya",["thrilling","unsettling"],"fast","medium",27,
+   "In Panem, built on the ruins of North America, the Capitol forces each of its twelve districts to send two teenagers every year to fight to the death in a televised arena. When her little sister's name is drawn, sixteen-year-old Katniss Everdeen of District 12 volunteers to take her place. A breathless survival story that is also a sharp satire of spectacle and inequality.",["survival","inequality","media"]),
+ b("The Book Thief","Markus Zusak",2005,"ya",["melancholy","hopeful"],"steady","medium",30,
+   "Narrated by Death, who finds himself unexpectedly fond of her, this is the story of Liesel Meminger, a foster girl on Himmel Street in a small town outside Munich in Nazi Germany. She steals books, learns to read with her accordion-playing foster father, and shares them with the Jewish man hidden in the basement. A story about the power of words, at a time when words were being used to destroy.",["words","war","kindness"]),
+ b("A Game of Thrones","George R. R. Martin",1996,"fantasy",["thrilling","unsettling"],"steady","heavy",34,
+   "In the Seven Kingdoms of Westeros, where summers and winters last for years, Lord Eddard Stark is summoned south to serve his old friend the king and walks into a court of ambitious, ruthless families. Beyond the Wall in the frozen north something ancient is stirring, and across the sea the last daughter of a deposed dynasty is coming of age. Epic fantasy that plays by the rules of real politics, which is to say that nobody is safe.",["power","family","honour"]),
+ b("Wolf Hall","Hilary Mantel",2009,"history",["contemplative","thrilling"],"slow","heavy",33,
+   "Thomas Cromwell, son of a brutal Putney blacksmith, has made himself the most capable man in England by the time Henry VIII decides he must set aside Katherine of Aragon and marry Anne Boleyn. Mantel puts us inside Cromwell's head — wry, watchful and quietly ruthless — as he manoeuvres through a court where one mistake can cost you your head. The Booker winner that opens a trilogy.",["power","ambition","loyalty"]),
+ b("The Shadow of the Wind","Carlos Ruiz Zafón",2001,"crime",["thrilling","melancholy"],"steady","medium",30,
+   "Barcelona, 1945. A bookseller takes his young son Daniel to the Cemetery of Forgotten Books, a secret labyrinthine library, and lets him choose one book to protect for life. Daniel picks The Shadow of the Wind by Julián Carax, and soon learns that a mysterious stranger has been hunting down and burning every copy of Carax's work. A Gothic, romantic mystery soaked in love for books.",["books","memory","love"]),
+ b("Normal People","Sally Rooney",2018,"literary",["melancholy","contemplative"],"fast","light",28,
+   "Connell is a popular footballer and Marianne a prickly loner at the same school in small-town County Sligo; his mother cleans her family's house. They begin a secret relationship, and over the following years at Trinity College Dublin they drift apart and back together, again and again, unable to say what they mean. Rooney writes intimacy, class and miscommunication with unnerving accuracy.",["love","class","intimacy"]),
+ b("Where the Crawdads Sing","Delia Owens",2018,"literary",["melancholy","hopeful"],"steady","medium",30,
+   "Abandoned by her family one by one, Kya Clark grows up alone in a shack in the North Carolina marshes, the 'Marsh Girl' of the townsfolk of Barkley Cove, learning everything she knows from the gulls, the tides and the shells. When the town's golden boy is found dead in 1969, suspicion falls on her. Part coming-of-age story, part courtroom mystery, part love letter to the wild.",["loneliness","nature","prejudice"]),
+ b("The Art of War","Sun Tzu",-500,"business",["contemplative"],"steady","light",19,
+   "Thirteen short chapters on strategy attributed to the ancient Chinese general Sun Tzu: know your enemy and know yourself, win without fighting, attack where they are unprepared. Written for warring states, it has since been taken up by generals, CEOs, coaches and anyone who negotiates for a living. Quick to read, slow to finish thinking about.",["strategy","leadership","conflict"]),
+ b("The Prince","Niccolò Machiavelli",1532,"philosophy",["contemplative","unsettling"],"fast","light",19,
+   "Written by a Florentine diplomat out of a job, The Prince is a short handbook on how to win power and keep it: whether it is better to be loved or feared, when a ruler must break his word, why fortune favours the bold. Machiavelli's cool realism scandalised Europe and gave us the word 'Machiavellian'. Still read by politicians, executives and anyone who wonders how power really works.",["power","politics","pragmatism"]),
+ b("The Wealth of Nations","Adam Smith",1776,"business",["contemplative"],"slow","heavy",36,
+   "Adam Smith's great inquiry into why some nations grow rich: the division of labour, beginning with a pin factory; the 'invisible hand' of self-interest; the case for free trade; and the dangers of monopolies and of merchants who conspire against the public. The founding text of economics — more humane, and more suspicious of business, than its reputation suggests.",["economics","markets","labour"]),
+ b("On the Origin of Species","Charles Darwin",1859,"nonfiction",["contemplative"],"slow","heavy",30,
+   "After decades of observation, from the Galápagos to the pigeon lofts of England, Charles Darwin set out his theory that species are not fixed but evolve, shaped over immense spans of time by natural selection. Written for the general Victorian reader, it remains clear, careful and patient, and it changed the way human beings understand themselves.",["evolution","nature","science"]),
+ b("The Diary of a Young Girl","Anne Frank",1947,"biography",["melancholy","hopeful"],"steady","medium",24,
+   "In June 1942 Anne Frank is given a diary for her thirteenth birthday. Weeks later her Jewish family goes into hiding from the Nazis in the secret annex behind her father's Amsterdam office. For two years she writes about quarrels, first love, her hopes of becoming a writer and the constant fear of discovery, with startling wit and honesty. One of the most important books to come out of the Second World War.",["hope","war","adolescence"]),
+ b("Night","Elie Wiesel",1956,"biography",["melancholy","unsettling"],"fast","light",20,
+   "In 1944 fifteen-year-old Elie Wiesel and his family are deported from their town in Transylvania to Auschwitz, and later to Buchenwald. In little more than a hundred pages he describes the selections, the death marches, his struggle to keep his father alive and the death of his faith. A Nobel Peace laureate's testimony: spare and unforgettable.",["survival","faith","memory"]),
+ b("Silent Spring","Rachel Carson",1962,"nonfiction",["contemplative","unsettling"],"steady","medium",28,
+   "The marine biologist Rachel Carson documented how DDT and other synthetic pesticides, sprayed indiscriminately across America, were poisoning birds, fish, soil and people, opening with the fable of a town where no birds sing. The chemical industry attacked her ferociously; the book led to restrictions on DDT and helped launch the modern environmental movement.",["environment","science","responsibility"]),
+ b("A Brief History of Time","Stephen Hawking",1988,"nonfiction",["contemplative"],"steady","medium",28,
+   "Stephen Hawking sets out to explain, with a single equation, the biggest questions in physics: how the universe began, what black holes are, whether time can run backwards and how it might all end. Famously bought by millions and finished by fewer, it is in fact a clear and witty guide for the curious non-scientist.",["cosmology","time","science"]),
+ b("Guns, Germs, and Steel","Jared Diamond",1997,"history",["contemplative"],"slow","heavy",36,
+   "Why did Eurasian societies conquer the Americas, Africa and Australia, and not the other way round? Jared Diamond's Pulitzer-winning answer has nothing to do with race and everything to do with geography — which crops and animals could be domesticated, which way the continents run, and which germs travelled with them. Sweeping, argumentative and contested, it changed how a generation thinks about world history.",["geography","civilisation","inequality"]),
+ b("The Selfish Gene","Richard Dawkins",1976,"nonfiction",["contemplative"],"steady","medium",30,
+   "Richard Dawkins argues that evolution is best understood from the gene's point of view, with bodies as 'survival machines' built by genes to copy themselves. From there he explains altruism, selfishness and family, and coins a new word — 'meme' — for ideas that replicate. Clear, provocative and still argued over.",["evolution","biology","behaviour"]),
+ b("How to Win Friends and Influence People","Dale Carnegie",1936,"business",["hopeful"],"fast","light",22,
+   "Dale Carnegie's plain-spoken guide to getting along with people: remember names, listen more than you talk, don't criticise, let the other person save face. Built from anecdotes about Lincoln, salesmen and ordinary folk, it is the grandfather of the self-help shelf and has sold tens of millions of copies. Dated in places, still uncannily useful.",["communication","influence","self-improvement"]),
+ b("The 7 Habits of Highly Effective People","Stephen R. Covey",1989,"business",["hopeful","contemplative"],"steady","medium",29,
+   "Stephen Covey's principle-based framework for personal and professional effectiveness: be proactive, begin with the end in mind, put first things first, think win-win, seek first to understand, synergise, and sharpen the saw. Less a bag of tips than an argument that character matters more than technique. A fixture of corporate training rooms for over thirty years.",["habits","leadership","character"]),
+ b("Atomic Habits","James Clear",2018,"business",["hopeful"],"fast","light",32,
+   "James Clear argues that tiny improvements — one percent at a time — compound into remarkable results, and that good habits come from systems, not willpower. He lays out four simple laws: make it obvious, attractive, easy and satisfying. Practical, readable and full of examples from sport, business and science; the defining habit book of its decade.",["habits","productivity","self-improvement"]),
+ b("The Immortal Life of Henrietta Lacks","Rebecca Skloot",2010,"nonfiction",["contemplative","melancholy"],"steady","medium",31,
+   "In 1951 doctors at Johns Hopkins took cells from the cervical tumour of Henrietta Lacks, a poor Black tobacco farmer, without her knowledge. Her cells — HeLa — became the first immortal human cell line and helped develop the polio vaccine and much else, while her family did not learn of it for decades. Skloot weaves science, medical ethics and the Lacks family's story into one gripping book.",["medical ethics","race","family"]),
+ b("In Cold Blood","Truman Capote",1966,"crime",["unsettling","thrilling"],"steady","medium",27,
+   "In November 1959 four members of the Clutter family were murdered in their farmhouse in Holcomb, Kansas. Truman Capote spent six years researching the crime, the town and the two drifters who committed it, and wrote it up with the techniques of a novelist. The book that invented modern true crime — and raised questions about its ethics that have never gone away.",["violence","justice","America"]),
+ b("Long Walk to Freedom","Nelson Mandela",1994,"biography",["hopeful","contemplative"],"slow","heavy",34,
+   "Nelson Mandela's autobiography, begun in secret on Robben Island, follows him from a herd boy in the Transkei to a young lawyer in Johannesburg, the armed struggle against apartheid, twenty-seven years in prison and his election as South Africa's first democratic president. Measured, dignified and moving: the story of a man who refused to hate.",["freedom","justice","perseverance"]),
+ b("The Autobiography of Malcolm X","Malcolm X with Alex Haley",1965,"biography",["thrilling","contemplative"],"steady","heavy",30,
+   "Told to the journalist Alex Haley in the last years of his life, this is Malcolm Little's journey from a childhood scarred by racist violence to hustling in Harlem, prison, conversion to the Nation of Islam, his break with it, and the pilgrimage to Mecca that transformed his views — ending with his assassination in 1965. Blistering, self-questioning and still essential.",["identity","race","transformation"]),
+ b("I Know Why the Caged Bird Sings","Maya Angelou",1969,"biography",["hopeful","melancholy"],"steady","medium",26,
+   "Maya Angelou's first memoir follows her childhood in segregated Stamps, Arkansas, raised by her grandmother; the trauma that left her almost mute for years; the woman who brought her back through poetry; and her coming of age in San Francisco. Lyrical, frank and full of resilience, it opened the door for Black women's autobiography.",["resilience","identity","voice"]),
+ b("The Intelligent Investor","Benjamin Graham",1949,"business",["contemplative"],"slow","heavy",37,
+   "Benjamin Graham, the father of value investing and Warren Buffett's teacher, explains how to invest without losing your shirt: insist on a margin of safety, treat a share as part of a real business, and let the manic 'Mr Market' work for you rather than against you. Buffett has called it by far the best book about investing ever written.",["investing","discipline","value"])
 ];
 const BOOK = id => BOOKS[id];
 
@@ -403,17 +553,17 @@ const GENRE_LABEL={literary:"Literary",crime:"Crime",scifi:"Sci-Fi",fantasy:"Fan
 /* want: genres[], moods[], maxPrice, avoid[] (moods or genres they refuse)
    probes: each reveals a clue and costs a little of their patience  */
 const CAST=[
- {key:"rosnah",name:"Puan Rosnah",role:"retired teacher",skin:"#c58a5e",hair:"#2b2b33",shirt:"#7a9ec4",
+ {key:"ferreira",name:"Mrs Ferreira",role:"retired teacher",skin:"#c58a5e",hair:"#2b2b33",shirt:"#7a9ec4",
   want:{genres:["literary","poetry","children"],moods:["comforting","hopeful"],max:35,avoid:["unsettling"]},
-  enter:"Aiyo, the aircon here is very good. I just came to look, ah.",
+  enter:"Oh, the air conditioning in here is lovely. I only came in to look.",
   probes:[
-   {q:"What do you usually read, Puan?",a:"I taught Bahasa and English for thirty-one years. Now I only read what is kind.",reveal:"Likes gentle books"},
+   {q:"What do you usually read, Mrs Ferreira?",a:"I taught English and Portuguese for thirty-one years. Now I only read what is kind.",reveal:"Likes gentle books"},
    {q:"Reading for yourself or a gift?",a:"For me. My grandchildren gave me a lot of free time.",reveal:"Reading for herself"},
-   {q:"Any budget in mind?",a:"Teacher's pension, dear. Under thirty-five ringgit, please.",reveal:"Under RM35"}],
+   {q:"Any budget in mind?",a:"Teacher's pension, dear. Under thirty-five, please.",reveal:"Under $35"}],
   yes:"Oh, this one looks lovely. I'll take it. You are very clever, you know.",
-  no:"Hmm. Maybe next time, ah. I'll come back."},
+  no:"Hmm. Maybe next time. I'll come back."},
 
- {key:"devan",name:"Mr Devan",role:"retired civil servant",skin:"#8b5e3c",hair:"#e8e8e8",shirt:"#5b6b4a",
+ {key:"mensah",name:"Mr Mensah",role:"retired civil servant",skin:"#8b5e3c",hair:"#e8e8e8",shirt:"#5b6b4a",
   want:{genres:["history","biography","nonfiction","philosophy"],moods:["contemplative"],max:60,avoid:["romance"]},
   enter:"Good morning. Do you carry proper history, or only the airport kind?",
   probes:[
@@ -421,17 +571,17 @@ const CAST=[
    {q:"Price a concern?",a:"I would rather pay for one good book than three bad ones.",reveal:"Not price-sensitive"},
    {q:"Fiction ever?",a:"My wife reads the romance. I read the truth.",reveal:"Refuses romance"}],
   yes:"Now this is a book. Wrap it. And keep more like it.",
-  no:"No, no. I'll try the shop in Bangsar."},
+  no:"No, no. I'll try the shop across the river."},
 
- {key:"weilun",name:"Wei Lun",role:"engineering student",skin:"#e0b48c",hair:"#1a1a22",shirt:"#3f6a63",
+ {key:"kenji",name:"Kenji",role:"engineering student",skin:"#e0b48c",hair:"#1a1a22",shirt:"#3f6a63",
   want:{genres:["scifi","fantasy","business"],moods:["thrilling","funny"],max:30,avoid:["poetry"]},
-  enter:"Boss, got anything cheap? I've got RM30 until Thursday.",
+  enter:"Got anything cheap? I've got $30 until Thursday.",
   probes:[
    {q:"What are you into?",a:"Space, robots, anything where someone builds their way out of a problem.",reveal:"Wants sci-fi"},
-   {q:"Thirty ringgit firm?",a:"Very firm. Rent already made me cry once this month.",reveal:"Hard cap RM30"},
-   {q:"Long book or short?",a:"Long, actually. Cost per hour, boss. I'm an engineer.",reveal:"Values length"}],
-  yes:"Steady. Take my money before I change my mind.",
-  no:"Cannot lah. Sorry boss."},
+   {q:"Thirty dollars firm?",a:"Very firm. Rent already made me cry once this month.",reveal:"Hard cap $30"},
+   {q:"Long book or short?",a:"Long, actually. Cost per hour. I'm an engineer.",reveal:"Values length"}],
+  yes:"Nice. Take my money before I change my mind.",
+  no:"Can't do it. Sorry."},
 
  {key:"farah",name:"Farah",role:"marketing exec",skin:"#c99161",hair:"#241a18",shirt:"#c4718a",
   want:{genres:["romance","crime","ya"],moods:["thrilling","funny","hopeful"],max:45,avoid:["philosophy"]},
@@ -443,15 +593,15 @@ const CAST=[
   yes:"Oh this is SO going on my story. Taking it.",
   no:"Hmm, not really my vibe. Thanks though!"},
 
- {key:"lim",name:"Uncle Lim",role:"kopitiam owner next door",skin:"#c58a5e",hair:"#3a3a42",shirt:"#b8b0a0",
+ {key:"rossi",name:"Mr Rossi",role:"café owner next door",skin:"#c58a5e",hair:"#3a3a42",shirt:"#b8b0a0",
   want:{genres:["children"],moods:["comforting","funny"],max:30,avoid:["horror","philosophy"]},
-  enter:"Eh, neighbour! My daughter's birthday. She's seven. Help me, I don't read.",
+  enter:"Hey, neighbour! My daughter's birthday. She's seven. Help me, I don't read.",
   probes:[
    {q:"What does she like?",a:"Animals. Cats, pigs, anything with a face.",reveal:"Wants animals"},
    {q:"Does she read alone?",a:"Her mother reads to her. So must be nice to say out loud.",reveal:"Read-aloud"},
-   {q:"Budget?",a:"Don't insult me. But also don't rob me. Thirty.",reveal:"Around RM30"}],
-  yes:"Good, good. Come for kopi later, on me.",
-  no:"Aiya. Never mind, I'll buy her a bicycle."},
+   {q:"Budget?",a:"Don't insult me. But also don't rob me. Thirty.",reveal:"Around $30"}],
+  yes:"Good, good. Come for an espresso later, on me.",
+  no:"Ah. Never mind, I'll buy her a bicycle."},
 
  {key:"prakash",name:"Dr Prakash",role:"GP down the row",skin:"#8b5e3c",hair:"#22222a",shirt:"#dedede",
   want:{genres:["nonfiction","biography","philosophy","history"],moods:["contemplative","thrilling"],max:50,avoid:["fantasy"]},
@@ -473,13 +623,13 @@ const CAST=[
   yes:"Yes. This is the one. Thank you for listening properly.",
   no:"Not quite. But thank you for thinking about it."},
 
- {key:"amirah",name:"Amirah",role:"form five student",skin:"#c99161",hair:"#1e1a24",shirt:"#8a6ab0",
+ {key:"amirah",name:"Amirah",role:"high-school student",skin:"#c99161",hair:"#1e1a24",shirt:"#8a6ab0",
   want:{genres:["horror","ya","fantasy"],moods:["unsettling","thrilling"],max:32,avoid:["comforting"]},
   enter:"I want something that will actually scare me. Not baby scary.",
   probes:[
    {q:"How scared are we talking?",a:"Can't-sleep scared. My mum will complain and that's how I'll know it worked.",reveal:"Wants real horror"},
    {q:"Ghosts or people?",a:"People are worse. But a proper haunted house is also acceptable.",reveal:"Open to both"},
-   {q:"Duit raya still holding?",a:"Barely. Thirty-two ringgit, that's it.",reveal:"Under RM32"}],
+   {q:"Birthday money still holding?",a:"Barely. Thirty-two, that's it.",reveal:"Under $32"}],
   yes:"Okay this cover alone is unhinged. Buying.",
   no:"That's giving primary school. No thanks."},
 
@@ -488,30 +638,30 @@ const CAST=[
   enter:"I've been to four shops today. All of them had the same nine books.",
   probes:[
    {q:"What are you hoping to find?",a:"Something the algorithm didn't pick. Something with a sentence in it I'd be jealous of.",reveal:"Wants literary depth"},
-   {q:"Are you writing?",a:"Third draft. It's set in Ipoh. It's not going well.",reveal:"Writing about Malaysia"},
-   {q:"Malaysian authors?",a:"If you actually stock them, and not just the one everybody names.",reveal:"Tests your curation"}],
+   {q:"Are you writing?",a:"Third draft. It's set in my grandmother's village. It's not going well.",reveal:"Writing about home"},
+   {q:"Books in translation?",a:"If you actually stock them, and not just the one everybody names.",reveal:"Tests your curation"}],
   yes:"Right. Okay. You actually know what you're doing. I'll be back.",
   no:"Yeah. Same nine books. See you."},
 
- {key:"chin",name:"Mrs Chin",role:"tuition centre owner",skin:"#e0b48c",hair:"#2a2a30",shirt:"#a0453f",
+ {key:"chin",name:"Mrs Chin",role:"tutoring centre owner",skin:"#e0b48c",hair:"#2a2a30",shirt:"#a0453f",
   want:{genres:["children","ya","literary"],moods:["hopeful","funny"],max:28,avoid:["horror"]},
   enter:"I need books for the centre. Something the kids will finish.",
   probes:[
    {q:"What age group?",a:"Nine to twelve. If it's boring they will simply refuse.",reveal:"Ages 9-12"},
    {q:"Curriculum or fun?",a:"Fun. The curriculum has already ruined reading for them.",reveal:"Wants fun"},
-   {q:"Per unit budget?",a:"Twenty-eight. I'm buying six of whatever you pick.",reveal:"Under RM28"}],
+   {q:"Per unit budget?",a:"Twenty-eight. I'm buying six of whatever you pick.",reveal:"Under $28"}],
   yes:"Fine. Put six aside for me. Don't disappoint me next month.",
   no:"Too expensive, or too boring. Either way, no."},
 
- {key:"bala",name:"Bala",role:"rider on a break",skin:"#7a4f30",hair:"#161620",shirt:"#3f8a4a",
+ {key:"kwame",name:"Kwame",role:"delivery rider on a break",skin:"#7a4f30",hair:"#161620",shirt:"#3f8a4a",
   want:{genres:["biography","business","crime"],moods:["thrilling","hopeful"],max:26,avoid:[]},
-  enter:"Just sheltering from the rain, boss. Ten minutes only.",
+  enter:"Just sheltering from the rain. Ten minutes only.",
   probes:[
    {q:"Read much?",a:"Used to. Before the app. Now I read the map.",reveal:"Lapsed reader"},
    {q:"What got you before?",a:"True stories. People who came from nothing.",reveal:"Wants true stories"},
-   {q:"Got budget?",a:"Twenty-six. That's two hours of riding, so it better be good.",reveal:"Under RM26"}],
+   {q:"Got budget?",a:"Twenty-six. That's two hours of riding, so it better be good.",reveal:"Under $26"}],
   yes:"Okay. Two hours. Worth it, I think.",
-  no:"Next time boss. Rain stopped already."},
+  no:"Next time. Rain's stopped already."},
 
  {key:"tan",name:"Mr Tan",role:"collector",skin:"#c58a5e",hair:"#c8c8c8",shirt:"#6a5b7a",
   want:{genres:["literary","scifi","crime"],moods:["contemplative","unsettling"],max:80,avoid:["children"]},
@@ -529,17 +679,17 @@ const CAST=[
   probes:[
    {q:"Mess with your head how?",a:"Unreliable narrator. Something where I finish it and immediately reread page one.",reveal:"Wants unsettling twists"},
    {q:"Horror or sci-fi tonight?",a:"Whichever's scarier, honestly. I've got a 9am I'm already regretting.",reveal:"Open to either"},
-   {q:"Student budget?",a:"Twenty-eight, and that's after I checked my e-wallet twice.",reveal:"Under RM28"}],
+   {q:"Student budget?",a:"Twenty-eight, and that's after I checked my banking app twice.",reveal:"Under $28"}],
   yes:"Okay this cover is already unsettling me. Respect.",
   no:"Nah, too tame. I need to not sleep tonight."},
 
- {key:"siti",name:"Aunty Siti",role:"retired nurse",skin:"#c58a5e",hair:"#3a3a42",shirt:"#8a6a9a",
+ {key:"santos",name:"Mrs Santos",role:"retired nurse",skin:"#c58a5e",hair:"#3a3a42",shirt:"#8a6a9a",
   want:{genres:["biography","history","nonfiction"],moods:["hopeful","comforting"],max:34,avoid:["horror"]},
   enter:"Thirty-two years in the ward, dear. Now I just want stories where people get better.",
   probes:[
-   {q:"What kind of stories, Aunty?",a:"True ones. People who went through something terrible and came out the other side.",reveal:"Wants real recovery stories"},
+   {q:"What kind of stories, Mrs Santos?",a:"True ones. People who went through something terrible and came out the other side.",reveal:"Wants real recovery stories"},
    {q:"Any particular subject?",a:"Doesn't matter, as long as nobody dies at the end. I've had enough of that at work.",reveal:"No tragic endings"},
-   {q:"Budget?",a:"Pension is pension, dear. Thirty-four, and that's generous.",reveal:"Under RM34"}],
+   {q:"Budget?",a:"Pension is pension, dear. Thirty-four, and that's generous.",reveal:"Under $34"}],
   yes:"Ah, this looks just right. Thank you, dear, you listened properly.",
   no:"Hmm, not quite what I need today. Maybe next week."},
 
@@ -553,7 +703,7 @@ const CAST=[
   yes:"Sold. Actually, wrap two more — my co-founders need this.",
   no:"Pass. Doesn't sound like it'll change how I think."},
 
- {key:"nurul",name:"Nurul",role:"pharmacist",skin:"#d9a97e",hair:"#241a18",shirt:"#5a7a6a",
+ {key:"leila",name:"Leila",role:"pharmacist",skin:"#d9a97e",hair:"#241a18",shirt:"#5a7a6a",
   want:{genres:["poetry","philosophy","literary"],moods:["contemplative","comforting"],max:36,avoid:["business"]},
   enter:"Twelve-hour shift behind me. I want ten minutes of something beautiful before bed.",
   probes:[
@@ -563,23 +713,23 @@ const CAST=[
   yes:"This is exactly it. I can already tell I'll dog-ear every page.",
   no:"Close, but not quite what I need to switch off tonight."},
 
- {key:"achong",name:"Ah Chong",role:"hawker stall owner",skin:"#c58a5e",hair:"#242430",shirt:"#a8453f",
+ {key:"sam",name:"Sam",role:"food truck owner",skin:"#c58a5e",hair:"#242430",shirt:"#a8453f",
   want:{genres:["crime","business","biography"],moods:["thrilling","funny"],max:24,avoid:["philosophy"]},
-  enter:"Wok's cooling down, ten minutes before the dinner crowd. Got anything fast and cheap?",
+  enter:"Grill's cooling down, ten minutes before the dinner crowd. Got anything fast and cheap?",
   probes:[
    {q:"Fast how fast?",a:"I read in bursts between orders. Short chapters or I lose my place completely.",reveal:"Wants short chapters"},
    {q:"What gets you hooked?",a:"Crime, gangster stuff, people scheming. Real life is boring enough already.",reveal:"Wants crime or scheming"},
-   {q:"Budget, boss?",a:"Twenty-four lah. Frying oil isn't cheap these days.",reveal:"Under RM24"}],
-  yes:"Wah, okay boss. This will keep me company during the lull.",
-  no:"Aiyo, too slow for me. Customer coming already, gotta go."},
+   {q:"Budget?",a:"Twenty-four. Frying oil isn't cheap these days.",reveal:"Under $24"}],
+  yes:"Okay, nice. This will keep me company during the lull.",
+  no:"Nah, too slow for me. Customers coming, gotta go."},
 
- {key:"faiz",name:"Ustaz Faiz",role:"religious studies teacher",skin:"#8b5e3c",hair:"#1e1a1a",shirt:"#3a5a4a",
+ {key:"haddad",name:"Mr Haddad",role:"religious studies teacher",skin:"#8b5e3c",hair:"#1e1a1a",shirt:"#3a5a4a",
   want:{genres:["philosophy","history","biography"],moods:["contemplative","comforting"],max:38,avoid:["horror"]},
   enter:"Salam. I'm looking for something my students could actually sit with, not just skim.",
   probes:[
    {q:"Sit with in what sense?",a:"Something that asks a real question and doesn't rush to answer it. Teenagers can smell a rushed answer.",reveal:"Wants unhurried ideas"},
    {q:"Any tradition in particular?",a:"Any, honestly, as long as it's argued honestly. I'd rather they meet a real thinker than a simplified one.",reveal:"Wants honest argument"},
-   {q:"Class budget or your own?",a:"Mine. Thirty-eight, and I'll stretch it if the book is right.",reveal:"Under RM38, flexible if right"}],
+   {q:"Class budget or your own?",a:"Mine. Thirty-eight, and I'll stretch it if the book is right.",reveal:"Under $38, flexible if right"}],
   yes:"This will spark a good discussion on Friday. Thank you for taking the question seriously.",
   no:"Not quite it. But I appreciate you thinking it through with me."},
 
@@ -589,17 +739,17 @@ const CAST=[
   probes:[
    {q:"Visual how?",a:"Strong world-building. I want to be able to sketch the place after I finish a chapter.",reveal:"Wants strong world-building"},
    {q:"Dark or hopeful world?",a:"Dark is fine if there's still something worth reaching for in it.",reveal:"Wants hope inside darkness"},
-   {q:"Budget?",a:"Thirty-three. I already overspent on brushes this month.",reveal:"Under RM33"}],
+   {q:"Budget?",a:"Thirty-three. I already overspent on brushes this month.",reveal:"Under $33"}],
   yes:"Oh, the cover alone is doing things to me. This is coming home.",
   no:"Not quite the world I'm looking for. But close, actually."},
 
- {key:"yusof",name:"Encik Yusof",role:"retired fisherman",skin:"#8b5e3c",hair:"#c8c8c8",shirt:"#4a6a7a",
+ {key:"costa",name:"Mr Costa",role:"retired fisherman",skin:"#8b5e3c",hair:"#c8c8c8",shirt:"#4a6a7a",
   want:{genres:["biography","history"],moods:["comforting","hopeful"],max:26,avoid:["horror","fantasy"]},
   enter:"My eyes are not what they were, but my grandson reads to me now. Something true, please.",
   probes:[
-   {q:"True in what way, Pak?",a:"Real people, real sea, real struggle. I don't trust the invented ones anymore.",reveal:"Wants true stories"},
+   {q:"True in what way, sir?",a:"Real people, real sea, real struggle. I don't trust the invented ones anymore.",reveal:"Wants true stories"},
    {q:"Long book or short?",a:"Short chapters. My grandson has homework too, we read a little each night.",reveal:"Wants short chapters, read-aloud"},
-   {q:"Budget, Pak?",a:"Twenty-six. The boat doesn't go out as often these days.",reveal:"Under RM26"}],
+   {q:"Budget, sir?",a:"Twenty-six. The boat doesn't go out as often these days.",reveal:"Under $26"}],
   yes:"Good. We will start tonight. Thank you for choosing carefully.",
   no:"Not this one. But you tried, and that is something."},
 
@@ -609,7 +759,7 @@ const CAST=[
   probes:[
    {q:"Happy how?",a:"Earned happy, not saccharine. Let them struggle a bit, I just want them to land somewhere good.",reveal:"Wants earned happy endings"},
    {q:"Funny or sincere?",a:"Both, if you can find it. I laughed once today and it was at a spreadsheet error.",reveal:"Wants humour and warmth"},
-   {q:"Budget?",a:"Thirty-eight. Practically a rounding error after the week I've had.",reveal:"Under RM38"}],
+   {q:"Budget?",a:"Thirty-eight. Practically a rounding error after the week I've had.",reveal:"Under $38"}],
   yes:"Perfect. This is coming with me to the bathtub tonight, work phone off.",
   no:"Not tonight's book, I don't think. But a good try."},
 
@@ -619,7 +769,7 @@ const CAST=[
   probes:[
    {q:"What usually makes sense to you?",a:"Just words that mean something. Doesn't need a plot, just a vibe.",reveal:"Wants poetic prose or philosophy"},
    {q:"Fiction or non-fiction?",a:"Fiction feels fake right now. Show me something real and a bit sad.",reveal:"Prefers non-fiction or poetry"},
-   {q:"Budget for today?",a:"Twenty-five. Tips were terrible this morning.",reveal:"Under RM25"}],
+   {q:"Budget for today?",a:"Twenty-five. Tips were terrible this morning.",reveal:"Under $25"}],
   yes:"Yeah, this hits the exact spot. Thanks.",
   no:"A bit too mainstream for me. I'll just keep looking."},
 
@@ -633,14 +783,14 @@ const CAST=[
   yes:"Brilliant. Put it in a bag, I'm reading this during my next zoom call.",
   no:"Objection. Too predictable. Next."},
 
- {key:"wong",name:"Madam Wong",role:"tai chi instructor",skin:"#f1c27d",hair:"#3a3a42",shirt:"#8a6a9a",
+ {key:"wong",name:"Mrs Wong",role:"tai chi instructor",skin:"#f1c27d",hair:"#3a3a42",shirt:"#8a6a9a",
   want:{genres:["nonfiction","history","biography"],moods:["comforting","contemplative"],max:32,avoid:["horror","scifi"]},
   enter:"Good morning! My knees hurt today, so I need a book that is very gentle.",
   probes:[
-   {q:"Gentle in what way, Madam?",a:"No loud noises, no running around. Just wise people doing quiet things.",reveal:"Wants slow, contemplative nonfiction"},
+   {q:"Gentle in what way, Mrs Wong?",a:"No loud noises, no running around. Just wise people doing quiet things.",reveal:"Wants slow, contemplative nonfiction"},
    {q:"Do you like learning about the past?",a:"Yes! How people used to live. The old days were simpler.",reveal:"Prefers history or biography"},
-   {q:"What is your budget today?",a:"Thirty-two ringgit. I must save for my herbal soup later.",reveal:"Under RM32"}],
-  yes:"Wah, so nice. I will read this in the park tomorrow.",
+   {q:"What is your budget today?",a:"Thirty-two. I must save for my herbal soup later.",reveal:"Under $32"}],
+  yes:"Oh, so nice. I will read this in the park tomorrow.",
   no:"Too stressful! My blood pressure will go up. No thank you."},
 
  {key:"karthik",name:"Karthik",role:"indie musician",skin:"#7a4f30",hair:"#1a1a22",shirt:"#5b6b4a",
@@ -649,7 +799,7 @@ const CAST=[
   probes:[
    {q:"What kind of inspiration?",a:"Something that hurts a little to read. Beautiful but bruising.",reveal:"Wants melancholy literary or poetry"},
    {q:"Classic or contemporary?",a:"Classic, I think. The old ghosts knew what they were doing.",reveal:"Prefers older works"},
-   {q:"How much are you looking to spend?",a:"Thirty-five max. Spotify payouts are a joke, man.",reveal:"Under RM35"}],
+   {q:"How much are you looking to spend?",a:"Thirty-five max. Spotify payouts are a joke, man.",reveal:"Under $35"}],
   yes:"Man, this is exactly the mood I needed. Bless you.",
   no:"Nah, it doesn't have the rhythm I'm looking for."},
 
@@ -659,7 +809,7 @@ const CAST=[
   probes:[
    {q:"What kind of escape?",a:"Somewhere where nobody asks me what's for dinner, and two hot people fall in love.",reveal:"Wants light romance"},
    {q:"Do you want it to be funny?",a:"Please. I haven't genuinely laughed since Tuesday.",reveal:"Wants humor"},
-   {q:"Budget?",a:"Forty ringgit. Treat myself before the school run.",reveal:"Under RM40"}],
+   {q:"Budget?",a:"Forty. Treat myself before the school run.",reveal:"Under $40"}],
   yes:"Yes! This is my afternoon sorted. Do not tell my husband.",
   no:"Too heavy. I have enough drama in my living room."},
 
@@ -679,18 +829,18 @@ const CAST=[
   probes:[
    {q:"Weird like magic, or weird like nightmares?",a:"Nightmares that make you think. Reality that's just slightly broken.",reveal:"Wants unsettling scifi/fantasy"},
    {q:"Do you care about the plot?",a:"Not really. It's all about the atmosphere and the imagery for me.",reveal:"Prioritizes mood over plot"},
-   {q:"Student budget?",a:"Yeah, twenty-eight. Art supplies are bankrupting me.",reveal:"Under RM28"}],
+   {q:"Student budget?",a:"Yeah, twenty-eight. Art supplies are bankrupting me.",reveal:"Under $28"}],
   yes:"Oh, this is going to mess me up in the best way. Thanks!",
   no:"It's a bit too normal. I need it to be weirder."},
 
- {key:"abu",name:"Pak Abu",role:"security guard",skin:"#8b5e3c",hair:"#3a3a42",shirt:"#4a6a7a",
+ {key:"diallo",name:"Mr Diallo",role:"security guard",skin:"#8b5e3c",hair:"#3a3a42",shirt:"#4a6a7a",
   want:{genres:["history","crime","biography"],moods:["thrilling","contemplative"],max:20,avoid:["fantasy","scifi"]},
   enter:"Night shift tonight. I need something real to keep my eyes open.",
   probes:[
    {q:"Real life crimes or history?",a:"History. Stories about brave men in difficult times.",reveal:"Wants historical struggles"},
    {q:"Do you want it action-packed?",a:"Action is good, but it must be true. I don't like made-up magic.",reveal:"Strictly non-fiction or historical realism"},
-   {q:"Budget, Pak?",a:"Twenty ringgit. Just a small book for the guardhouse.",reveal:"Under RM20"}],
-  yes:"Alhamdulillah, this looks like a good companion for the night.",
+   {q:"Budget?",a:"Twenty. Just a small book for the guardhouse.",reveal:"Under $20"}],
+  yes:"Good. This looks like a fine companion for the night.",
   no:"Too expensive, or too fake. It's okay, I'll just drink coffee."},
 
  {key:"nadiah",name:"Nadiah",role:"food vlogger",skin:"#c99161",hair:"#1e1a24",shirt:"#e8b04b",
@@ -699,7 +849,7 @@ const CAST=[
   probes:[
    {q:"Culture in a fun way or an academic way?",a:"Fun! Like, Anthony Bourdain vibes. Traveling, eating, living.",reveal:"Wants upbeat, cultural biographies"},
    {q:"Are you okay if it gets a bit emotional?",a:"Yeah, I love a good emotional arc, as long as it ends on a high note.",reveal:"Wants hopeful endings"},
-   {q:"Budget for today?",a:"Forty-five! Just got a sponsor payout.",reveal:"Under RM45"}],
+   {q:"Budget for today?",a:"Forty-five! Just got a sponsor payout.",reveal:"Under $45"}],
   yes:"Stop, this is perfect! Definitely featuring this in my next vlog.",
   no:"Not quite the aesthetic I'm going for today, but thanks!"},
 
@@ -709,7 +859,7 @@ const CAST=[
   probes:[
    {q:"Mindset stuff or deep philosophy?",a:"Philosophy. Stoicism, discipline, that kind of hardcore mental training.",reveal:"Wants practical philosophy"},
    {q:"Are you a fast reader?",a:"Nah, I take it slow. Read a page, think about it during a set.",reveal:"Wants short, dense passages"},
-   {q:"Budget?",a:"Thirty-five. Keep it reasonable.",reveal:"Under RM35"}],
+   {q:"Budget?",a:"Thirty-five. Keep it reasonable.",reveal:"Under $35"}],
   yes:"Solid recommendation, bro. Let's get those mental gains.",
   no:"Too fluffy. I need something with more weight to it."},
 
@@ -719,19 +869,19 @@ const CAST=[
   probes:[
    {q:"Looking for historical facts or a literary narrative?",a:"Literary narrative. Give me the human cost behind the history.",reveal:"Wants literary history or deep nonfiction"},
    {q:"Does it need to have a happy ending?",a:"No. It just needs to be honest about the struggle.",reveal:"Accepts melancholy and hard truths"},
-   {q:"Budget constraint?",a:"Forty-two. NGO salaries aren't great, but books are a necessity.",reveal:"Under RM42"}],
+   {q:"Budget constraint?",a:"Forty-two. NGO salaries aren't great, but books are a necessity.",reveal:"Under $42"}],
   yes:"Thank you. I think this will give me the grounding I need.",
   no:"It feels a bit too sanitized. I need the raw truth."},
 
- {key:"raj",name:"Uncle Raj",role:"e-hailing driver",skin:"#8b5e3c",hair:"#e8e8e8",shirt:"#a0453f",
+ {key:"raj",name:"Raj",role:"rideshare driver",skin:"#8b5e3c",hair:"#e8e8e8",shirt:"#a0453f",
   want:{genres:["crime","thriller","mystery"],moods:["thrilling","funny"],max:22,avoid:["literary","poetry"]},
-  enter:"Waiting for a surge at the mall. Give me a quick murder mystery, boss.",
+  enter:"Waiting for a surge at the mall. Give me a quick murder mystery.",
   probes:[
    {q:"Classic whodunit or modern thriller?",a:"Classic! Agatha Christie style. I like trying to guess the killer.",reveal:"Wants classic puzzle crimes"},
    {q:"Do you mind if it's a bit slow?",a:"No slow! Must be fast. I might get a booking any minute.",reveal:"Wants fast pacing"},
-   {q:"Budget, Uncle?",a:"Twenty-two ringgit only. Fares are low today.",reveal:"Under RM22"}],
+   {q:"Budget?",a:"Twenty-two only. Fares are low today.",reveal:"Under $22"}],
   yes:"Very nice. I will read this while waiting for passengers.",
-  no:"Aiyo, too slow. I will fall asleep at the wheel!"},
+  no:"No, too slow. I will fall asleep at the wheel!"},
 
  {key:"nisa",name:"Nisa",role:"architect",skin:"#c58a5e",hair:"#1e1a24",shirt:"#2b2b33",
   want:{genres:["scifi","nonfiction","history"],moods:["contemplative","unsettling"],max:55,avoid:["romance","children"]},
@@ -739,7 +889,7 @@ const CAST=[
   probes:[
    {q:"Structures in space, or weird buildings on Earth?",a:"Either. A sci-fi world with crazy cities, or history of forgotten monuments.",reveal:"Wants world-building or spatial themes"},
    {q:"Should it be hopeful or a dystopia?",a:"Make it dystopian. Let me feel better about my parking lots.",reveal:"Prefers unsettling or dark themes"},
-   {q:"Budget?",a:"Fifty-five. I'll expense it as 'design research'.",reveal:"Under RM55"}],
+   {q:"Budget?",a:"Fifty-five. I'll expense it as 'design research'.",reveal:"Under $55"}],
   yes:"This is brilliant. The scale of it sounds incredible.",
   no:"Too grounded. I need something that breaks the rules of physics."},
 
@@ -749,27 +899,27 @@ const CAST=[
   probes:[
    {q:"Just a little adventure, or completely zero stakes?",a:"Low stakes. Maybe they open a bakery or go on a gentle quest.",reveal:"Wants very comforting fantasy/scifi"},
    {q:"Does it have to be for adults?",a:"Honestly, a good children's book works too. Just make it warm.",reveal:"Open to children's books"},
-   {q:"Budget?",a:"Thirty ringgit. Standard book allowance.",reveal:"Under RM30"}],
+   {q:"Budget?",a:"Thirty. Standard book allowance.",reveal:"Under $30"}],
   yes:"Ah, this sounds like a warm hug. Perfect.",
   no:"Too much conflict. My cortisol levels are already peaking."},
 
- {key:"ani",name:"Makcik Ani",role:"kuih seller",skin:"#c58a5e",hair:"#3a3a42",shirt:"#c4718a",
+ {key:"lopes",name:"Mrs Lopes",role:"pastry stall owner",skin:"#c58a5e",hair:"#3a3a42",shirt:"#c4718a",
   want:{genres:["romance","biography","history"],moods:["comforting","melancholy"],max:25,avoid:["scifi","horror"]},
-  enter:"Assalamualaikum. Stall is closed for the day. Looking for a nice love story.",
+  enter:"Good evening. Stall is closed for the day. Looking for a nice love story.",
   probes:[
    {q:"A happy love story, or one that makes you cry?",a:"A bit of crying is good. Reminds you that you are alive, right?",reveal:"Accepts melancholy romance"},
    {q:"Historical or modern?",a:"Historical. I like reading about how people courted in the old days.",reveal:"Prefers historical settings"},
-   {q:"Budget, Makcik?",a:"Twenty-five only. Small business, small budget.",reveal:"Under RM25"}],
-  yes:"Waalaikumsalam, this is just what I wanted. Thank you, nak.",
+   {q:"Budget?",a:"Twenty-five only. Small business, small budget.",reveal:"Under $25"}],
+  yes:"This is just what I wanted. Thank you, dear.",
   no:"Too modern for me. People just swipe phones now, no romance."},
 
- {key:"fiona",name:"Fiona",role:"expat teacher",skin:"#f1c27d",hair:"#4a2a2a",shirt:"#a8556e",
+ {key:"fiona",name:"Fiona",role:"teacher, new to the city",skin:"#f1c27d",hair:"#4a2a2a",shirt:"#a8556e",
   want:{genres:["history","literary","biography"],moods:["contemplative","melancholy"],max:50,avoid:["fantasy","ya"]},
-  enter:"Hi! I've been living here for a year and realized I know nothing about local history.",
+  enter:"Hi! I've moved cities three times and realised I know nothing about the history of any of them.",
   probes:[
-   {q:"Do you want a textbook history or a novel?",a:"A novel, please. Something beautifully written that captures the place.",reveal:"Wants literary historical fiction"},
+   {q:"Do you want a textbook history or a novel?",a:"A novel, please. Something beautifully written that captures a place and its time.",reveal:"Wants literary historical fiction"},
    {q:"Are you okay with heavy colonial themes?",a:"Absolutely. I want the unvarnished truth, no matter how sad.",reveal:"Open to heavy/melancholy themes"},
-   {q:"Budget limit?",a:"Fifty ringgit. Happy to pay for a good local author.",reveal:"Under RM50"}],
+   {q:"Budget limit?",a:"Fifty. Happy to pay for a really good novel.",reveal:"Under $50"}],
   yes:"This sounds incredibly moving. I can't wait to read it.",
   no:"It seems a bit generic. I really want a strong sense of place."},
 
@@ -779,17 +929,17 @@ const CAST=[
   probes:[
    {q:"Uncomfortable through gore or through the mind?",a:"The mind. A slow burn of dread. Gaslighting, paranoia, that stuff.",reveal:"Wants psychological horror/thriller"},
    {q:"Pacing? Fast or slow?",a:"Slow burn. I want to see how the author builds the tension over time.",reveal:"Wants slow-paced dread"},
-   {q:"Budget for research?",a:"Forty. I'll pitch it to the producers later.",reveal:"Under RM40"}],
+   {q:"Budget for research?",a:"Forty. I'll pitch it to the producers later.",reveal:"Under $40"}],
   yes:"Yeah, this cover alone is giving me anxiety. Let's do it.",
   no:"Too jump-scare. I need something that lingers."},
 
- {key:"grace",name:"Auntie Grace",role:"florist",skin:"#e0b48c",hair:"#e8e8e8",shirt:"#4f9a55",
+ {key:"grace",name:"Grace",role:"florist",skin:"#e0b48c",hair:"#e8e8e8",shirt:"#4f9a55",
   want:{genres:["poetry","children","nature"],moods:["comforting","hopeful"],max:35,avoid:["crime","horror"]},
   enter:"Hello dear. The flowers are blooming beautifully today. Have you got a book that feels like spring?",
   probes:[
    {q:"Are we talking gardening books, or poetry?",a:"Poetry, or a very sweet children's story. Just words about nature and growth.",reveal:"Wants comforting nature/poetry/children"},
    {q:"Something to read quickly or savor?",a:"To savor. I like to read one page with my morning tea.",reveal:"Wants slow, comforting reading"},
-   {q:"Budget, Auntie?",a:"Thirty-five ringgit. Just a little treat for myself.",reveal:"Under RM35"}],
+   {q:"Budget?",a:"Thirty-five. Just a little treat for myself.",reveal:"Under $35"}],
   yes:"Oh, how lovely. This will sit perfectly on my bedside table.",
   no:"Oh dear, that sounds a bit too gloomy for my taste."},
 
@@ -799,8 +949,8 @@ const CAST=[
   probes:[
    {q:"Looking for career advice or life philosophy?",a:"Philosophy. I need to know how to handle failure without giving up.",reveal:"Wants hopeful philosophy/nonfiction"},
    {q:"Do you want a modern author or an ancient thinker?",a:"Ancient is fine if it works. Just give me some timeless resilience.",reveal:"Open to classic philosophy"},
-   {q:"Budget constraint?",a:"Very tight. Twenty-five ringgit maximum, please.",reveal:"Under RM25"}],
-  yes:"Thanks, boss. I really needed this today.",
+   {q:"Budget constraint?",a:"Very tight. Twenty-five maximum, please.",reveal:"Under $25"}],
+  yes:"Thanks. I really needed this today.",
   no:"I don't think this will help me right now. But thanks."}
 ];
 
@@ -818,9 +968,6 @@ const RATINGS={
  "Beloved":[3.87,420000],"Norwegian Wood":[4.04,520000],"Kafka on the Shore":[4.11,480000],
  "One Hundred Years of Solitude":[4.11,850000],"The God of Small Things":[3.90,210000],
  "Things Fall Apart":[3.76,280000],"Pachinko":[4.32,650000],
- "The Garden of Evening Mists":[4.05,18000],"The Gift of Rain":[4.02,22000],
- "Evening is the Whole Day":[3.85,2500],"The Rice Mother":[4.01,9000],"Once We Were There":[3.90,900],
- "The Weight of Our Sky":[4.15,12000],"The Girl and the Ghost":[3.95,6000],
  "Gone Girl":[4.11,2800000],"The Girl with the Dragon Tattoo":[4.14,3200000],
  "And Then There Were None":[4.29,1300000],"The Big Sleep":[4.02,220000],"The Silence of the Lambs":[4.24,470000],
  "Dune":[4.26,1400000],"The Left Hand of Darkness":[4.05,130000],"Project Hail Mary":[4.51,950000],
@@ -833,7 +980,39 @@ const RATINGS={
  "Meditations":[4.19,350000],"The Myth of Sisyphus":[4.05,90000],"Devotions":[4.46,40000],"Milk and Honey":[3.95,800000],
  "Where the Wild Things Are":[4.23,620000],"Charlotte's Web":[4.24,1000000],"Matilda":[4.29,1100000],
  "The Little Prince":[4.32,2100000],
+ "Jane Eyre":[4.15,2100000],"Wuthering Heights":[3.88,1600000],"Great Expectations":[3.79,800000],
+ "A Tale of Two Cities":[3.86,950000],"Moby-Dick":[3.53,600000],"Frankenstein":[3.85,1700000],
+ "Dracula":[4.02,1300000],"War and Peace":[4.15,350000],"Anna Karenina":[4.10,900000],
+ "Crime and Punishment":[4.27,1000000],"The Brothers Karamazov":[4.36,330000],"Les Misérables":[4.21,900000],
+ "The Count of Monte Cristo":[4.29,1000000],"Don Quixote":[3.90,270000],"Madame Bovary":[3.70,330000],
+ "The Great Gatsby":[3.93,5500000],"Nineteen Eighty-Four":[4.20,5000000],"Animal Farm":[3.99,4000000],
+ "Brave New World":[3.99,1900000],"To Kill a Mockingbird":[4.26,6300000],"The Catcher in the Rye":[3.80,3600000],
+ "Of Mice and Men":[3.89,2900000],"The Grapes of Wrath":[3.99,950000],"Ulysses":[3.75,120000],
+ "Mrs Dalloway":[3.79,330000],"Heart of Darkness":[3.43,480000],"The Picture of Dorian Gray":[4.13,1600000],
+ "Little Women":[4.15,2600000],"Adventures of Huckleberry Finn":[3.84,1300000],"The Scarlet Letter":[3.44,950000],
+ "Lord of the Flies":[3.70,3000000],"Fahrenheit 451":[3.97,2600000],"The Odyssey":[3.79,1100000],
+ "Gone with the Wind":[4.31,1300000],"Rebecca":[4.25,900000],"The Lord of the Rings":[4.53,700000],
+ "Catch-22":[3.99,850000],"Slaughterhouse-Five":[4.10,1400000],"The Stranger":[4.02,1100000],
+ "The Metamorphosis":[3.84,900000],"Invisible Man":[3.89,200000],"The Old Man and the Sea":[3.79,1100000],
+ "The Hound of the Baskervilles":[4.13,450000],"Their Eyes Were Watching God":[3.94,380000],"The Handmaid's Tale":[4.14,2600000],
+ "The Name of the Rose":[4.16,400000],"Midnight's Children":[3.98,160000],"The Kite Runner":[4.34,3200000],
+ "Life of Pi":[3.94,1600000],"The Road":[3.98,900000],"Atonement":[3.91,650000],
+ "The Alchemist":[3.92,3200000],"The Hitchhiker's Guide to the Galaxy":[4.23,1900000],"Harry Potter and the Philosopher's Stone":[4.47,10000000],
+ "The Da Vinci Code":[3.92,2300000],"The Hunger Games":[4.33,9000000],"The Book Thief":[4.39,2600000],
+ "A Game of Thrones":[4.44,2500000],"Wolf Hall":[3.88,230000],"The Shadow of the Wind":[4.27,650000],
+ "Normal People":[3.84,1500000],"Where the Crawdads Sing":[4.45,3500000],"The Art of War":[3.97,300000],
+ "The Prince":[3.84,330000],"The Wealth of Nations":[3.90,50000],"On the Origin of Species":[4.00,140000],
+ "The Diary of a Young Girl":[4.18,3800000],"Night":[4.35,1300000],"Silent Spring":[4.00,60000],
+ "A Brief History of Time":[4.20,450000],"Guns, Germs, and Steel":[4.06,480000],"The Selfish Gene":[4.15,140000],
+ "How to Win Friends and Influence People":[4.21,1000000],"The 7 Habits of Highly Effective People":[4.12,600000],"Atomic Habits":[4.36,1200000],
+ "The Immortal Life of Henrietta Lacks":[4.10,800000],"In Cold Blood":[4.09,700000],"Long Walk to Freedom":[4.33,120000],
+ "The Autobiography of Malcolm X":[4.34,230000],"I Know Why the Caged Bird Sings":[4.24,600000],"The Intelligent Investor":[4.26,90000],
 };
+// Ancient works carry an approximate year: negative = BC, so -725 reads "c. 8th century BC".
+function yearText(y){
+  if(y<0){ const c=Math.ceil(-y/100), t=c%100>10&&c%100<14?"th":["th","st","nd","rd"][c%10]||"th"; return "c. "+c+t+" century BC"; }
+  return y<1000?"c. AD "+y:String(y);
+}
 function ratingFor(bk){ const r=RATINGS[bk.title]; return r?{avg:r[0],count:r[1]}:{avg:4.0,count:5000}; }
 function starsFor(avg){ const full=clamp(Math.round(avg),0,5); return "★".repeat(full)+"☆".repeat(5-full); }
 function fmtCount(n){
@@ -856,15 +1035,15 @@ const FURN={
   [SHELF]:{name:"Shelf",cost:120,slots:3,desc:"Holds 3 titles"},
   [TABLE]:{name:"Display Table",cost:200,slots:1,desc:"Featured title, +40% notice",lvl:2},
   [PLANT]:{name:"Potted Palm",cost:60,slots:0,desc:"+ambience, slower exits"},
-  [CAFE]:{name:"Kopi Corner",cost:900,slots:0,desc:"+50% patience, all customers",lvl:3},
+  [CAFE]:{name:"Coffee Corner",cost:900,slots:0,desc:"+50% patience, all customers",lvl:3},
 };
 
 /* Space tiers. Rent is tied to floor size, not reputation, and starts low:
    growth is a choice the player makes and pays for once, not a tax on doing well. */
 const SIZE_TIERS=[
   {name:"Corner Kiosk",  gw:9,  gh:7,  rent:30,  cost:0,    rep:0},
-  {name:"Shoplot Unit",  gw:12, gh:9,  rent:70,  cost:1200, rep:10},
-  {name:"Double Lot",    gw:16, gh:11, rent:130, cost:3200, rep:30},
+  {name:"Shopfront",     gw:12, gh:9,  rent:70,  cost:1200, rep:10},
+  {name:"Double Shopfront", gw:16, gh:11, rent:130, cost:3200, rep:30},
 ];
 
 const S={
@@ -948,7 +1127,7 @@ function upgradeSpace(){
 }
 
 /* ---------- stock helpers ---------- */
-// 1.45x is a real bookshop's margin. 1.75x priced a RM29 title at RM50.90, which is over
+// 1.45x is a real bookshop's margin. 1.75x priced a $29 title at $50.90, which is over
 // the ceiling of two thirds of the cast — the shop was unsellable by arithmetic, not by play.
 const autoPrice = cost => Math.round(cost*1.45) - 0.10;
 function shelvedIds(){ const o=[]; Object.keys(S.slots).forEach(k=>S.slots[k].forEach(id=>o.push(id))); return o; }
@@ -1070,10 +1249,10 @@ function drawFurn(x,y,t){
    One figure, drawn from shapes: (X,Y) is the top of the torso, feet land at Y+13. Hair style
    and colours vary per customer; facing follows their walking direction. */
 const HAIR_STYLES=["short","crop","bun","long","bob"];
-const HAIR_OF={"lim":0,"achong":0,"tan":0,"zaid":0,"hakim":0,"calvin":0,"abu":0,"yusof":0,"devan":1,"weilun":1,"prakash":1,
-  "bala":1,"ravi":1,"kevin":1,"faiz":1,"johan":1,"darren":1,"jason":1,"raj":1,"karthik":1,"tariq":1,"rosnah":2,"angela":2,
-  "siti":2,"chin":2,"wong":2,"ani":2,"kavita":2,"priya":2,"grace":2,"amirah":3,"chloe":3,"nadiah":3,"meiling":3,"sofia":3,
-  "farah":4,"nurul":4,"maya":4,"nisa":4,"fiona":4};
+const HAIR_OF={"rossi":0,"sam":0,"tan":0,"zaid":0,"hakim":0,"calvin":0,"diallo":0,"costa":0,"mensah":1,"kenji":1,"prakash":1,
+  "kwame":1,"ravi":1,"kevin":1,"haddad":1,"johan":1,"darren":1,"jason":1,"raj":1,"karthik":1,"tariq":1,"ferreira":2,"angela":2,
+  "santos":2,"chin":2,"wong":2,"lopes":2,"kavita":2,"priya":2,"grace":2,"amirah":3,"chloe":3,"nadiah":3,"meiling":3,"sofia":3,
+  "farah":4,"leila":4,"maya":4,"nisa":4,"fiona":4};
 function hairOf(p){ const k=p.key||p.name; if(HAIR_OF[k]!=null) return HAIR_STYLES[HAIR_OF[k]];
   let h=0; for(const ch of String(k)) h=(h*31+ch.charCodeAt(0))|0; return HAIR_STYLES[Math.abs(h)%HAIR_STYLES.length]; }
 
@@ -1345,7 +1524,7 @@ function scoreMatch(p,id){
   if(w.avoid.includes(bk.genre)) s-=50;
   if(bk.moods.some(m=>w.avoid.includes(m))) s-=28;
   // Budget is a soft ceiling: people stretch for the right book, and the penalty scales with
-  // how far past their own number you are, not with flat ringgit.
+  // how far past their own number you are, not with flat dollars.
   if(price<=w.max) s+=16;
   else s-= Math.min(42, Math.round(((price-w.max)/w.max)*95));
   const fair=autoPrice(bk.cost);
@@ -1432,10 +1611,11 @@ function setAction(label,fn){
   if(!label) return;
   const b2=el("button","btn-go",label); b2.onclick=fn; a.appendChild(b2);
 }
-function shopLabel(){ return "Kedai Buku"+(S.shopName?" "+S.shopName:""); }
+const DEFAULT_SHOP="Corner Books";
+function shopLabel(n){ return (n===undefined?S.shopName:n)||DEFAULT_SHOP; }
 function hud(){
   $("#hDay").textContent=S.day;
-  $("#hCash").textContent="RM"+money(S.cash);
+  $("#hCash").textContent="$"+money(S.cash);
   $("#hRep").textContent=Math.round(S.rep)+"/100";
   $("#hPhase").textContent={morning:"Morning",open:"Open",evening:"Closed"}[S.phase];
   $("#brandName").textContent=shopLabel();
@@ -1468,11 +1648,15 @@ function coverCanvas(bk,w,h){
   else if(style===2){ for(let i=0;i<3;i++) box(g,-4,98+i*20,W+8,9,4.5,ac,INK,2.4); }
   else { for(let i=0;i<6;i++) blob(g,18+r()*84,92+r()*60,5+r()*7,5+r()*7,i%2?C.white:ac,INK,2); }
   g.fillStyle="rgba(0,0,0,.12)"; g.fillRect(0,0,7,H);
-  const words=bk.title.toUpperCase().split(" "), lines=[]; let line="";
-  const fs=bk.title.length>22?14:bk.title.length>12?17:21;
-  g.font="700 "+fs+"px "+getComputedStyle(document.body).fontFamily;
-  words.forEach(wd=>{ const t=line?line+" "+wd:wd; if(g.measureText(t).width>W-24 && line){ lines.push(line); line=wd; } else line=t; });
-  lines.push(line);
+  const words=bk.title.toUpperCase().split(" "); let lines, fs=bk.title.length>22?14:bk.title.length>12?17:21;
+  // step the size down until the title fits in four lines, so long titles never lose a word
+  for(;;fs--){
+    lines=[]; let line="";
+    g.font="700 "+fs+"px "+getComputedStyle(document.body).fontFamily;
+    words.forEach(wd=>{ const t=line?line+" "+wd:wd; if(g.measureText(t).width>W-24 && line){ lines.push(line); line=wd; } else line=t; });
+    lines.push(line);
+    if(lines.length<=4 || fs<=10) break;
+  }
   g.fillStyle=fg; g.textBaseline="top";
   lines.slice(0,4).forEach((l,i)=>g.fillText(l,14,14+i*(fs+2)));
   g.font="500 10px "+getComputedStyle(document.body).fontFamily;
@@ -1491,7 +1675,7 @@ function bookCard(bk,extraHTML,onClick){
   c.appendChild(coverCanvas(bk,58,87));
   const m=el("div","meta");
   m.appendChild(el("div","t",bk.title));
-  m.appendChild(el("div","a",bk.author+" · "+bk.year));
+  m.appendChild(el("div","a",bk.author+" · "+yearText(bk.year)));
   m.appendChild(el("div",null,starRow(bk)));
   const tr=el("div","tagrow");
   tr.appendChild(el("span","tag b",GENRE_LABEL[bk.genre]||bk.genre));
@@ -1533,7 +1717,7 @@ function drawMorning(){
   }
 
   if(S.tab==="price"){
-    P.appendChild(el("p",null,"AUTO prices at 1.45x cost — safe, never greedy. Manual lets you chase margin, but every customer has a ceiling and Wei Lun's is RM30."));
+    P.appendChild(el("p",null,"AUTO prices at 1.45x cost — safe, never greedy. Manual lets you chase margin, but every customer has a ceiling and Kenji's is $30."));
     const ids=Object.keys(S.stock).map(Number).filter(id=>S.stock[id].copies>0);
     if(!ids.length) P.appendChild(el("div","empty","No stock yet.<br>Buy some books first."));
     ids.forEach(id=>{
@@ -1586,7 +1770,7 @@ function drawMorning(){
     });
     P.appendChild(L);
     if(!nt) P.appendChild(el("p",null,"This is the biggest space on the row. Nowhere further to expand."));
-    P.appendChild(el("p",null,"Kopi Corner is the cafe expansion. It does not sell drinks yet — it buys you time, which in this shop is the same thing."));
+    P.appendChild(el("p",null,"Coffee Corner is the cafe expansion. It does not sell drinks yet — it buys you time, which in this shop is the same thing."));
 
     P.appendChild(el("h3",null,"This shop"));
     P.appendChild(el("p",null,saveNote()+" There is nothing to press — the shop is written down each morning and each evening. Close the tab mid-day and you pick that morning up again. Start over is in the menu, top right."));
@@ -1733,8 +1917,8 @@ function bookHead(bk,price,yearLabel){
   head.appendChild(coverCanvas(bk,96,144));
   const hm=el("div");
   hm.appendChild(el("div","t",bk.title));
-  hm.appendChild(el("div","a",bk.author+(yearLabel?"":" · "+bk.year)));
-  if(yearLabel) hm.appendChild(el("div","a","First published "+bk.year));
+  hm.appendChild(el("div","a",bk.author+(yearLabel?"":" · "+yearText(bk.year))));
+  if(yearLabel) hm.appendChild(el("div","a","First published "+yearText(bk.year)));
   hm.appendChild(el("div",null,starRow(bk)));
   hm.appendChild(el("div","price",rm(price)));
   head.appendChild(hm);
@@ -1775,7 +1959,7 @@ function resolve(p,id,convo){
   sh.appendChild(el("div","say me","\""+bk.title+"\" — I think this is you."));
   if(ownsBook(p,id)){
     // They bought this from you already. No one buys the same book twice.
-    sh.appendChild(el("div","say","You sold me this one on day "+ownedDay(p,id)+", boss. It's at home on the shelf."));
+    sh.appendChild(el("div","say","You sold me this one on day "+ownedDay(p,id)+". It's at home on the shelf."));
     const vv=el("div","verdict bad"); vv.textContent="Already owns it"; sh.appendChild(vv);
     sh.appendChild(primary("← Choose another book",()=>renderPick(p,convo)));
     return;
@@ -1826,7 +2010,7 @@ function orderPanel(bk){
   m.appendChild(el("div",null,starRow(bk))); c.appendChild(m); sh.appendChild(c);
   const L=el("div","ledgerbox");
   L.appendChild(el("div","ledger","<span>Book</span><b>"+rm(autoPrice(bk.cost))+"</b>"));
-  L.appendChild(el("div","ledger","<span>Courier · Klang Valley</span><b>RM8.00</b>"));
+  L.appendChild(el("div","ledger","<span>Standard courier</span><b>$8.00</b>"));
   sh.appendChild(L);
   const t=el("div","total","<span>Total</span><b>"+rm(autoPrice(bk.cost)+8)+"</b>"); t.style.marginTop="12px"; sh.appendChild(t);
   sh.appendChild(el("p",null,"Delivered in 2 working days. This is the commerce hook — in the live build it opens checkout. Nothing is charged here."));
@@ -1846,10 +2030,10 @@ function drawEvening(){
   const f=el("div","facts"); f.style.margin="0"; f.style.background="var(--card)";
   [["Came in",S.footfall],["Served",st.served],["Delighted",st.delighted],["Walked out",st.walkouts]].forEach(([k,v])=>f.appendChild(el("div","stat","<span>"+k+"</span><b>"+v+"</b>")));
   P.appendChild(f);
-  if(st.walkouts>2) P.appendChild(el("p",null,"You are losing people to impatience. A Kopi Corner or more palms would buy you time."));
+  if(st.walkouts>2) P.appendChild(el("p",null,"You are losing people to impatience. A Coffee Corner or more palms would buy you time."));
   P.appendChild(el("p",null,"Reputation "+Math.round(S.rep)+"/100 · level "+level()+
     (level()<3?" · next unlock at "+(level()===1?18:45):" · everything unlocked")));
-  if(S.cash<0) P.appendChild(el("p",null,"You are in the red. Uncle Lim is carrying you on credit — you won't close, but you cannot restock until you're positive."));
+  if(S.cash<0) P.appendChild(el("p",null,"You are in the red. Mr Rossi next door is carrying you on credit — you won't close, but you cannot restock until you're positive."));
   P.appendChild(el("h3",null,"Sales"));
   if(!S.history.length) P.appendChild(el("div","empty","Nobody bought anything today."));
   else { const l=el("div","feed"); S.history.slice(0,8).forEach(h=>l.appendChild(el("div","cost","· "+h))); P.appendChild(l); }
@@ -1913,7 +2097,7 @@ window.addEventListener("unhandledrejection",e=>reportError(e.reason&&e.reason.m
    rather than on load. The on/off choice is a per-browser preference, kept out
    of the save on purpose — it belongs to the device, not the shop.
    ============================================================ */
-const MUSIC_KEY="kedaibuku.music";
+const MUSIC_KEY="cornerbooks.music";
 const bgm=$("#bgm"), musicBtn=$("#music");
 const MUSIC_ICON={
   on:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
@@ -1959,7 +2143,7 @@ paintMusic();
    when the page is running inside a viewer that grants it (same save on any
    device you open the link from). Whichever copy is newer wins at boot.
    ============================================================ */
-const SAVE_KEY="kedaibuku.save.v1", SAVE_V=1;
+const SAVE_KEY="cornerbooks.save.v1", SAVE_V=1;
 let saveState="local";            // "local" | "synced" | "error"
 
 function takeSnapshot(){
@@ -2071,7 +2255,7 @@ function saveNote(){
 // The title screen is up from the first frame. Continue waits on the save lookup, which
 // races the account copy against a 2.2s timeout so a slow viewer never holds up the menu.
 let bootDecided=false, bootSave=null, bootPending=true, inSession=false;
-const FRESH_KEY="kedaibuku.fresh";       // carried across the reload that Start over does
+const FRESH_KEY="cornerbooks.fresh";       // carried across the reload that Start over does
 const PHASE_WORD={morning:"morning",open:"open for trading",evening:"closed for the night"};
 function newerSave(a,b){
   if(!validSave(a)) a=null;
@@ -2106,8 +2290,8 @@ function titleScreen(){
   const img=document.createElement("img"); img.src=keeperPortrait(); img.alt="You, behind the counter";
   hero.appendChild(img);
   const mark=el("div","mark"); mark.appendChild(el("div","logo",ICON.stock));
-  const w=el("div"); w.appendChild(el("h1",null,"Kedai Buku"));
-  w.appendChild(el("small",null,"A bookshop on a Petaling Jaya shoplot row. Every book on the shelves is real."));
+  const w=el("div"); w.appendChild(el("h1",null,DEFAULT_SHOP));
+  w.appendChild(el("small",null,"A bookshop on an old shopping street. Every book on the shelves is real."));
   mark.appendChild(w); hero.appendChild(mark); I.appendChild(hero);
   if(!inSession && bootPending){ I.appendChild(el("div","empty","Looking for your shop…")); return; }
 
@@ -2115,7 +2299,7 @@ function titleScreen(){
   const d=inSession ? liveSummary() : bootSave;
   if(d){
     const c=el("div","card resume"), m=el("div","meta");
-    m.appendChild(el("div","t","Kedai Buku"+(d.shopName?" "+d.shopName:"")));
+    m.appendChild(el("div","t",shopLabel(d.shopName)));
     m.appendChild(el("div","a","Day "+d.day+" · "+PHASE_WORD[d.phase]));
     const tr=el("div","tagrow");
     tr.appendChild(el("span","tag",rm(d.cash)));
@@ -2150,7 +2334,7 @@ function confirmReplace(d){
   const sh=$("#sheet"); sh.innerHTML="";
   $("#modal").classList.add("on");
   sh.appendChild(el("h2",null,"Start a new shop?")).style.marginBottom="10px";
-  sh.appendChild(el("div","say","You already have Kedai Buku"+(d.shopName?" "+d.shopName:"")+" — day "+d.day+", "+
+  sh.appendChild(el("div","say","You already have "+shopLabel(d.shopName)+" — day "+d.day+", "+
     rm(d.cash)+" in the till, reputation "+Math.round(d.rep||0)+". A new shop replaces it the first time the new one saves, and it cannot be brought back after that."));
   const yes=primary("Start a new shop",()=>{ closeModal(); newShop(); });
   yes.style.background="var(--red)";
@@ -2226,7 +2410,7 @@ function howToPlay(back){
   sh.appendChild(el("p",null,"Tap a customer to talk. Each question costs them a little patience and turns up a clue — a genre, a mood, a budget, something they won't read. Then pick a book off your own shelves."));
   sh.appendChild(el("p",null,"Genre counts most, then mood, then price. Get it right and they buy; get it very right and your reputation grows and they come back. Get it wrong and they tell you what they were after."));
   sh.appendChild(el("h3",null,"Money"));
-  sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to move to a bigger lot."));
+  sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to move to a bigger shopfront."));
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
   sh.appendChild(primary(back===closeModal?"Got it":"Back to menu",back));
 }
@@ -2240,13 +2424,12 @@ function nameScreen(){
   portrait.src=keeperPortrait(); portrait.alt="You, behind the counter";
   sh.appendChild(portrait);
   sh.appendChild(el("h2",null,"Name your shop"));
-  sh.appendChild(el("p",null,"Every shoplot on the row has a name painted above the door. Yours goes on the sign."));
+  sh.appendChild(el("p",null,"Every shopfront on the street has a name painted above the door. Yours goes on the sign."));
   const field=el("div","field");
   field.appendChild(el("label",null,"Shop name"));
   const row=el("div","namerow");
-  row.appendChild(el("span",null,"Kedai Buku"));
   const inp=document.createElement("input");
-  inp.id="shopName"; inp.type="text"; inp.maxLength=16; inp.placeholder="your name";
+  inp.id="shopName"; inp.type="text"; inp.maxLength=24; inp.placeholder=DEFAULT_SHOP;
   inp.autocomplete="off"; inp.value=S.shopName;
   row.appendChild(inp);
   const chk=el("span","check"+(S.shopName?" on":""),"✓");
@@ -2254,8 +2437,8 @@ function nameScreen(){
   row.appendChild(chk);
   field.appendChild(row);
   sh.appendChild(field);
-  sh.appendChild(el("p",null,"Leave it blank and the sign just reads KEDAI BUKU."));
-  const go=primary("Paint the sign",()=>{ S.shopName=inp.value.trim().slice(0,16); hud(); introScreen(); autosave(); });
+  sh.appendChild(el("p",null,"Leave it blank and the sign just reads CORNER BOOKS."));
+  const go=primary("Paint the sign",()=>{ S.shopName=inp.value.trim().slice(0,24); hud(); introScreen(); autosave(); });
   sh.appendChild(go);
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter") go.click(); });
   setTimeout(()=>inp.focus(),50);
@@ -2264,7 +2447,7 @@ function introScreen(){
   const sh=$("#sheet"); sh.innerHTML="";
   $("#modal").classList.add("on");
   sh.appendChild(el("h2",null,shopLabel())).style.marginBottom="10px";
-  sh.appendChild(el("div","say","A corner kiosk in Petaling Jaya. Yours since this morning. Two shelves, a counter, and RM1,500 — rent is only RM30 a day here, but the space is small. Grow reputation and cash and you can upgrade to a bigger lot."));
+  sh.appendChild(el("div","say","A corner kiosk on an old shopping street. Yours since this morning. Two shelves, a counter, and $1,500 — rent is only $30 a day here, but the space is small. Grow reputation and cash and you can upgrade to a bigger lot."));
   sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
   sh.appendChild(phaseList());
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
