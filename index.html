@@ -39,6 +39,10 @@
   #brand b{display:block;font-size:15px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #me{width:38px;height:38px;flex:none;border-radius:50%;border:var(--lw) solid var(--ink);overflow:hidden;background:var(--yellow-soft);}
   #me img{width:100%;height:100%;display:block;}
+  /* sits above the pop-up layer (#modal, z-index 50) so it can be muted mid-conversation */
+  #music{position:relative;z-index:60;width:38px;height:38px;flex:none;padding:0;border-radius:50%;background:var(--blue-soft);display:grid;place-items:center;}
+  #music svg{width:18px;height:18px;}
+  #music.off{background:#eef0f5;color:var(--muted);}
 
   /* ---- HUD: the stat strip ---- */
   #hud{display:flex;background:var(--card);border:var(--lw) solid var(--ink);border-radius:999px;padding:7px 6px;}
@@ -206,6 +210,28 @@
   .check{width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid var(--ink);background:#eef0f5;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;}
   .check.on{background:var(--green);}
   .t,button,h2,h3,.speaker,.verdict,.stat b{overflow-wrap:anywhere;}
+
+  /* ---- title screen ---- */
+  #menuBtn{width:38px;height:38px;flex:none;padding:0;border-radius:50%;display:grid;place-items:center;background:var(--card);}
+  #menuBtn svg{width:18px;height:18px;}
+  #title{position:fixed;inset:0;z-index:40;display:none;overflow-y:auto;background:inherit;}
+  #title.on{display:block;}
+  #titleIn{max-width:460px;margin:0 auto;min-height:100%;padding:24px 16px 28px;display:flex;flex-direction:column;justify-content:center;gap:14px;}
+  .hero{background:var(--card);border:var(--lw) solid var(--ink);border-radius:var(--r);overflow:hidden;box-shadow:var(--lift-blue);margin:0 5px 6px 0;}
+  .hero img{display:block;width:100%;border-bottom:var(--lw) solid var(--ink);}
+  .mark{display:flex;align-items:center;gap:12px;padding:12px 14px;}
+  .mark .logo{width:46px;height:46px;}
+  .mark .logo svg{width:22px;height:22px;}
+  .mark h1{margin:0;font-size:26px;font-weight:700;line-height:1.15;letter-spacing:.2px;}
+  .mark small{display:block;font-size:12px;color:var(--ink-dim);font-weight:500;line-height:1.4;}
+  .resume .tagrow{margin-top:8px;}
+  .btn-w{background:var(--card);}
+  .menu-foot{font-size:11px;color:var(--muted);text-align:center;line-height:1.6;}
+  button.li{font-size:13px;font-weight:500;}
+  .li.danger .ic{background:var(--red-soft);border-color:var(--red);color:var(--red);}
+  /* the top-bar music button floats above pop-ups; on the title screen it gets its own toggle instead */
+  body.titling #music{visibility:hidden;}
+  .title-music{align-self:center;}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -213,8 +239,11 @@
   <header id="top">
     <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6a2 2 0 0 1 2-2h13v13H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/></svg></div>
     <div id="brand"><small>Old Quarter · bookshop</small><b id="brandName">Corner Books</b></div>
+    <button id="music" type="button" aria-label="Music on" aria-pressed="true"></button>
     <div id="me"></div>
+    <button id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
   </header>
+  <audio id="bgm" src="audio/paperback-afternoon.mp3" loop preload="auto"></audio>
   <div id="hud">
     <div class="stat"><span>Day</span><b id="hDay">1</b></div>
     <div class="stat"><span>Cash</span><b id="hCash">$1500</b></div>
@@ -227,6 +256,7 @@
   <div id="panel"></div>
 </div>
 
+<div id="title" class="on"><div id="titleIn"></div></div>
 <div id="modal"><div id="sheet"></div></div>
 
 <script>
@@ -1534,12 +1564,12 @@ function log(t){ S.history.unshift(t); if(S.history.length>40)S.history.pop(); }
 /* ============================================================
    GAME LOOP
    ============================================================ */
-let last=0;
+let last=0, paused=false;     // paused: the title screen or the menu is up
 function loop(ts){
   requestAnimationFrame(loop);
   if(ts-last<66) { render(); return; }
   last=ts;
-  if(S.phase==="open" && !S.talking){
+  if(S.phase==="open" && !S.talking && !paused){
     S.tick++;
     while(S.spawnQueue.length && S.spawnQueue[0]<=S.tick){ S.spawnQueue.shift(); spawnCustomer(); }
     S.customers.forEach(stepCustomer);
@@ -1599,6 +1629,10 @@ const ICON={
   shelf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v18M20 3v18M4 9h16M4 15h16M7 6v3M10 6v3M8 12v3M14 18v3"/></svg>',
   table:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18M6 10v9M18 10v9M9 10V6h6v4"/></svg>',
   plant:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 14h10l-1.5 7h-7zM12 14V8M12 9c0-3 2-5 5-5 0 3-2 5-5 5zM12 11c0-2.5-2-4.5-5-4.5 0 2.5 2 4.5 5 4.5z"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4l12 8-12 8z"/></svg>',
+  help:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7M5 10v10h14V10M10 20v-5h4v5"/></svg>',
+  reset:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5"/></svg>',
   cafe:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 11h2a2 2 0 0 1 0 4h-2M8 3v3M12 3v3"/></svg>',
 };
 function coverCanvas(bk,w,h){
@@ -1739,20 +1773,7 @@ function drawMorning(){
     P.appendChild(el("p",null,"Coffee Corner is the cafe expansion. It does not sell drinks yet — it buys you time, which in this shop is the same thing."));
 
     P.appendChild(el("h3",null,"This shop"));
-    P.appendChild(el("p",null,saveNote()+" There is nothing to press — the shop is written down each morning and each evening. Close the tab mid-day and you pick that morning up again."));
-    const over=el("button","btn-sm","Start over");
-    over.onclick=()=>{
-      const sh=$("#sheet"); sh.innerHTML="";
-      $("#modal").classList.add("on");
-      sh.appendChild(el("h2",null,"Start over?")).style.marginBottom="10px";
-      sh.appendChild(el("div","say","This erases "+shopLabel()+" — day "+S.day+", "+rm(S.cash)+
-        " in the till and every reader who remembers you — and opens an empty kiosk. It cannot be undone."));
-      const yes=primary("Erase it and start again",()=>{ clearSave(); setTimeout(()=>location.reload(),120); });
-      yes.style.background="var(--red)";
-      sh.appendChild(yes);
-      sh.appendChild(ghost("Keep playing",closeModal));
-    };
-    const ow=el("div"); ow.appendChild(over); P.appendChild(ow);
+    P.appendChild(el("p",null,saveNote()+" There is nothing to press — the shop is written down each morning and each evening. Close the tab mid-day and you pick that morning up again. Start over is in the menu, top right."));
   }
 
   setAction("Open the shop",()=>{
@@ -2058,12 +2079,57 @@ cv.addEventListener("click",e=>{
     }
   }
 });
-$("#modal").addEventListener("click",e=>{ if(e.target.id==="modal") { if(!S.talking) closeModal(); } });
+$("#modal").addEventListener("click",e=>{
+  if(e.target.id!=="modal" || S.talking) return;
+  closeModal();
+  if(paused && !titleOn()) paused=false;   // tapping off the menu is the same as Resume
+});
 // A button that silently does nothing is undiagnosable from a report. If a script error
 // escapes, say so in the tip line, in words a player can pass back.
 function reportError(msg){ tip("Something went wrong: "+(msg||"unknown error")+". Please report this line."); }
 window.addEventListener("error",e=>reportError(e.message));
 window.addEventListener("unhandledrejection",e=>reportError(e.reason&&e.reason.message||String(e.reason)));
+
+/* ============================================================
+   MUSIC
+   One looping track ("Paperback Afternoon"). Browsers refuse to start audio
+   before the player has touched the page, so it starts on the first tap or key
+   rather than on load. The on/off choice is a per-browser preference, kept out
+   of the save on purpose — it belongs to the device, not the shop.
+   ============================================================ */
+const MUSIC_KEY="cornerbooks.music";
+const bgm=$("#bgm"), musicBtn=$("#music");
+const MUSIC_ICON={
+  on:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  off:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><path d="M3 3l18 18"/></svg>'
+};
+let musicOn=true;
+try{ musicOn=localStorage.getItem(MUSIC_KEY)!=="off"; }catch(e){}
+bgm.volume=0.35;
+function playMusic(){ if(musicOn && !document.hidden) bgm.play().catch(()=>{}); }
+function paintMusic(){
+  musicBtn.innerHTML=musicOn?MUSIC_ICON.on:MUSIC_ICON.off;
+  musicBtn.classList.toggle("off",!musicOn);
+  musicBtn.setAttribute("aria-pressed",String(musicOn));
+  musicBtn.setAttribute("aria-label",musicOn?"Music on":"Music off");
+}
+musicBtn.addEventListener("click",()=>{
+  musicOn=!musicOn;
+  try{ localStorage.setItem(MUSIC_KEY,musicOn?"on":"off"); }catch(e){}
+  paintMusic();
+  if(musicOn) playMusic(); else bgm.pause();
+});
+// the first touch anywhere is what the browser counts as permission to play
+function firstGesture(){
+  document.removeEventListener("pointerdown",firstGesture,true);
+  document.removeEventListener("keydown",firstGesture,true);
+  playMusic();
+}
+document.addEventListener("pointerdown",firstGesture,true);
+document.addEventListener("keydown",firstGesture,true);
+// don't play to an empty room when the phone is locked or the tab is in the background
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) bgm.pause(); else if(bgm.played.length) playMusic(); });
+paintMusic();
 
 /* ============================================================
    SAVE
@@ -2186,45 +2252,169 @@ function saveNote(){
 }
 
 /* ---------- boot ---------- */
-let bootDecided=false;
+// The title screen is up from the first frame. Continue waits on the save lookup, which
+// races the account copy against a 2.2s timeout so a slow viewer never holds up the menu.
+let bootDecided=false, bootSave=null, bootPending=true, inSession=false;
+const FRESH_KEY="cornerbooks.fresh";       // carried across the reload that Start over does
+const PHASE_WORD={morning:"morning",open:"open for trading",evening:"closed for the night"};
 function newerSave(a,b){
   if(!validSave(a)) a=null;
   if(!validSave(b)) b=null;
   if(a&&b) return (b.savedAt||0)>(a.savedAt||0) ? b : a;
   return a||b;
 }
-function showBoot(d){ if(d) continueScreen(d); else nameScreen(); }
 async function boot(){
   const local=localRead();
-  // don't let a slow or absent viewer hold up the title screen
   const res=await Promise.race([cloudLoad(), new Promise(r=>setTimeout(()=>r("wait"),2200))]);
-  showBoot(newerSave(local, res==="wait"?null:res));
+  bootSave=newerSave(local, res==="wait"?null:res); bootPending=false;
+  if(!bootDecided) titleScreen();
   if(res==="wait") cloudLoad().then(c=>{
-    if(!bootDecided && newerSave(local,c)===c && c) showBoot(c);   // the account copy turned up late
+    if(bootDecided || !c || newerSave(bootSave,c)!==c) return;
+    bootSave=c;                                          // the account copy turned up late
+    if(titleOn()) titleScreen();
   });
 }
-function continueScreen(d){
-  const sh=$("#sheet"); sh.innerHTML="";
-  $("#modal").classList.add("on");
-  const portrait=document.createElement("img"); portrait.className="keeper-portrait";
-  portrait.src=keeperPortrait(); portrait.alt="You, behind the counter";
-  sh.appendChild(portrait);
-  sh.appendChild(el("h2",null,"Welcome back")).style.marginBottom="10px";
-  const name=shopLabel(d.shopName);
-  sh.appendChild(el("div","say",name+" is as you left it — "+rm(d.cash)+" in the till, reputation "+
-    Math.round(d.rep||0)+", "+SIZE_TIERS[d.tier||0].name.toLowerCase()+"."+
-    (d.phase==="evening"?" The shutters are down on day "+d.day+".":"")));
-  sh.appendChild(primary((d.phase==="evening"?"Close out day ":"Open up on day ")+d.day,()=>{
-    bootDecided=true;
-    try{ applySnapshot(d); }catch(e){ nameScreen(); return; }
-    lastJSON=JSON.stringify(takeSnapshot());
-    closeModal(); paint();
-  }));
-  sh.appendChild(ghost("Start a new shop",()=>{ bootDecided=true; nameScreen(); }));
-  sh.appendChild(el("p",null,"Starting a new shop replaces this save the first time the new one saves."));
+function takeFresh(){
+  try{ const f=sessionStorage.getItem(FRESH_KEY); sessionStorage.removeItem(FRESH_KEY); return !!f; }
+  catch(e){ return false; }
 }
 
-/* ---------- boot ---------- */
+/* ---------- title screen ---------- */
+function titleOn(){ return $("#title").classList.contains("on"); }
+function hideTitle(){ $("#title").classList.remove("on"); document.body.classList.remove("titling"); paused=false; }
+function liveSummary(){ return {shopName:S.shopName,day:S.day,cash:S.cash,rep:S.rep,tier:S.tier,phase:S.phase}; }
+function titleScreen(){
+  paused=true;
+  const I=$("#titleIn"); I.innerHTML=""; $("#title").classList.add("on"); document.body.classList.add("titling");
+  const hero=el("div","hero");
+  const img=document.createElement("img"); img.src=keeperPortrait(); img.alt="You, behind the counter";
+  hero.appendChild(img);
+  const mark=el("div","mark"); mark.appendChild(el("div","logo",ICON.stock));
+  const w=el("div"); w.appendChild(el("h1",null,DEFAULT_SHOP));
+  w.appendChild(el("small",null,"A bookshop on an old shopping street. Every book on the shelves is real."));
+  mark.appendChild(w); hero.appendChild(mark); I.appendChild(hero);
+  if(!inSession && bootPending){ I.appendChild(el("div","empty","Looking for your shop…")); return; }
+
+  // in a session, Continue just lifts the title off the game still in memory
+  const d=inSession ? liveSummary() : bootSave;
+  if(d){
+    const c=el("div","card resume"), m=el("div","meta");
+    m.appendChild(el("div","t",shopLabel(d.shopName)));
+    m.appendChild(el("div","a","Day "+d.day+" · "+PHASE_WORD[d.phase]));
+    const tr=el("div","tagrow");
+    tr.appendChild(el("span","tag",rm(d.cash)));
+    tr.appendChild(el("span","tag b","Reputation "+Math.round(d.rep||0)));
+    tr.appendChild(el("span","tag g",SIZE_TIERS[d.tier||0].name));
+    m.appendChild(tr); c.appendChild(m); I.appendChild(c);
+    const go=el("button","btn-go",inSession ? "Back to day "+d.day
+      : (d.phase==="evening"?"Close out day ":"Open up on day ")+d.day);
+    go.onclick=inSession ? hideTitle : ()=>continueSave(d);
+    I.appendChild(go);
+  }
+  const fresh=el("button","btn-go"+(d?" btn-w":""),"New shop");
+  fresh.onclick=()=>{ if(inSession) confirmStartOver(closeModal); else if(d) confirmReplace(d); else newShop(); };
+  I.appendChild(fresh);
+  const how=el("button","btn-go btn-w","How to play");
+  how.onclick=()=>howToPlay(closeModal);
+  I.appendChild(how);
+  const mu=el("button","btn-sm title-music");
+  const paintMu=()=>{ mu.textContent=musicOn?"♪ Music on":"♪ Music off"; mu.setAttribute("aria-pressed",String(musicOn)); };
+  mu.onclick=()=>{ musicBtn.click(); paintMu(); };
+  paintMu(); I.appendChild(mu);
+  I.appendChild(el("div","menu-foot","Progress saves automatically each morning and each evening."));
+}
+function continueSave(d){
+  bootDecided=true;
+  try{ applySnapshot(d); }catch(e){ newShop(); return; }
+  lastJSON=JSON.stringify(takeSnapshot());
+  inSession=true; hideTitle(); closeModal(); paint();
+}
+function newShop(){ bootDecided=true; inSession=true; hideTitle(); nameScreen(); }
+function confirmReplace(d){
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("h2",null,"Start a new shop?")).style.marginBottom="10px";
+  sh.appendChild(el("div","say","You already have "+shopLabel(d.shopName)+" — day "+d.day+", "+
+    rm(d.cash)+" in the till, reputation "+Math.round(d.rep||0)+". A new shop replaces it the first time the new one saves, and it cannot be brought back after that."));
+  const yes=primary("Start a new shop",()=>{ closeModal(); newShop(); });
+  yes.style.background="var(--red)";
+  sh.appendChild(yes);
+  sh.appendChild(ghost("Keep my shop",closeModal));
+}
+function confirmStartOver(back){
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("h2",null,"Start over?")).style.marginBottom="10px";
+  sh.appendChild(el("div","say","This erases "+shopLabel()+" — day "+S.day+", "+rm(S.cash)+
+    " in the till and every reader who remembers you — and opens an empty kiosk. It cannot be undone."));
+  const yes=primary("Erase it and start again",()=>{
+    clearSave();
+    try{ sessionStorage.setItem(FRESH_KEY,"1"); }catch(e){}
+    setTimeout(()=>location.reload(),120);
+  });
+  yes.style.background="var(--red)";
+  sh.appendChild(yes);
+  sh.appendChild(ghost("Keep my shop",back));
+}
+
+/* ---------- in-game menu ---------- */
+// Opening it stops the trading clock: the loop only ticks while nothing is paused.
+function openMenu(){
+  if(S.talking || titleOn()) return;
+  paused=true;
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("h2",null,S.phase==="open"?"Paused":"Menu")).style.marginBottom="10px";
+  sh.appendChild(el("div","say",shopLabel()+" · day "+S.day+", "+PHASE_WORD[S.phase]+"."+
+    (S.phase==="open"?" The clock has stopped — nobody's patience runs down while this is open.":"")));
+  const L=el("div","list");
+  const item=(icon,t,a,fn,cls)=>{
+    const b2=el("button","li"+(cls?" "+cls:"")); b2.appendChild(el("div","ic",icon));
+    const m=el("div","meta"); m.appendChild(el("div","t",t)); m.appendChild(el("div","a",a)); b2.appendChild(m);
+    b2.onclick=fn; L.appendChild(b2);
+  };
+  item(ICON.play,"Resume","Back to the shop floor.",resumeGame);
+  item(ICON.help,"How to play","The day, the customers, and how a sale is decided.",()=>howToPlay(openMenu));
+  item(ICON.home,"Back to title","Leave the shop as it is. Continue picks up right here.",()=>{ closeModal(); titleScreen(); });
+  item(ICON.reset,"Start over","Erase this shop and open an empty kiosk.",()=>confirmStartOver(openMenu),"danger");
+  sh.appendChild(L);
+  sh.appendChild(el("div","note",saveNote()+(S.phase==="open"
+    ?" Today's trading is written down when the shutters come down; close the tab now and this morning replays.":"")));
+}
+function resumeGame(){ closeModal(); paused=false; }
+$("#menuBtn").onclick=openMenu;
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape" || titleOn() || S.talking) return;
+  if(paused) resumeGame();
+  else if(!$("#modal").classList.contains("on")) openMenu();
+});
+
+/* ---------- how to play ---------- */
+function phaseList(){
+  const L=el("div","list"); L.style.marginBottom="10px";
+  [[ICON.stock,"Morning","Buy stock, set prices, fit out the shop."],
+   [ICON.shop,"Open","Customers come in. Tap one, ask up to three questions, then recommend from your shelves."],
+   [ICON.price,"Closed","Count the takings and pay the rent."]].forEach(([ic,t,d])=>{
+    const li=el("div","li"); li.appendChild(el("div","ic",ic));
+    const m=el("div","meta"); m.appendChild(el("div","t",t)); m.appendChild(el("div","a",d)); li.appendChild(m); L.appendChild(li);
+  });
+  return L;
+}
+function howToPlay(back){
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("h2",null,"How to play")).style.marginBottom="10px";
+  sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
+  sh.appendChild(phaseList());
+  sh.appendChild(el("h3",null,"Making a sale"));
+  sh.appendChild(el("p",null,"Tap a customer to talk. Each question costs them a little patience and turns up a clue — a genre, a mood, a budget, something they won't read. Then pick a book off your own shelves."));
+  sh.appendChild(el("p",null,"Genre counts most, then mood, then price. Get it right and they buy; get it very right and your reputation grows and they come back. Get it wrong and they tell you what they were after."));
+  sh.appendChild(el("h3",null,"Money"));
+  sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to move to a bigger shopfront."));
+  sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
+  sh.appendChild(primary(back===closeModal?"Got it":"Back to menu",back));
+}
+
 initGrid(); rollOffers(); paint();
 requestAnimationFrame(loop);
 function nameScreen(){
@@ -2259,16 +2449,10 @@ function introScreen(){
   sh.appendChild(el("h2",null,shopLabel())).style.marginBottom="10px";
   sh.appendChild(el("div","say","A corner kiosk on an old shopping street. Yours since this morning. Two shelves, a counter, and $1,500 — rent is only $30 a day here, but the space is small. Grow reputation and cash and you can upgrade to a bigger lot."));
   sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
-  const L=el("div","list"); L.style.marginBottom="10px";
-  [[ICON.stock,"Morning","Buy stock, set prices, fit out the shop."],
-   [ICON.shop,"Open","Customers come in. Tap one, ask up to three questions, then recommend from your shelves."],
-   [ICON.price,"Closed","Count the takings and pay the rent."]].forEach(([ic,t,d])=>{
-    const li=el("div","li"); li.appendChild(el("div","ic",ic));
-    const m=el("div","meta"); m.appendChild(el("div","t",t)); m.appendChild(el("div","a",d)); li.appendChild(m); L.appendChild(li);
-  });
-  sh.appendChild(L);
+  sh.appendChild(phaseList());
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
   sh.appendChild(primary("Open up",()=>{ closeModal(); paint(); }));
 }
-setTimeout(boot,200);
+if(takeFresh()){ cloudLoad(); newShop(); }      // Start over reloads straight into naming the new shop
+else { titleScreen(); setTimeout(boot,200); }
 </script>
