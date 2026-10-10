@@ -19,6 +19,7 @@ title screen and a menu you can reach during play.
 | Back to title | Continue from there resumes the game in memory, mid-day included; nothing is reloaded. |
 | Start over | Moved out of the SHOP tab into the menu. It still erases the save, then reloads straight into naming the new shop rather than back to the title. |
 | How to play | The Morning / Open / Closed explainer plus how a sale is decided, readable at any time without starting a game. |
+| Music on the title | The top-bar music button floats above pop-ups so it can be muted mid-conversation, which would also float it over the title. It is hidden while the title is up, and the title has its own Music on/off toggle for the same setting. |
 
 ## Revision pass (artifact sync)
 
