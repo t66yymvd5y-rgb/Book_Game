@@ -229,6 +229,9 @@
   .menu-foot{font-size:11px;color:var(--muted);text-align:center;line-height:1.6;}
   button.li{font-size:13px;font-weight:500;}
   .li.danger .ic{background:var(--red-soft);border-color:var(--red);color:var(--red);}
+  /* the top-bar music button floats above pop-ups; on the title screen it gets its own toggle instead */
+  body.titling #music{visibility:hidden;}
+  .title-music{align-self:center;}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -2094,11 +2097,11 @@ function takeFresh(){
 
 /* ---------- title screen ---------- */
 function titleOn(){ return $("#title").classList.contains("on"); }
-function hideTitle(){ $("#title").classList.remove("on"); paused=false; }
+function hideTitle(){ $("#title").classList.remove("on"); document.body.classList.remove("titling"); paused=false; }
 function liveSummary(){ return {shopName:S.shopName,day:S.day,cash:S.cash,rep:S.rep,tier:S.tier,phase:S.phase}; }
 function titleScreen(){
   paused=true;
-  const I=$("#titleIn"); I.innerHTML=""; $("#title").classList.add("on");
+  const I=$("#titleIn"); I.innerHTML=""; $("#title").classList.add("on"); document.body.classList.add("titling");
   const hero=el("div","hero");
   const img=document.createElement("img"); img.src=keeperPortrait(); img.alt="You, behind the counter";
   hero.appendChild(img);
@@ -2130,6 +2133,10 @@ function titleScreen(){
   const how=el("button","btn-go btn-w","How to play");
   how.onclick=()=>howToPlay(closeModal);
   I.appendChild(how);
+  const mu=el("button","btn-sm title-music");
+  const paintMu=()=>{ mu.textContent=musicOn?"♪ Music on":"♪ Music off"; mu.setAttribute("aria-pressed",String(musicOn)); };
+  mu.onclick=()=>{ musicBtn.click(); paintMu(); };
+  paintMu(); I.appendChild(mu);
   I.appendChild(el("div","menu-foot","Progress saves automatically each morning and each evening."));
 }
 function continueSave(d){
