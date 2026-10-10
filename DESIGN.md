@@ -187,6 +187,30 @@ Samarasan, Hanna Alkaf, Bernice Chauly, Rani Manicka alongside the international
 Zaid the unpublished novelist exists specifically to punish a shop that stocks only the
 international list; he is the game telling you that curation has a point of view.
 
+**The Hundred Shelf.** The catalogue now holds 130 titles: the original 49 plus 81 from a
+"hundred books" list of classics, modern fiction and non-fiction (19 of its hundred were
+already stocked). New titles are appended to `BOOKS`, never inserted, because saves key
+stock by array index. Each keeps the source list's genre where the game has that shelf;
+genres the game does not have are mapped to the nearest one a customer actually asks for:
+
+| Source genre | Shelf |
+|---|---|
+| Gothic fiction | Horror (Frankenstein, Dorian Gray, Rebecca); Romance (Wuthering Heights) |
+| Adventure, Satire, Fable | Literary |
+| Historical fiction | History — 14 customers ask for History, and before this it held one book |
+| Mystery, Thriller, True crime | Crime |
+| Epic poetry | Poetry |
+| Science, Psychology | Non-Fiction |
+| Memoir, Autobiography | Biography |
+| Self-help, Economics, Finance, Strategy | Business |
+| Political philosophy | Philosophy |
+
+Ancient works carry a negative year (BC) and display as "c. 8th century BC"; anything
+before AD 1000 shows as "c. AD 180". Ratings for the new titles are hand-set
+approximations, like the rest of `RATINGS`. Years follow the source sheet's own rule (first book
+form, not first serialisation), so three of its dates were corrected: Crime and Punishment
+1867, The Picture of Dorian Gray 1891, Heart of Darkness 1902.
+
 **On the buy button.** `ORDER A PHYSICAL COPY` shows price, courier, total, and delivery
 window, and charges nothing. In the live build it opens checkout.
 
