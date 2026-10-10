@@ -39,6 +39,10 @@
   #brand b{display:block;font-size:15px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #me{width:38px;height:38px;flex:none;border-radius:50%;border:var(--lw) solid var(--ink);overflow:hidden;background:var(--yellow-soft);}
   #me img{width:100%;height:100%;display:block;}
+  /* sits above the pop-up layer (#modal, z-index 50) so it can be muted mid-conversation */
+  #music{position:relative;z-index:60;width:38px;height:38px;flex:none;padding:0;border-radius:50%;background:var(--blue-soft);display:grid;place-items:center;}
+  #music svg{width:18px;height:18px;}
+  #music.off{background:#eef0f5;color:var(--muted);}
 
   /* ---- HUD: the stat strip ---- */
   #hud{display:flex;background:var(--card);border:var(--lw) solid var(--ink);border-radius:999px;padding:7px 6px;}
@@ -232,9 +236,11 @@
   <header id="top">
     <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6a2 2 0 0 1 2-2h13v13H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/></svg></div>
     <div id="brand"><small>Petaling Jaya · bookshop</small><b id="brandName">Kedai Buku</b></div>
+    <button id="music" type="button" aria-label="Music on" aria-pressed="true"></button>
     <div id="me"></div>
     <button id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
   </header>
+  <audio id="bgm" src="audio/paperback-afternoon.mp3" loop preload="auto"></audio>
   <div id="hud">
     <div class="stat"><span>Day</span><b id="hDay">1</b></div>
     <div class="stat"><span>Cash</span><b id="hCash">RM1500</b></div>
@@ -1896,6 +1902,47 @@ $("#modal").addEventListener("click",e=>{
 function reportError(msg){ tip("Something went wrong: "+(msg||"unknown error")+". Please report this line."); }
 window.addEventListener("error",e=>reportError(e.message));
 window.addEventListener("unhandledrejection",e=>reportError(e.reason&&e.reason.message||String(e.reason)));
+
+/* ============================================================
+   MUSIC
+   One looping track ("Paperback Afternoon"). Browsers refuse to start audio
+   before the player has touched the page, so it starts on the first tap or key
+   rather than on load. The on/off choice is a per-browser preference, kept out
+   of the save on purpose — it belongs to the device, not the shop.
+   ============================================================ */
+const MUSIC_KEY="kedaibuku.music";
+const bgm=$("#bgm"), musicBtn=$("#music");
+const MUSIC_ICON={
+  on:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>',
+  off:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><path d="M3 3l18 18"/></svg>'
+};
+let musicOn=true;
+try{ musicOn=localStorage.getItem(MUSIC_KEY)!=="off"; }catch(e){}
+bgm.volume=0.35;
+function playMusic(){ if(musicOn && !document.hidden) bgm.play().catch(()=>{}); }
+function paintMusic(){
+  musicBtn.innerHTML=musicOn?MUSIC_ICON.on:MUSIC_ICON.off;
+  musicBtn.classList.toggle("off",!musicOn);
+  musicBtn.setAttribute("aria-pressed",String(musicOn));
+  musicBtn.setAttribute("aria-label",musicOn?"Music on":"Music off");
+}
+musicBtn.addEventListener("click",()=>{
+  musicOn=!musicOn;
+  try{ localStorage.setItem(MUSIC_KEY,musicOn?"on":"off"); }catch(e){}
+  paintMusic();
+  if(musicOn) playMusic(); else bgm.pause();
+});
+// the first touch anywhere is what the browser counts as permission to play
+function firstGesture(){
+  document.removeEventListener("pointerdown",firstGesture,true);
+  document.removeEventListener("keydown",firstGesture,true);
+  playMusic();
+}
+document.addEventListener("pointerdown",firstGesture,true);
+document.addEventListener("keydown",firstGesture,true);
+// don't play to an empty room when the phone is locked or the tab is in the background
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) bgm.pause(); else if(bgm.played.length) playMusic(); });
+paintMusic();
 
 /* ============================================================
    SAVE

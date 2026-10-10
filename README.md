@@ -6,6 +6,10 @@ real book and the player can order a physical copy.
 Playable prototype: open `index.html` in any browser, desktop or phone. No build step,
 no dependencies, no network.
 
+Background music ("Paperback Afternoon") loops from `audio/paperback-afternoon.mp3`, so keep the
+`audio/` folder next to `index.html`. It starts on the first tap (browsers block audio before
+that). The note button in the top bar mutes it, and the choice is remembered on that device.
+
 - **MORNING** — buy stock from the distributor, set prices (auto or by hand), fit out the shop.
 - **OPEN** — customers arrive with patience running down. Tap one, ask up to three
   questions, then recommend a book off your own shelves. Regulars turn up more than once
