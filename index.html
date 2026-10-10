@@ -1079,6 +1079,7 @@ const S={
   grid:[], slots:{},          // tileKey -> [bookId,...]
   stock:{},                   // bookId -> {copies, price, auto, cost}
   incoming:{},                // bookId -> copies ordered, delivered next morning
+  offers:[],                  // the morning van: new titles on offer today (from day 2)
   customers:[], tick:0, dayLen:900,
   spawnQueue:[], talking:null, placing:null,
   stats:{rev:0,spent:0,served:0,delighted:0,missed:0,walkouts:0},
@@ -1196,11 +1197,14 @@ function seedStock(){
     addCopies(bk.id,1); S.slots[shelves[i%shelves.length]].push(bk.id); });
 }
 // Can one more copy of this title be ordered? A title that isn't already on the shelves needs a free slot.
-function canOrder(id){
-  const bk=BOOK(id);
-  if(S.cash<bk.cost) return false;
+// A title already on the shelves (or on its way) has its slot; anything else needs a free one.
+function hasSlotFor(id){
   if(inStock(id) || S.incoming[id]) return true;
   return stockedIds().length + pendingNew().length < shelfCapacity();
+}
+// Reorders: only titles the shop carries or has carried. New titles come on the morning van.
+function canOrder(id){
+  return !!S.stock[id] && S.cash>=BOOK(id).cost && hasSlotFor(id);
 }
 // Ordered in the morning it is unpacked straight onto the shelves; once the shop has opened,
 // the distributor brings it with the next morning's delivery.
@@ -1210,6 +1214,23 @@ function orderCopy(id){
   S.cash=Math.round((S.cash-bk.cost)*100)/100; S.stats.spent+=bk.cost;
   if(S.phase==="morning"){ addCopies(id,1); restockShelves(); }
   else S.incoming[id]=(S.incoming[id]||0)+1;
+  hud(); autosave();
+  return true;
+}
+/* The distributor's van: from day 2, each morning it brings VAN_SIZE random titles the shop has
+   never carried. Buy what you want before opening; the rest leave with the van. */
+const VAN_SIZE=8;
+function rollVan(){
+  S.offers=shuffled(BOOKS.filter(bk=>!S.stock[bk.id] && !S.incoming[bk.id])).slice(0,VAN_SIZE).map(bk=>bk.id);
+}
+function canVanBuy(id){
+  return S.phase==="morning" && S.offers.includes(id) && S.cash>=BOOK(id).cost && hasSlotFor(id);
+}
+function vanBuy(id){
+  if(!canVanBuy(id)) return false;
+  const bk=BOOK(id);
+  S.cash=Math.round((S.cash-bk.cost)*100)/100; S.stats.spent+=bk.cost;
+  addCopies(id,1); restockShelves();
   hud(); autosave();
   return true;
 }
@@ -1703,6 +1724,7 @@ function loop(ts){
 
 /* ---------- phases ---------- */
 function startDay(){
+  S.offers=[];                                       // the van leaves when the shop opens
   S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[]; S.seenToday=[]; S.dayCast=[];
   S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0};
   const n=rollFootfall();
@@ -1721,8 +1743,10 @@ function endDay(){
 function nextDay(){
   S.day++; S.phase="morning"; S.stats.spent=0; S.tab="stock";
   const n=deliverIncoming();
+  rollVan();
   paint(); autosave();
-  if(n) tip("The distributor's van came at 8am: "+n+" "+(n===1?"title":"titles")+" unpacked onto the shelves.");
+  tip((n?"Yesterday's reorders arrived: "+n+" "+(n===1?"title":"titles")+" back on the shelves. ":"")+
+    (S.offers.length?"The van is outside with "+S.offers.length+" new titles — see the Stock tab.":"No new titles on the van today."));
 }
 
 /* ============================================================
@@ -1828,7 +1852,24 @@ function drawMorning(){
     const open=el("button","btn-go","Open the stock take");
     open.onclick=()=>stockTake();
     P.appendChild(open);
-    P.appendChild(el("p",null,"Browse every book in the shop with its full description, filter by genre and era, and order more in. Orders placed this morning go straight onto the shelves; once you open, they come with tomorrow's delivery. The clipboard at the top works any time."));
+    P.appendChild(el("p",null,"Browse every book in the shop with its full description, filter by genre and era, and reorder titles you carry. Reorders placed this morning go straight onto the shelves; once you open, they come with tomorrow's delivery. The clipboard at the top works any time."));
+
+    P.appendChild(el("h3",null,"Distributor van · new titles"));
+    if(S.day<2) P.appendChild(el("div","empty","No van today — grandfather's stock will see you through.<br>From tomorrow, a van brings new titles every morning."));
+    else if(!S.offers.length) P.appendChild(el("div","empty","The van has nothing you haven't stocked before.<br>Reorder from the stock take instead."));
+    else {
+      P.appendChild(el("p",null,"8am. "+S.offers.length+" titles you've never carried, at trade cost. Buy what you want before you open — the rest leave with the van."));
+      S.offers.forEach(id=>{
+        const bk=BOOK(id), have=inStock(id)?S.stock[id].copies:0;
+        const btn=el("button","btn-sm btn-y",(have?"Buy 1 more":"Buy 1")+" · "+rm(bk.cost));
+        btn.disabled=!canVanBuy(id);
+        btn.onclick=e=>{ e.stopPropagation(); if(vanBuy(id)) drawMorning(); };
+        const c=bookCard(bk,"<div class='cost' style='margin-top:4px'>"+(have?have+" on the shelf · ":"")+"sells at "+rm(autoPrice(bk.cost))+"</div>",()=>openBook(id));
+        const cta=el("div","cta"); cta.appendChild(el("span","cost","cost "+rm(bk.cost)+" ea")); cta.appendChild(btn);
+        c.querySelector(".meta").appendChild(cta);
+        P.appendChild(c);
+      });
+    }
     const sold=Object.keys(S.stock).map(Number).filter(id=>!inStock(id));
     if(sold.length){
       P.appendChild(el("h3",null,"Sold out"));
@@ -1938,11 +1979,13 @@ function stockTake(){
 
   const pool = STK.tab==="inv"
     ? BOOKS.filter(bk=>inStock(bk.id)||S.incoming[bk.id])
-    : BOOKS.slice();
+    : BOOKS.filter(bk=>S.stock[bk.id]);
   const ids=pool.filter(bk=>(STK.genre==="all"||bk.genre===STK.genre)&&(STK.era==="all"||eraOf(bk)===STK.era))
     .sort((a,b2)=>a.title.localeCompare(b2.title)).map(bk=>bk.id);
   sh.appendChild(el("div","count",ids.length+" "+(ids.length===1?"title":"titles")+
-    (STK.tab==="inv"?" in the shop":" in the distributor's catalogue")));
+    (STK.tab==="inv"?" in the shop":" you carry or have carried")));
+  if(STK.tab==="order") sh.appendChild(el("p",null,"Reorder anything the shop has stocked, sold-out titles included. New titles come only on the distributor's van, each morning from day 2"+
+    (S.phase==="morning"&&S.offers.length?" — it's outside now, on the Stock tab.":".")));
 
   const list=el("div","stlist");
   ids.forEach(id=>{
@@ -2406,7 +2449,7 @@ function takeSnapshot(){
   return {
     v:SAVE_V, phase:(S.phase==="evening"?"evening":"morning"),
     day:S.day, cash:S.cash, rep:S.rep, tier:S.tier, gw:GW, gh:GH,
-    grid:S.grid, slots:S.slots, stock:S.stock, incoming:S.incoming, keeper:S.keeper,
+    grid:S.grid, slots:S.slots, stock:S.stock, incoming:S.incoming, offers:S.offers, keeper:S.keeper,
     stats:S.stats, history:S.history, soldEver:S.soldEver, featured:S.featured,
     seen:S.seen, tutorial:S.tutorial, shopName:S.shopName, library:S.library,
     footfall:S.footfall,
@@ -2425,7 +2468,7 @@ function applySnapshot(d){
   d=JSON.parse(JSON.stringify(d));
   GW=d.gw; GH=d.gh;
   S.day=d.day; S.cash=d.cash; S.rep=d.rep; S.tier=d.tier;
-  S.grid=d.grid; S.slots=d.slots; S.stock=d.stock; S.incoming=d.incoming||{};
+  S.grid=d.grid; S.slots=d.slots; S.stock=d.stock; S.incoming=d.incoming||{}; S.offers=Array.isArray(d.offers)?d.offers:[];
   S.keeper=d.keeper; S.stats=d.stats; S.history=d.history||[];
   S.soldEver=d.soldEver||{}; S.featured=d.featured; S.seen=d.seen||{};
   S.tutorial=!!d.tutorial; S.shopName=d.shopName||""; S.library=d.library||{};
@@ -2667,7 +2710,7 @@ function howToPlay(back){
   sh.appendChild(el("p",null,"Tap a customer to talk. Each question costs them a little patience and turns up a clue — a mood, a budget, something they won't read. Then pull books for them: every book on your shelves in the genres they read comes out, and you choose up to seven to show them."));
   sh.appendChild(el("p",null,"If at least one of those books genuinely suits them — right mood, within budget, nothing they refuse — it's even odds they buy the best one. If none does, they won't buy, and they tell you what they were after. A perfect match grows your reputation fastest."));
   sh.appendChild(el("h3",null,"Stock take"));
-  sh.appendChild(el("p",null,"The clipboard in the top bar opens the stock take at any time: every book you hold with its full description, filters by genre and era, and the distributor's catalogue to order from. The clock stops while it's open."));
+  sh.appendChild(el("p",null,"The clipboard in the top bar opens the stock take at any time: every book you hold with its full description, filters by genre and era, and reorders of anything you carry. The clock stops while it's open. New titles come only on the distributor's van, which turns up every morning from day 2 with eight books you've never stocked."));
   sh.appendChild(el("h3",null,"Money"));
   sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to expand the floor. More floor means room for more shelves; the Coffee Corner unlocks as your reputation grows."));
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));

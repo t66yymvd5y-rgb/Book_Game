@@ -14,7 +14,9 @@ A new game opens with a short prelude: your grandfather has died and left you hi
 and you decide to keep it going. The shop starts mature — twelve shelves holding 100 random
 real books, one copy each, and his cat asleep in the corner.
 
-- **MORNING** — order stock, set prices (auto or by hand), fit out the shop.
+- **MORNING** — from day 2 the distributor's van brings 8 random titles you've never
+  carried; buy what you want before opening. Reorder, set prices (auto or by hand), fit out
+  the shop.
 - **OPEN** — customers arrive with patience running down. Tap one, ask up to three
   questions, then pull books for them: every book on your shelves in the genres they read
   comes out, and you put up to seven in front of them. If at least one genuinely suits
@@ -23,9 +25,9 @@ real books, one copy each, and his cat asleep in the corner.
 
 The clipboard button in the top bar opens the **stock take** at any time (the trading clock
 stops while it's open): the whole inventory with full descriptions, filters by genre and by
-era (pre-AD, AD 0–1500, 1501–1900, 1901–1950, 1951–2000, 2001–now), and the distributor's
-catalogue to order from. Orders placed in the morning are shelved at once; orders placed
-after opening arrive with the next morning's delivery.
+era (pre-AD, AD 0–1500, 1501–1900, 1901–1950, 1951–2000, 2001–now), and reorders of any
+title you carry or have sold out of. Reorders placed in the morning are shelved at once; ones
+placed after opening arrive with the next morning's delivery. New titles only come on the van.
 
 The title screen has Continue, New shop and How to play; the menu button (or Esc) pauses
 a trading day and offers Resume, How to play, Back to title and Start over.
