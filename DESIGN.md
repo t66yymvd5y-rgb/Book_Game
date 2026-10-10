@@ -6,6 +6,20 @@ is a real book and the player can order a physical copy.
 This document records the decisions taken during the design session and the reasoning
 behind them, so the prototype can be argued with rather than just played.
 
+## Revision pass (artifact sync)
+
+The published Kedai Buku artifact had moved ahead of this repo. Its gameplay changes are now
+folded in under the flat UI, and they supersede the older figures further down this document:
+
+| Area | What changed |
+|---|---|
+| Saving | Progress saves automatically at each morning and evening, in the browser and (inside the artifact viewer) to the player's account; whichever copy is newer wins. Returning players get a Continue screen; the SHOP tab has Start over. |
+| Reader memory | Each customer remembers what they bought here, won't buy it twice, and says so. |
+| Footfall | Customers per day vary: a base from tier, level and reputation, plus a random swing and occasional busy days. |
+| Pricing | AUTO now prices at 1.45× cost (was 1.75×), which put most titles over most customers' budgets. |
+| Scoring | A sale needs 45 (was 55). Wrong genre is −8 rather than a hard miss; over-budget is penalised in proportion to how far over; each clue asked adds +3. |
+| Cash | The HUD shows sen, so the till reconciles with the sales log. |
+
 ## Revision pass (visual overhaul)
 
 The whole game was restyled to a flat, outlined UI kit look (white cards with a navy ink
