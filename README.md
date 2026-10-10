@@ -10,18 +10,29 @@ Background music ("Paperback Afternoon") loops from `audio/paperback-afternoon.m
 `audio/` folder next to `index.html`. It starts on the first tap (browsers block audio before
 that). The note button in the top bar mutes it, and the choice is remembered on that device.
 
-- **MORNING** — buy stock from the distributor, set prices (auto or by hand), fit out the shop.
+A new game opens with a short prelude: your grandfather has died and left you his bookshop,
+and you decide to keep it going. The shop starts mature — twelve shelves holding 100 random
+real books, one copy each, and his cat asleep in the corner.
+
+- **MORNING** — order stock, set prices (auto or by hand), fit out the shop.
 - **OPEN** — customers arrive with patience running down. Tap one, ask up to three
-  questions, then recommend a book off your own shelves. Regulars turn up more than once
-  a day, sometimes two at a time.
+  questions, then pull books for them: every book on your shelves in the genres they read
+  comes out, and you put up to seven in front of them. If at least one genuinely suits
+  them, it's even odds they buy the best one. Regulars turn up more than once a day.
 - **CLOSED** — count the takings and pay the rent.
+
+The clipboard button in the top bar opens the **stock take** at any time (the trading clock
+stops while it's open): the whole inventory with full descriptions, filters by genre and by
+era (pre-AD, AD 0–1500, 1501–1900, 1901–1950, 1951–2000, 2001–now), and the distributor's
+catalogue to order from. Orders placed in the morning are shelved at once; orders placed
+after opening arrive with the next morning's delivery.
 
 The title screen has Continue, New shop and How to play; the menu button (or Esc) pauses
 a trading day and offers Resume, How to play, Back to title and Start over.
 
-You start on a small corner kiosk at $30/day rent. Reputation unlocks better furniture;
-cash and reputation together unlock bigger shopfronts — rent only rises when you choose to
-expand into one.
+Grandfather's shop costs $50/day in rent. Reputation unlocks better furniture (the Coffee
+Corner at level 3); cash and reputation together let you expand the floor for more shelves —
+rent only rises when you choose to expand.
 
 The skills the game tests are matching people to books, and choosing what to stock.
 Pricing is a real system but not the point. You cannot go bankrupt. Progress saves

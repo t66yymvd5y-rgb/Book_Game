@@ -3,6 +3,30 @@
 A mobile 16-bit bookshop simulator set on an old shopping street, in which every book
 is a real book and the player can order a physical copy.
 
+## Revision pass (grandfather's shop)
+
+The game no longer starts on an empty kiosk. It now opens on an inherited, mature bookshop, and
+the recommendation step became a shortlist. This supersedes the van, the 3-title shelf, the
+starting tiers and the single-book scoring rule described further down.
+
+| Area | What changed |
+|---|---|
+| Prelude | New shop → three short prelude pages (grandfather has died, he left you the shop, you decide to keep it open) → repaint the sign → how-to intro. The prelude can't be dismissed by tapping outside it. |
+| Starting stock | 100 random titles from the 123-book catalogue, one copy each, dealt evenly across the shelves. Starting cash stays at $1,500. |
+| Shelves | A shelf holds **10 titles** (was 3). Shelf cost is unchanged at $120. |
+| Floor | Tiers are now **Grandfather's Shop** 12×9, 12 shelves, $50/day → **Extended Shop** 14×10, $1,500, rep 15, $90/day → **Double Shopfront** 16×11, $3,200, rep 30, $130/day. Expanding keeps everything in place and the cat moves to the new far corner. Base footfall is +1 to match the larger shop. |
+| Cat | Grandfather's cat sleeps on a cushion in the bottom-right corner. It blocks the tile and says something when tapped; it has no other effect. |
+| Stock take | A clipboard button in the top bar, usable any time outside a conversation, stops the trading clock. **Inventory** lists every title you hold, with the full blurb, copies and price. **Order stock** lists the whole catalogue. Both filter by genre and by era: pre-AD, AD 0–1500, 1501–1900, 1901–1950, 1951–2000, 2001–now. |
+| Ordering | One copy per tap at trade cost. Ordered in the morning, it goes straight onto a shelf; ordered once the shop has opened, it arrives with the next morning's delivery. A title you don't already carry needs a free shelf slot, and slots for pending deliveries are reserved. The random 8-title morning van is gone. |
+| Recommending | "Pull books" brings out every in-stock title on your shelves in the customer's genres, excluding ones they already own. The player shows them up to **7**, and can read each first. |
+| Buying | If at least one book on the pile scores ≥ 45 against the customer's hidden wants (same `scoreMatch` as before), it is a **50% coin flip** whether they buy, and they buy the highest-scoring one. A miss on the coin flip costs no reputation and the customer leaves. A pile with no fit never sells: they say what they wanted, and lose patience as before. ≥ 85 still counts as delighted. |
+| Saves | New key `cornerbooks.save.v2` (format v2). v1 saves don't load, because the floor, shelf size and stock model changed. |
+
+Why genre is the filter: the brief asked for "all the books that match the customer's preference".
+Pulling by genre means questions now earn their keep on mood, budget and refusals, which decide
+which of the pulled books are a genuine fit. The coin flip was chosen over a flat 50% so that
+reading the customer still matters.
+
 ## International edition
 
 The game began as **Kedai Buku**, a Petaling Jaya shoplot priced in ringgit. It is now set in

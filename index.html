@@ -232,6 +232,31 @@
   /* the top-bar music button floats above pop-ups; on the title screen it gets its own toggle instead */
   body.titling #music{visibility:hidden;}
   .title-music{align-self:center;}
+
+  /* ---- stock take ---- */
+  #stockBtn{width:38px;height:38px;flex:none;padding:0;border-radius:50%;display:grid;place-items:center;background:var(--yellow-soft);}
+  #stockBtn svg{width:18px;height:18px;}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 8px;}
+  .chip{padding:4px 10px;font-size:11px;font-weight:600;background:var(--card);}
+  .chip.on{background:var(--yellow);}
+  .seg{display:flex;gap:6px;margin:4px 0 10px;}
+  .seg button{flex:1;}
+  .seg button.on{background:var(--orange);color:#fff;}
+  .blurb{font-size:12px;line-height:1.6;color:var(--ink-dim);margin-top:6px;}
+  .stlist{display:flex;flex-direction:column;gap:10px;}
+  .stlist .card{cursor:pointer;}
+  .count{font-size:12px;color:var(--ink-dim);margin:0 0 8px;}
+  /* shortlist: books pulled for a customer */
+  .sl{display:flex;align-items:center;gap:10px;background:var(--card);border:var(--lw) solid var(--ink);border-radius:14px;padding:8px;margin-bottom:8px;cursor:pointer;}
+  .sl canvas{width:40px;height:60px;flex:none;border:1.5px solid var(--ink);border-radius:4px;}
+  .sl .meta{flex:1;min-width:0;}
+  .sl .t{font-size:13px;}
+  .sl .a{font-size:11px;margin-top:0;}
+  .sl.on{background:var(--yellow-soft);}
+  .sl .read{flex:none;padding:5px 10px;font-size:11px;}
+  .sl .check{width:24px;height:24px;}
+  .sl.off{opacity:.5;}
+  .prelude{font-size:14px;line-height:1.7;color:var(--ink);margin:0 0 12px;}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -241,6 +266,7 @@
     <div id="brand"><small>Old Quarter · bookshop</small><b id="brandName">Corner Books</b></div>
     <button id="music" type="button" aria-label="Music on" aria-pressed="true"></button>
     <div id="me"></div>
+    <button id="stockBtn" aria-label="Stock take"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6v3H9zM7 5.5H5v15h14v-15h-2M8.5 11h7M8.5 15h7"/></svg></button>
     <button id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
   </header>
   <audio id="bgm" src="audio/paperback-afternoon.mp3" loop preload="auto"></audio>
@@ -1029,28 +1055,31 @@ function ratingBlock(bk){
 }
 
 /* ---------- shop grid ---------- */
-let GW=9, GH=7, PX=4; const TS=16;   // PX: device px per game px, sized to the stage in resizeStage()
-const EMPTY=0, WALL=1, SHELF=2, COUNTER=3, TABLE=4, PLANT=5, CAFE=6, DOOR=7;
+let GW=12, GH=9, PX=4; const TS=16;   // PX: device px per game px, sized to the stage in resizeStage()
+const EMPTY=0, WALL=1, SHELF=2, COUNTER=3, TABLE=4, PLANT=5, CAFE=6, DOOR=7, CAT=8;
+const SHELF_SLOTS=10;                // titles per shelf
+const START_TITLES=100;              // grandfather's stock: this many random titles, one copy each
 const FURN={
-  [SHELF]:{name:"Shelf",cost:120,slots:3,desc:"Holds 3 titles"},
+  [SHELF]:{name:"Shelf",cost:120,slots:SHELF_SLOTS,desc:"Holds "+SHELF_SLOTS+" titles"},
   [TABLE]:{name:"Display Table",cost:200,slots:1,desc:"Featured title, +40% notice",lvl:2},
   [PLANT]:{name:"Potted Palm",cost:60,slots:0,desc:"+ambience, slower exits"},
   [CAFE]:{name:"Coffee Corner",cost:900,slots:0,desc:"+50% patience, all customers",lvl:3},
 };
 
-/* Space tiers. Rent is tied to floor size, not reputation, and starts low:
-   growth is a choice the player makes and pays for once, not a tax on doing well. */
+/* Space tiers. The game starts in grandfather's shop, already a mature bookshop. Rent is tied to
+   floor size, not reputation: growth is a choice the player makes and pays for once. */
 const SIZE_TIERS=[
-  {name:"Corner Kiosk",  gw:9,  gh:7,  rent:30,  cost:0,    rep:0},
-  {name:"Shopfront",     gw:12, gh:9,  rent:70,  cost:1200, rep:10},
-  {name:"Double Shopfront", gw:16, gh:11, rent:130, cost:3200, rep:30},
+  {name:"Grandfather's Shop", gw:12, gh:9,  rent:50,  cost:0,    rep:0},
+  {name:"Extended Shop",      gw:14, gh:10, rent:90,  cost:1500, rep:15},
+  {name:"Double Shopfront",   gw:16, gh:11, rent:130, cost:3200, rep:30},
 ];
 
 const S={
   phase:"morning", day:1, cash:1500, rep:0, tier:0,
   grid:[], slots:{},          // tileKey -> [bookId,...]
   stock:{},                   // bookId -> {copies, price, auto, cost}
-  offers:[], customers:[], tick:0, dayLen:900,
+  incoming:{},                // bookId -> copies ordered, delivered next morning
+  customers:[], tick:0, dayLen:900,
   spawnQueue:[], talking:null, placing:null,
   stats:{rev:0,spent:0,served:0,delighted:0,missed:0,walkouts:0},
   history:[], soldEver:{}, tab:"stock", featured:null,
@@ -1087,8 +1116,12 @@ function initGrid(preserve){
   } else {
     S.slots={};
     const dx=doorX();
-    [[2,2],[3,2]].forEach(([x,y])=>{S.grid[y][x]=SHELF; S.slots[key(x,y)]=[];});
-    S.grid[2][dx]=COUNTER; S.grid[2][1]=PLANT;
+    // Grandfather's layout: a run of shelves along the back wall either side of the counter,
+    // two island runs in the middle, a palm by the window and the cat in the far corner.
+    // Every shelf has open floor directly below it, which is where a browsing customer stands.
+    [[1,1],[2,1],[3,1],[4,1],[8,1],[9,1],[10,1],[2,4],[3,4],[4,4],[8,4],[9,4]]
+      .forEach(([x,y])=>{S.grid[y][x]=SHELF; S.slots[key(x,y)]=[];});
+    S.grid[2][dx]=COUNTER; S.grid[GH-2][1]=PLANT; S.grid[GH-2][GW-2]=CAT;
     S.keeper=[dx,1];   // you, standing behind the counter
   }
   resizeStage();
@@ -1109,7 +1142,7 @@ window.addEventListener("resize",()=>resizeStage());
 function tilesOf(type){const o=[];for(let y=0;y<GH;y++)for(let x=0;x<GW;x++)if(S.grid[y][x]===type)o.push([x,y]);return o;}
 function level(){ return S.rep>=45?3 : S.rep>=18?2 : 1; }
 function rent(){ return SIZE_TIERS[S.tier].rent; }
-function baseFootfall(){ return 4 + S.tier*2 + level() + Math.floor(S.rep/12); }
+function baseFootfall(){ return 5 + S.tier*2 + level() + Math.floor(S.rep/12); }
 // Actual footfall is never the same two days running: the floor, plus a random swing,
 // plus an occasional busy day. A quiet Tuesday and a packed Saturday should feel different.
 function rollFootfall(){
@@ -1123,6 +1156,9 @@ function upgradeSpace(){
   S.cash-=nt.cost; S.stats.spent+=nt.cost; S.tier++;
   GW=nt.gw; GH=nt.gh;
   initGrid(true);
+  // the cat follows the corner: it moves to the new far corner if that spot is free
+  const [cx,cy]=[GW-2,GH-2];
+  if(S.grid[cy][cx]===EMPTY) tilesOf(CAT).forEach(([x,y])=>{ S.grid[y][x]=EMPTY; S.grid[cy][cx]=CAT; });
   drawMorning(); hud(); autosave();
 }
 
@@ -1131,8 +1167,69 @@ function upgradeSpace(){
 // the ceiling of two thirds of the cast — the shop was unsellable by arithmetic, not by play.
 const autoPrice = cost => Math.round(cost*1.45) - 0.10;
 function shelvedIds(){ const o=[]; Object.keys(S.slots).forEach(k=>S.slots[k].forEach(id=>o.push(id))); return o; }
-function shelfCapacity(){ return tilesOf(SHELF).length*3; }
+function shelfCapacity(){ return tilesOf(SHELF).length*SHELF_SLOTS; }
 function priceOf(id){ const s=S.stock[id]; return s.auto?autoPrice(s.cost):s.price; }
+function inStock(id){ return !!(S.stock[id] && S.stock[id].copies>0); }
+function stockedIds(){ return Object.keys(S.stock).map(Number).filter(inStock); }
+function copiesTotal(){ return stockedIds().reduce((n,id)=>n+S.stock[id].copies,0); }
+function pendingNew(){ return Object.keys(S.incoming).map(Number).filter(id=>!inStock(id)); }
+// Every title with copies on hand belongs on a shelf. Put any that aren't into the first free slot.
+function restockShelves(){
+  const on=new Set(shelvedIds());
+  const free=[];
+  tilesOf(SHELF).forEach(([x,y])=>{ const k=key(x,y); S.slots[k]=S.slots[k]||[];
+    for(let i=S.slots[k].length;i<SHELF_SLOTS;i++) free.push(k); });
+  stockedIds().forEach(id=>{ if(on.has(id)||!free.length) return; S.slots[free.shift()].push(id); on.add(id); });
+}
+function addCopies(id,n){
+  const bk=BOOK(id), st=S.stock[id];
+  if(st) st.copies+=n;
+  else S.stock[id]={copies:n,cost:bk.cost,price:autoPrice(bk.cost),auto:true};
+}
+// Grandfather's stock: a random hundred titles from the catalogue, one copy each, already shelved.
+function seedStock(){
+  S.stock={}; S.incoming={};
+  // dealt round the shelves like cards, so every shelf in the shop looks lived-in
+  const shelves=tilesOf(SHELF).map(([x,y])=>key(x,y));
+  shelves.forEach(k=>S.slots[k]=[]);
+  shuffled(BOOKS).slice(0,Math.min(START_TITLES,shelfCapacity())).forEach((bk,i)=>{
+    addCopies(bk.id,1); S.slots[shelves[i%shelves.length]].push(bk.id); });
+}
+// Can one more copy of this title be ordered? A title that isn't already on the shelves needs a free slot.
+function canOrder(id){
+  const bk=BOOK(id);
+  if(S.cash<bk.cost) return false;
+  if(inStock(id) || S.incoming[id]) return true;
+  return stockedIds().length + pendingNew().length < shelfCapacity();
+}
+// Ordered in the morning it is unpacked straight onto the shelves; once the shop has opened,
+// the distributor brings it with the next morning's delivery.
+function orderCopy(id){
+  if(!canOrder(id)) return false;
+  const bk=BOOK(id);
+  S.cash=Math.round((S.cash-bk.cost)*100)/100; S.stats.spent+=bk.cost;
+  if(S.phase==="morning"){ addCopies(id,1); restockShelves(); }
+  else S.incoming[id]=(S.incoming[id]||0)+1;
+  hud(); autosave();
+  return true;
+}
+function deliverIncoming(){
+  const ids=Object.keys(S.incoming).map(Number);
+  ids.forEach(id=>addCopies(id,S.incoming[id]));
+  S.incoming={};
+  restockShelves();
+  return ids.length;
+}
+/* Era filters for the stock take. Ancient works carry a negative (BC) year. */
+const ERAS=[
+  {k:"bc",   label:"Pre-AD",     lo:-1e9, hi:-1},
+  {k:"early",label:"AD 0–1500",  lo:0,    hi:1500},
+  {k:"c19",  label:"1501–1900",  lo:1501, hi:1900},
+  {k:"c20a", label:"1901–1950",  lo:1901, hi:1950},
+  {k:"c20b", label:"1951–2000",  lo:1951, hi:2000},
+  {k:"now",  label:"2001–now",   lo:2001, hi:1e9},
+];
+function eraOf(bk){ return ERAS.find(e=>bk.year>=e.lo && bk.year<=e.hi).k; }
 
 /* ---------- reader memory ---------- */
 // A returning customer remembers what they bought here. They will not buy it again,
@@ -1141,14 +1238,6 @@ function ownsBook(p,id){ const lib=S.library[p.key]; return !!(lib && lib[id]!==
 function ownedDay(p,id){ const lib=S.library[p.key]; return lib?lib[id]:null; }
 function recordPurchase(p,id){ (S.library[p.key]=S.library[p.key]||{})[id]=S.day; }
 function ownedCount(p){ const lib=S.library[p.key]; return lib?Object.keys(lib).length:0; }
-function rollOffers(){
-  const have=Object.keys(S.stock).map(Number);
-  const pool=BOOKS.filter(x=>!have.includes(x.id)||S.stock[x.id].copies===0);
-  const r=[]; const used={};
-  const n=Math.min(8,pool.length);
-  while(r.length<n){ const p=pool[(Math.random()*pool.length)|0]; if(used[p.id])continue; used[p.id]=1; r.push(p.id); }
-  S.offers=r;
-}
 
 /* ============================================================
    RENDERING
@@ -1190,17 +1279,17 @@ function drawShelf(x,y,ids){
   box(g,X+1.4,Y+2.6,TS-1.6,TS-2.4,2.2,C.shadow,false);
   box(g,X+0.6,Y+1.4,TS-1.8,TS-2.4,2.2,C.wood);
   box(g,X+2,Y+2.8,TS-4.6,TS-5.2,1,C.cream,false);
+  // three rows of four spines: one spine per title shelved, coloured by genre
   for(let r=0;r<3;r++){
     const sy=Y+3+r*3.9;
-    const id=ids&&ids[r];
-    if(id!=null){
+    let bx=X+2.3;
+    for(let i=0;i<4;i++){
+      const id=ids&&ids[r*4+i];
+      if(id==null) break;
       const bk=BOOK(id), rr=seeded(bk.title), base=SPINE[bk.genre]||"#7d8597";
-      let bx=X+2.4;
-      for(let i=0;i<4;i++){
-        const w=1.6+rr()*0.9, h=2.4+rr()*0.8;
-        box(g,bx,sy+3.2-h,w,h,0.4,i%2?base:shade(base,1.25),INK,0.3);
-        bx+=w+0.25;
-      }
+      const w=2.2+rr()*0.4, h=2.3+rr()*0.9;
+      box(g,bx,sy+3.2-h,w,h,0.4,i%2?base:shade(base,1.2),INK,0.3);
+      bx+=w+0.3;
     }
     px(X+2,sy+3.2,TS-4.6,0.5,INK);
   }
@@ -1244,6 +1333,36 @@ function drawFurn(x,y,t){
     ctx.beginPath(); ctx.moveTo(10.2+X,Y+0.4); ctx.quadraticCurveTo(9.5+X,Y-0.8,10.4+X,Y-1.8); ctx.stroke();
   }
 }
+
+// Grandfather's cat, asleep on a cushion in the corner. It came with the shop.
+function drawCat(x,y){
+  const X=x*TS,Y=y*TS, g=ctx, fur="#f4a259", dark=shade("#f4a259",0.78);
+  blob(g,X+8.4,Y+13.4,7,1.6,C.shadow,false);
+  box(g,X+1.4,Y+9,13.4,5,2.5,C.blue);                          // cushion
+  box(g,X+2.2,Y+9.4,11.8,1.6,0.8,shade(C.blue,1.25),false);
+  g.beginPath(); g.moveTo(X+13.4,Y+10.8);                        // tail curled round the front
+  g.quadraticCurveTo(X+15.2,Y+13.6,X+10.4,Y+13.2); g.lineTo(X+7.6,Y+13.2);
+  g.lineWidth=2; g.strokeStyle=INK; g.lineCap="round"; g.stroke();
+  g.lineWidth=1.2; g.strokeStyle=dark; g.stroke();
+  blob(g,X+9.4,Y+10.2,4.8,2.9,fur);                              // body
+  [[8.4,8],[10,7.9],[11.6,8.2]].forEach(([sx,sy])=>{ g.beginPath(); g.moveTo(X+sx,Y+sy); g.lineTo(X+sx+0.3,Y+sy+1.6);
+    g.lineWidth=0.55; g.strokeStyle=dark; g.stroke(); });
+  g.beginPath(); g.moveTo(X+2.6,Y+8.6); g.lineTo(X+3.2,Y+5.6); g.lineTo(X+4.9,Y+7.4); paintPath(g,fur,INK);   // ears
+  g.beginPath(); g.moveTo(X+5.4,Y+7.2); g.lineTo(X+7,Y+5.6); g.lineTo(X+7.6,Y+8.4); paintPath(g,fur,INK);
+  blob(g,X+5.2,Y+9.3,3,2.5,fur);                                 // head
+  g.lineWidth=0.4; g.strokeStyle=INK; g.lineCap="round";
+  g.beginPath(); g.arc(X+4.1,Y+9.1,0.7,0.2,Math.PI-0.2); g.stroke();   // closed eyes
+  g.beginPath(); g.arc(X+6.3,Y+9.1,0.7,0.2,Math.PI-0.2); g.stroke();
+  blob(g,X+5.2,Y+10.3,0.45,0.35,C.orange,false);
+  const z=(ANIM>>4)%3;                                           // a slow, drifting z
+  g.fillStyle=INK; g.font="700 3px "+getComputedStyle(document.body).fontFamily;
+  g.globalAlpha=0.55; g.fillText("z",X+7.6+z*0.8,Y+5.4-z*1.2); g.globalAlpha=1;
+}
+
+const CAT_LINES=["The cat opens one eye, decides you are not dinner, and goes back to sleep.",
+  "Grandfather's cat. It has outlasted three tills and a flood, and it is not moving for you.",
+  "A long, slow stretch. A yawn. Back to sleep. The cat has worked here longer than you have.",
+  "Regulars ask after the cat more often than they ask after you. Fair enough."];
 
 /* ---------- people ----------
    One figure, drawn from shapes: (X,Y) is the top of the torso, feet land at Y+13. Hair style
@@ -1377,6 +1496,7 @@ function render(){
     const t=S.grid[y][x];
     if(t===SHELF) drawShelf(x,y,S.slots[key(x,y)]);
     else if(t===COUNTER||t===TABLE||t===PLANT||t===CAFE) drawFurn(x,y,t);
+    else if(t===CAT) drawCat(x,y);
   }
   if(S.placing!=null){
     for(let y=1;y<GH-1;y++)for(let x=1;x<GW-1;x++)
@@ -1565,6 +1685,7 @@ function log(t){ S.history.unshift(t); if(S.history.length>40)S.history.pop(); }
    GAME LOOP
    ============================================================ */
 let last=0, paused=false;     // paused: the title screen or the menu is up
+let lockModal=false;          // the prelude and naming screens can't be dismissed by tapping outside
 function loop(ts){
   requestAnimationFrame(loop);
   if(ts-last<66) { render(); return; }
@@ -1599,7 +1720,9 @@ function endDay(){
 }
 function nextDay(){
   S.day++; S.phase="morning"; S.stats.spent=0; S.tab="stock";
-  rollOffers(); paint(); autosave();
+  const n=deliverIncoming();
+  paint(); autosave();
+  if(n) tip("The distributor's van came at 8am: "+n+" "+(n===1?"title":"titles")+" unpacked onto the shelves.");
 }
 
 /* ============================================================
@@ -1700,26 +1823,26 @@ function drawMorning(){
 
   if(S.tab==="stock"){
     const cap=shelfCapacity(), used=shelvedIds().length;
-    P.appendChild(el("p",null,"Distributor van, 8am. Shelf space <b>"+used+"/"+cap+
-      "</b>. What you stock is what this neighbourhood gets to read."));
-    S.offers.forEach(id=>{
-      const bk=BOOK(id);
-      const have=S.stock[id]&&S.stock[id].copies>0;
-      const btn=el("button","btn-sm btn-y", have?"In stock":"Buy 2");
-      btn.disabled = have || S.cash<bk.cost*2 || used>=cap;
-      btn.onclick=e=>{e.stopPropagation();buyStock(id);};
-      const c=bookCard(bk,'<div class="cost" style="margin-top:4px">cost '+rm(bk.cost)+' ea · sells at '+rm(autoPrice(bk.cost))+'</div>', ()=>openBook(id));
-      const cta=el("div","cta"); cta.appendChild(el("span","price",rm(bk.cost*2))); cta.appendChild(btn);
-      c.querySelector(".meta").appendChild(cta);
-      P.appendChild(c);
-    });
+    P.appendChild(el("p",null,"Shelf space <b>"+used+"/"+cap+"</b> titles · <b>"+copiesTotal()+"</b> copies on hand. "+
+      "What you stock is what this neighbourhood gets to read."));
+    const open=el("button","btn-go","Open the stock take");
+    open.onclick=()=>stockTake();
+    P.appendChild(open);
+    P.appendChild(el("p",null,"Browse every book in the shop with its full description, filter by genre and era, and order more in. Orders placed this morning go straight onto the shelves; once you open, they come with tomorrow's delivery. The clipboard at the top works any time."));
+    const sold=Object.keys(S.stock).map(Number).filter(id=>!inStock(id));
+    if(sold.length){
+      P.appendChild(el("h3",null,"Sold out"));
+      const tr=el("div","tagrow");
+      sold.slice(0,24).forEach(id=>tr.appendChild(el("span","tag r",BOOK(id).title)));
+      P.appendChild(tr);
+    }
     if(used>=cap) P.appendChild(el("p",null,"Shelves full. Buy another shelf in SHOP, or sell through what you have."));
   }
 
   if(S.tab==="price"){
     P.appendChild(el("p",null,"AUTO prices at 1.45x cost — safe, never greedy. Manual lets you chase margin, but every customer has a ceiling and Kenji's is $30."));
-    const ids=Object.keys(S.stock).map(Number).filter(id=>S.stock[id].copies>0);
-    if(!ids.length) P.appendChild(el("div","empty","No stock yet.<br>Buy some books first."));
+    const ids=stockedIds().sort((a,b2)=>BOOK(a).title.localeCompare(BOOK(b2).title));
+    if(!ids.length) P.appendChild(el("div","empty","No stock yet.<br>Order some books from the stock take."));
     ids.forEach(id=>{
       const bk=BOOK(id), st=S.stock[id];
       const c=bookCard(bk,null,()=>openBook(id));
@@ -1782,18 +1905,72 @@ function drawMorning(){
   });
   tip(shopLabel()+" · day "+S.day+", morning. Stock, price, then open.");
 }
-function buyStock(id){
-  const bk=BOOK(id), spend=bk.cost*2;
-  if(S.cash<spend) return;
-  S.cash-=spend; S.stats.spent+=spend;
-  S.stock[id]={copies:2,cost:bk.cost,price:autoPrice(bk.cost),auto:true};
-  // shelve it
-  const shelves=tilesOf(SHELF);
-  for(const [x,y] of shelves){ const k=key(x,y); S.slots[k]=S.slots[k]||[];
-    if(S.slots[k].length<3){ S.slots[k].push(id); break; } }
-  S.offers=S.offers.filter(o=>o!==id);
-  drawMorning(); hud(); autosave();
+/* ---------- stock take ----------
+   Reachable at any time from the clipboard in the top bar. The trading clock stops while it is open. */
+const STK={tab:"inv",genre:"all",era:"all",prevPaused:false,open:false};
+function stockTake(){
+  if(S.talking || titleOn()) return;
+  const sh=$("#sheet");
+  if(!STK.open) STK.prevPaused=paused;
+  STK.open=true; paused=true;
+  $("#modal").classList.add("on");
+  sh.innerHTML="";
+  sh.appendChild(el("h2",null,"Stock take")).style.marginBottom="4px";
+  const cap=shelfCapacity(), used=shelvedIds().length, inc=Object.values(S.incoming).reduce((a,n)=>a+n,0);
+  sh.appendChild(el("p",null,"<b>"+used+"/"+cap+"</b> titles shelved · <b>"+copiesTotal()+"</b> copies · till "+rm(S.cash)+
+    (inc?" · <b>"+inc+"</b> arriving tomorrow":"")+(S.phase==="open"?" · the clock is stopped":"")));
+
+  const seg=el("div","seg");
+  [["inv","Inventory"],["order","Order stock"]].forEach(([k,l])=>{
+    const b2=el("button",STK.tab===k?"on":"",l); b2.onclick=()=>{ STK.tab=k; stockTake(); }; seg.appendChild(b2);
+  });
+  sh.appendChild(seg);
+
+  const chipRow=(opts,cur,set)=>{
+    const r=el("div","chips");
+    opts.forEach(([k,l])=>{ const c=el("button","chip"+(cur===k?" on":""),l); c.onclick=()=>{ set(k); stockTake(); }; r.appendChild(c); });
+    sh.appendChild(r);
+  };
+  sh.appendChild(el("h3",null,"Genre")).style.marginTop="4px";
+  chipRow([["all","All"]].concat(Object.keys(GENRE_LABEL).map(g=>[g,GENRE_LABEL[g]])),STK.genre,k=>STK.genre=k);
+  sh.appendChild(el("h3",null,"Era")).style.marginTop="4px";
+  chipRow([["all","All"]].concat(ERAS.map(e=>[e.k,e.label])),STK.era,k=>STK.era=k);
+
+  const pool = STK.tab==="inv"
+    ? BOOKS.filter(bk=>inStock(bk.id)||S.incoming[bk.id])
+    : BOOKS.slice();
+  const ids=pool.filter(bk=>(STK.genre==="all"||bk.genre===STK.genre)&&(STK.era==="all"||eraOf(bk)===STK.era))
+    .sort((a,b2)=>a.title.localeCompare(b2.title)).map(bk=>bk.id);
+  sh.appendChild(el("div","count",ids.length+" "+(ids.length===1?"title":"titles")+
+    (STK.tab==="inv"?" in the shop":" in the distributor's catalogue")));
+
+  const list=el("div","stlist");
+  ids.forEach(id=>{
+    const bk=BOOK(id), st=S.stock[id], have=inStock(id)?st.copies:0, inc2=S.incoming[id]||0;
+    const status=(have?have+" on the shelf":"none on the shelf")+(inc2?" · "+inc2+" arriving":"");
+    const c=bookCard(bk,"<div class='cost' style='margin-top:4px'>"+status+" · sells at "+rm(have?priceOf(id):autoPrice(bk.cost))+"</div>",
+      ()=>openBook(id,stockTake));
+    const meta=c.querySelector(".meta");
+    meta.appendChild(el("div","blurb",bk.blurb));
+    const cta=el("div","cta");
+    cta.appendChild(el("span","cost","cost "+rm(bk.cost)+" ea"));
+    const btn=el("button","btn-sm btn-y","Order 1 · "+rm(bk.cost));
+    btn.disabled=!canOrder(id);
+    btn.onclick=e=>{ e.stopPropagation(); const y=sh.scrollTop; if(orderCopy(id)){ stockTake(); sh.scrollTop=y; } };
+    cta.appendChild(btn);
+    meta.appendChild(cta);
+    list.appendChild(c);
+  });
+  if(!ids.length) list.appendChild(el("div","empty","Nothing here for that genre and era."));
+  sh.appendChild(list);
+  if(stockedIds().length+pendingNew().length>=cap)
+    sh.appendChild(el("p",null,"Every shelf slot is spoken for. You can still order more copies of titles you carry; for new titles, buy another shelf in SHOP.")).style.marginTop="10px";
+  sh.appendChild(ghost("Back to the shop",closeStockTake));
 }
+function closeStockTake(){
+  STK.open=false; closeModal(); paused=STK.prevPaused; paint();
+}
+$("#stockBtn").onclick=stockTake;
 
 /* ---------- open ---------- */
 const SHOP_OPEN_MIN=10*60, SHOP_CLOSE_MIN=19*60;       // 10:00am - 7:00pm, ticks down over the 60s trading window
@@ -1883,34 +2060,80 @@ function renderTalk(p,convo){
     L.appendChild(btn);
   });
   if(L.childNodes.length) sh.appendChild(L);
-  sh.appendChild(primary("Recommend a book",()=>renderPick(p,convo)));
+  sh.appendChild(primary("Pull books for "+p.name,()=>renderPick(p,convo)));
   sh.appendChild(ghost("Leave them to browse",()=>{ closeModal(); p.state="browse"; S.talking=null; }));
+}
+/* Recommending: every book on the shelves in the genres this customer reads is pulled out.
+   The player puts up to seven of them in front of the customer. If at least one genuinely
+   suits them, it's even odds they buy the best of them; if none does, they leave it. */
+const SHORTLIST_MAX=7, BUY_CHANCE=0.5;
+function pulledFor(p){
+  const want=p.arch.want.genres;
+  return shelvedIds().filter(id=>inStock(id) && !ownsBook(p,id) && want.includes(BOOK(id).genre))
+    .sort((a,b2)=>BOOK(a).title.localeCompare(BOOK(b2).title));
 }
 function renderPick(p,convo){
   const sh=$("#sheet"); sh.innerHTML="";
-  sh.appendChild(speaker(p,"Pick a book from your shelves"));
+  p.shortlist=(p.shortlist||[]).filter(inStock);
+  sh.appendChild(speaker(p,"Choose up to "+SHORTLIST_MAX+" books to show them"));
   if(p.clues.length){ const cl=el("div","clues"); p.clues.forEach(c=>cl.appendChild(el("span","tag g",c))); sh.appendChild(cl); }
-  const all=shelvedIds().filter(id=>S.stock[id]&&S.stock[id].copies>0);
-  const owned=all.filter(id=>ownsBook(p,id));
-  const ids=all.filter(id=>!ownsBook(p,id));
-  const grid=el("div","pick");
+  const ids=pulledFor(p);
+  const genres=p.arch.want.genres.map(g=>GENRE_LABEL[g]||g).join(", ");
+  sh.appendChild(el("p",null,"Pulled from your shelves: <b>"+ids.length+"</b> "+(ids.length===1?"book":"books")+" in "+genres+
+    ". Tap a book to add it to the pile; tap Read to look it up first."));
+  const count=el("h3",null,""); sh.appendChild(count);
+  const list=el("div");
+  const go=primary("",()=>resolve(p,p.shortlist.slice(),convo));
+  const sync=()=>{
+    const n=p.shortlist.length;
+    count.textContent="On the counter · "+n+" / "+SHORTLIST_MAX;
+    go.textContent=n?"Show "+p.name+" "+(n===1?"this book":"these "+n+" books"):"Pick at least one book";
+    go.disabled=!n;
+    list.querySelectorAll(".sl").forEach(row=>{
+      const id=+row.dataset.id, on=p.shortlist.includes(id);
+      row.classList.toggle("on",on);
+      row.classList.toggle("off",!on && n>=SHORTLIST_MAX);
+      row.querySelector(".check").classList.toggle("on",on);
+    });
+  };
   ids.forEach(id=>{
     const bk=BOOK(id);
-    const cell=el("div","bk");
-    cell.appendChild(coverCanvas(bk,100,150));
-    cell.appendChild(el("div",null,bk.title.slice(0,22)+"<br><span>"+rm(priceOf(id))+"</span>"));
-    cell.onclick=()=>renderConfirm(p,id,convo);
-    grid.appendChild(cell);
+    const row=el("div","sl"); row.dataset.id=id;
+    row.appendChild(coverCanvas(bk,40,60));
+    const m=el("div","meta");
+    m.appendChild(el("div","t",bk.title));
+    m.appendChild(el("div","a",bk.author+" · "+yearText(bk.year)));
+    const tr=el("div","tagrow"); tr.style.marginTop="3px";
+    tr.appendChild(el("span","tag b",GENRE_LABEL[bk.genre]||bk.genre));
+    bk.moods.forEach(m2=>tr.appendChild(el("span","tag",m2)));
+    m.appendChild(tr);
+    m.appendChild(el("div","price",rm(priceOf(id)))).style.fontSize="13px";
+    row.appendChild(m);
+    const rd=el("button","read","Read");
+    rd.onclick=e=>{ e.stopPropagation(); renderConfirm(p,id,convo); };
+    row.appendChild(rd);
+    row.appendChild(el("span","check","✓"));
+    row.onclick=()=>{
+      const i=p.shortlist.indexOf(id);
+      if(i>=0) p.shortlist.splice(i,1);
+      else if(p.shortlist.length<SHORTLIST_MAX) p.shortlist.push(id);
+      sync();
+    };
+    list.appendChild(row);
   });
-  sh.appendChild(grid);
-  if(!ids.length) sh.appendChild(el("div","empty","Nothing on your shelves that "+p.name+" doesn't already own."));
+  sh.appendChild(list);
+  if(!ids.length) sh.appendChild(el("div","empty","Nothing on your shelves in "+genres+" that "+p.name+
+    " doesn't already own.<br>Order some in from the stock take."));
+  const all=shelvedIds().filter(inStock), owned=all.filter(id=>ownsBook(p,id));
   if(owned.length){
     sh.appendChild(el("h3",null,"Already bought here"));
     const cl=el("div","tagrow"); cl.style.marginBottom="10px";
     owned.forEach(id=>cl.appendChild(el("span","tag r",BOOK(id).title+" · day "+ownedDay(p,id))));
     sh.appendChild(cl);
   }
+  if(ids.length) sh.appendChild(go);
   sh.appendChild(ghost("← Keep talking",()=>renderTalk(p,convo)));
+  sync();
 }
 function bookHead(bk,price,yearLabel){
   const head=el("div","bookhead");
@@ -1941,67 +2164,96 @@ function bookBody(sh,bk){
 }
 function renderConfirm(p,id,convo){
   const bk=BOOK(id), sh=$("#sheet"); sh.innerHTML="";
-  sh.appendChild(el("h3",null,"Before you recommend")).style.marginTop="0";
+  sh.appendChild(el("h3",null,"Before you put it on the counter")).style.marginTop="0";
   sh.appendChild(bookHead(bk,priceOf(id)));
   bookBody(sh,bk);
   if(p.clues.length){
     sh.appendChild(el("h3",null,"What "+p.name+" told you"));
     const cl=el("div","clues"); p.clues.forEach(c=>cl.appendChild(el("span","tag g",c))); sh.appendChild(cl);
   }
-  sh.appendChild(primary("Recommend this to "+p.name,()=>resolve(p,id,convo)));
-  sh.appendChild(ghost("← Choose another book",()=>renderPick(p,convo)));
+  p.shortlist=p.shortlist||[];
+  const on=p.shortlist.includes(id), full=p.shortlist.length>=SHORTLIST_MAX;
+  const add=primary(on?"Take it off the pile":full?"The pile is full ("+SHORTLIST_MAX+")":"Add to the pile",()=>{
+    const i=p.shortlist.indexOf(id);
+    if(i>=0) p.shortlist.splice(i,1); else if(!full) p.shortlist.push(id);
+    renderPick(p,convo);
+  });
+  add.disabled=!on&&full;
+  sh.appendChild(add);
+  sh.appendChild(ghost("← Back to the books",()=>renderPick(p,convo)));
   sh.scrollTop=0;
 }
-function resolve(p,id,convo){
-  const sc=scoreMatch(p,id), bk=BOOK(id);
+const MAYBE_LINES=[
+  "These are lovely. I'm not buying today — but I'll remember this pile.",
+  "You've found exactly my sort of thing. Not today, though. Next time.",
+  "Mm, tempting. Let me think about it. I'll come back.",
+  "Good choices. I've spent too much this week already, I'm afraid.",
+];
+function resolve(p,ids,convo){
+  ids=ids.filter(id=>inStock(id) && !ownsBook(p,id));
   const sh=$("#sheet"); sh.innerHTML="";
   sh.appendChild(speaker(p));
-  sh.appendChild(el("div","say me","\""+bk.title+"\" — I think this is you."));
-  if(ownsBook(p,id)){
-    // They bought this from you already. No one buys the same book twice.
-    sh.appendChild(el("div","say","You sold me this one on day "+ownedDay(p,id)+". It's at home on the shelf."));
-    const vv=el("div","verdict bad"); vv.textContent="Already owns it"; sh.appendChild(vv);
-    sh.appendChild(primary("← Choose another book",()=>renderPick(p,convo)));
+  if(!ids.length){
+    sh.appendChild(el("div","say","Those seem to have gone while we were talking."));
+    sh.appendChild(primary("← Back to the books",()=>renderPick(p,convo)));
     return;
   }
-  const bought=sc>=SALE_SCORE;
-  sh.appendChild(el("div","say", bought? p.arch.yes : p.arch.no));
+  sh.appendChild(el("div","say me",ids.length===1 ? "\""+BOOK(ids[0]).title+"\" — I think this is you."
+    : "I've pulled "+ids.length+" for you: "+ids.map(id=>BOOK(id).title).join(", ")+"."));
+  const scored=ids.map(id=>({id,score:scoreMatch(p,id)})).sort((a,b2)=>b2.score-a.score);
+  const best=scored[0], fit=best.score>=SALE_SCORE;
+  const bought=fit && Math.random()<BUY_CHANCE;
   const v=el("div","verdict "+(bought?"good":"bad"));
-  v.textContent = sc>=85? "Perfect match · "+sc : bought? "Sold · "+sc : "No sale · "+sc;
-  sh.appendChild(v);
-  if(!bought){
+  if(bought){
+    sh.appendChild(el("div","say",p.arch.yes+"\n\nI'll take \""+BOOK(best.id).title+"\"."));
+    v.textContent=(best.score>=85?"Perfect match · ":"Sold · ")+BOOK(best.id).title;
+    sh.appendChild(v);
+    const pay=el("div","say");
+    pay.textContent = completeSale(p,best.id,false)
+      ? "Pays "+rm(p.paid)+". Till: "+rm(S.cash)+"."
+      : "— but that was the last copy, and it just walked out the door. Nothing to sell them.";
+    sh.appendChild(pay);
+  } else if(fit){
+    // a good pile that didn't sell: the even-odds half. No reputation lost — they liked what they saw.
+    sh.appendChild(el("div","say",rnd(MAYBE_LINES)));
+    v.textContent="Not today · they liked \""+BOOK(best.id).title+"\"";
+    sh.appendChild(v);
+    sh.appendChild(el("p",null,"At least one book suited them, so it was a coin toss. Better luck with the next customer."));
+    p.served=true; p.state="leave"; p.bubble=false; p.path=pathTo(p,doorX(),GH-1); p.pi=0;
+    S.stats.missed++;
+    log(p.name+" liked "+BOOK(best.id).title+" but didn't buy");
+  } else {
+    sh.appendChild(el("div","say",p.arch.no));
+    v.textContent="No sale · nothing on the pile suited them";
+    sh.appendChild(v);
     const w=p.arch.want;
     sh.appendChild(el("p",null,"They wanted: "+w.genres.map(g=>GENRE_LABEL[g]||g).join(", ")+
       " · "+w.moods.join(", ")+" · under "+rm(w.max)+
       (w.avoid.length?" · never "+w.avoid.join(", "):"")));
+    p.patience=Math.min(p.patience,60); p.state="browse"; S.rep=clamp(S.rep-0.3,0,100);
+    S.stats.missed++;
   }
-  if(bought){
-    const pay=el("div","say");
-    pay.textContent = completeSale(p,id,false)
-      ? "Pays "+rm(p.paid)+". Till: "+rm(S.cash)+"."
-      : "— but that was the last copy, and it just walked out the door. Nothing to sell them.";
-    sh.appendChild(pay);
-  }
-  else { p.patience=Math.min(p.patience,60); p.state="browse"; S.rep=clamp(S.rep-0.3,0,100); }
+  p.shortlist=[];
   sh.appendChild(primary("Continue",()=>{ closeModal(); S.talking=null; if(p.state==="talking")p.state="browse"; drawOpenPanel(); }));
   hud();
 }
 function closeModal(){ $("#modal").classList.remove("on"); }
 
 /* ---------- book card ---------- */
-function openBook(id){
+function openBook(id,back){
   const bk=BOOK(id);
   const sh=$("#sheet"); sh.innerHTML="";
   $("#modal").classList.add("on");
   sh.appendChild(bookHead(bk,autoPrice(bk.cost),true));
   bookBody(sh,bk);
   const buy=el("button","buy","Order a physical copy");
-  buy.onclick=()=>orderPanel(bk);
+  buy.onclick=()=>orderPanel(bk,back);
   sh.appendChild(buy);
   sh.appendChild(el("div","note","Prototype: catalogue is a frozen snapshot of real bibliographic records. In the shipped app this screen is a live Open Library / Google Books lookup, and the button above hits the real storefront. The rating above is a real reader aggregate (not an invented character quote) — approximate and offline here, pulled live from a ratings API in the shipped build."));
-  sh.appendChild(ghost("Close",closeModal));
+  if(back){ sh.appendChild(ghost("← Back to the stock take",back)); sh.scrollTop=0; }
+  else sh.appendChild(ghost("Close",closeModal));
 }
-function orderPanel(bk){
+function orderPanel(bk,back){
   const sh=$("#sheet"); sh.innerHTML="";
   sh.appendChild(el("h3",null,"Order · physical copy")).style.marginTop="0";
   const c=el("div","card"); c.style.marginBottom="12px";
@@ -2014,7 +2266,7 @@ function orderPanel(bk){
   sh.appendChild(L);
   const t=el("div","total","<span>Total</span><b>"+rm(autoPrice(bk.cost)+8)+"</b>"); t.style.marginTop="12px"; sh.appendChild(t);
   sh.appendChild(el("p",null,"Delivered in 2 working days. This is the commerce hook — in the live build it opens checkout. Nothing is charged here."));
-  sh.appendChild(ghost("← Back",()=>openBook(bk.id)));
+  sh.appendChild(ghost("← Back",()=>openBook(bk.id,back)));
 }
 
 /* ---------- evening ---------- */
@@ -2057,10 +2309,12 @@ cv.addEventListener("click",e=>{
     if(S.grid[y]&&S.grid[y][x]===EMPTY){
       const f=FURN[S.placing];
       if(S.cash>=f.cost){ S.cash-=f.cost; S.stats.spent+=f.cost; S.grid[y][x]=S.placing;
-        if(f.slots) S.slots[key(x,y)]=[]; }
+        if(f.slots) S.slots[key(x,y)]=[];
+        if(S.placing===SHELF) restockShelves(); }
     }
     S.placing=null; tip("Placed."); paint(); autosave(); return;
   }
+  if(S.grid[y]&&S.grid[y][x]===CAT){ tip(rnd(CAT_LINES)); return; }
   if(S.phase==="open"){
     let hit=null,bd=99;
     S.customers.forEach(p=>{ if(p.served||p.state==="leave")return;
@@ -2080,7 +2334,8 @@ cv.addEventListener("click",e=>{
   }
 });
 $("#modal").addEventListener("click",e=>{
-  if(e.target.id!=="modal" || S.talking) return;
+  if(e.target.id!=="modal" || S.talking || lockModal) return;
+  if(STK.open){ closeStockTake(); return; }
   closeModal();
   if(paused && !titleOn()) paused=false;   // tapping off the menu is the same as Resume
 });
@@ -2143,14 +2398,15 @@ paintMusic();
    when the page is running inside a viewer that grants it (same save on any
    device you open the link from). Whichever copy is newer wins at boot.
    ============================================================ */
-const SAVE_KEY="cornerbooks.save.v1", SAVE_V=1;
+// v2: grandfather's shop. The floor, shelf size and stock model all changed, so v1 saves don't carry over.
+const SAVE_KEY="cornerbooks.save.v2", SAVE_V=2;
 let saveState="local";            // "local" | "synced" | "error"
 
 function takeSnapshot(){
   return {
     v:SAVE_V, phase:(S.phase==="evening"?"evening":"morning"),
     day:S.day, cash:S.cash, rep:S.rep, tier:S.tier, gw:GW, gh:GH,
-    grid:S.grid, slots:S.slots, stock:S.stock, offers:S.offers, keeper:S.keeper,
+    grid:S.grid, slots:S.slots, stock:S.stock, incoming:S.incoming, keeper:S.keeper,
     stats:S.stats, history:S.history, soldEver:S.soldEver, featured:S.featured,
     seen:S.seen, tutorial:S.tutorial, shopName:S.shopName, library:S.library,
     footfall:S.footfall,
@@ -2161,7 +2417,7 @@ function validSave(d){
     && Number.isFinite(d.gw) && Number.isFinite(d.gh)
     && Array.isArray(d.grid) && d.grid.length===d.gh
     && Array.isArray(d.grid[0]) && d.grid[0].length===d.gw
-    && !!d.slots && !!d.stock && Array.isArray(d.offers);
+    && !!d.slots && !!d.stock;
 }
 function applySnapshot(d){
   // The account copy comes back from the db frozen, and the game mutates S in place
@@ -2169,7 +2425,7 @@ function applySnapshot(d){
   d=JSON.parse(JSON.stringify(d));
   GW=d.gw; GH=d.gh;
   S.day=d.day; S.cash=d.cash; S.rep=d.rep; S.tier=d.tier;
-  S.grid=d.grid; S.slots=d.slots; S.stock=d.stock; S.offers=d.offers;
+  S.grid=d.grid; S.slots=d.slots; S.stock=d.stock; S.incoming=d.incoming||{};
   S.keeper=d.keeper; S.stats=d.stats; S.history=d.history||[];
   S.soldEver=d.soldEver||{}; S.featured=d.featured; S.seen=d.seen||{};
   S.tutorial=!!d.tutorial; S.shopName=d.shopName||""; S.library=d.library||{};
@@ -2329,7 +2585,7 @@ function continueSave(d){
   lastJSON=JSON.stringify(takeSnapshot());
   inSession=true; hideTitle(); closeModal(); paint();
 }
-function newShop(){ bootDecided=true; inSession=true; hideTitle(); nameScreen(); }
+function newShop(){ bootDecided=true; inSession=true; hideTitle(); prelude(0); }
 function confirmReplace(d){
   const sh=$("#sheet"); sh.innerHTML="";
   $("#modal").classList.add("on");
@@ -2346,7 +2602,7 @@ function confirmStartOver(back){
   $("#modal").classList.add("on");
   sh.appendChild(el("h2",null,"Start over?")).style.marginBottom="10px";
   sh.appendChild(el("div","say","This erases "+shopLabel()+" — day "+S.day+", "+rm(S.cash)+
-    " in the till and every reader who remembers you — and opens an empty kiosk. It cannot be undone."));
+    " in the till and every reader who remembers you — and starts again from the day you inherited the shop. It cannot be undone."));
   const yes=primary("Erase it and start again",()=>{
     clearSave();
     try{ sessionStorage.setItem(FRESH_KEY,"1"); }catch(e){}
@@ -2376,7 +2632,7 @@ function openMenu(){
   item(ICON.play,"Resume","Back to the shop floor.",resumeGame);
   item(ICON.help,"How to play","The day, the customers, and how a sale is decided.",()=>howToPlay(openMenu));
   item(ICON.home,"Back to title","Leave the shop as it is. Continue picks up right here.",()=>{ closeModal(); titleScreen(); });
-  item(ICON.reset,"Start over","Erase this shop and open an empty kiosk.",()=>confirmStartOver(openMenu),"danger");
+  item(ICON.reset,"Start over","Erase this shop and start again from the inheritance.",()=>confirmStartOver(openMenu),"danger");
   sh.appendChild(L);
   sh.appendChild(el("div","note",saveNote()+(S.phase==="open"
     ?" Today's trading is written down when the shutters come down; close the tab now and this morning replays.":"")));
@@ -2385,15 +2641,16 @@ function resumeGame(){ closeModal(); paused=false; }
 $("#menuBtn").onclick=openMenu;
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape" || titleOn() || S.talking) return;
-  if(paused) resumeGame();
+  if(STK.open) closeStockTake();
+  else if(paused) resumeGame();
   else if(!$("#modal").classList.contains("on")) openMenu();
 });
 
 /* ---------- how to play ---------- */
 function phaseList(){
   const L=el("div","list"); L.style.marginBottom="10px";
-  [[ICON.stock,"Morning","Buy stock, set prices, fit out the shop."],
-   [ICON.shop,"Open","Customers come in. Tap one, ask up to three questions, then recommend from your shelves."],
+  [[ICON.stock,"Morning","Order stock, set prices, fit out the shop."],
+   [ICON.shop,"Open","Customers come in. Tap one, ask up to three questions, then put up to seven books from your shelves in front of them."],
    [ICON.price,"Closed","Count the takings and pay the rent."]].forEach(([ic,t,d])=>{
     const li=el("div","li"); li.appendChild(el("div","ic",ic));
     const m=el("div","meta"); m.appendChild(el("div","t",t)); m.appendChild(el("div","a",d)); li.appendChild(m); L.appendChild(li);
@@ -2407,15 +2664,17 @@ function howToPlay(back){
   sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
   sh.appendChild(phaseList());
   sh.appendChild(el("h3",null,"Making a sale"));
-  sh.appendChild(el("p",null,"Tap a customer to talk. Each question costs them a little patience and turns up a clue — a genre, a mood, a budget, something they won't read. Then pick a book off your own shelves."));
-  sh.appendChild(el("p",null,"Genre counts most, then mood, then price. Get it right and they buy; get it very right and your reputation grows and they come back. Get it wrong and they tell you what they were after."));
+  sh.appendChild(el("p",null,"Tap a customer to talk. Each question costs them a little patience and turns up a clue — a mood, a budget, something they won't read. Then pull books for them: every book on your shelves in the genres they read comes out, and you choose up to seven to show them."));
+  sh.appendChild(el("p",null,"If at least one of those books genuinely suits them — right mood, within budget, nothing they refuse — it's even odds they buy the best one. If none does, they won't buy, and they tell you what they were after. A perfect match grows your reputation fastest."));
+  sh.appendChild(el("h3",null,"Stock take"));
+  sh.appendChild(el("p",null,"The clipboard in the top bar opens the stock take at any time: every book you hold with its full description, filters by genre and era, and the distributor's catalogue to order from. The clock stops while it's open."));
   sh.appendChild(el("h3",null,"Money"));
-  sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to move to a bigger shopfront."));
+  sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to expand the floor. More floor means room for more shelves; the Coffee Corner unlocks as your reputation grows."));
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
   sh.appendChild(primary(back===closeModal?"Got it":"Back to menu",back));
 }
 
-initGrid(); rollOffers(); paint();
+initGrid(); seedStock(); paint();
 requestAnimationFrame(loop);
 function nameScreen(){
   const sh=$("#sheet"); sh.innerHTML="";
@@ -2423,8 +2682,8 @@ function nameScreen(){
   const portrait=document.createElement("img"); portrait.className="keeper-portrait";
   portrait.src=keeperPortrait(); portrait.alt="You, behind the counter";
   sh.appendChild(portrait);
-  sh.appendChild(el("h2",null,"Name your shop"));
-  sh.appendChild(el("p",null,"Every shopfront on the street has a name painted above the door. Yours goes on the sign."));
+  sh.appendChild(el("h2",null,"Repaint the sign"));
+  sh.appendChild(el("p",null,"Grandfather's sign has faded past reading. Every shopfront on the street has a name painted above the door — what will yours say?"));
   const field=el("div","field");
   field.appendChild(el("label",null,"Shop name"));
   const row=el("div","namerow");
@@ -2443,14 +2702,39 @@ function nameScreen(){
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter") go.click(); });
   setTimeout(()=>inp.focus(),50);
 }
+/* ---------- prelude ----------
+   Shown once, when a new game starts: the inheritance, then naming the shop. */
+const PRELUDE=[
+  {h:"A letter, and a set of keys",
+   p:["Your grandfather passed away last month. He was eighty-seven, and he kept his bookshop open until the week before.",
+      "At the reading of the will, the solicitor slides a ring of old brass keys across the desk. \"He left you the shop,\" she says. \"All of it.\""]},
+  {h:"The shop on the old street",
+   p:["It is exactly as he left it. Twelve shelves and a hundred books, no two alike. A counter worn smooth by forty years of elbows. His cat, asleep on its cushion in the corner as though nothing has happened.",
+      "Pinned beside the till, in his handwriting: \"Every book has its reader. Our job is to introduce them.\""]},
+  {h:"What will you do?",
+   p:["A developer has already written, twice, offering to buy the building. You could take the money.",
+      "Or you could turn the sign on the door to OPEN, and keep the family bookshop going."]},
+];
+function prelude(i){
+  const pg=PRELUDE[i], sh=$("#sheet"); sh.innerHTML=""; lockModal=true;
+  $("#modal").classList.add("on");
+  if(i===1){ const im=document.createElement("img"); im.className="keeper-portrait"; im.src=keeperPortrait(); im.alt="Behind grandfather's counter"; sh.appendChild(im); }
+  sh.appendChild(el("h3",null,"Prelude · "+(i+1)+" of "+PRELUDE.length)).style.marginTop="0";
+  sh.appendChild(el("h2",null,pg.h)).style.marginBottom="10px";
+  pg.p.forEach(t=>sh.appendChild(el("p","prelude",t)));
+  const last=i===PRELUDE.length-1;
+  sh.appendChild(primary(last?"Keep the family bookshop open":"Continue",()=>last?nameScreen():prelude(i+1)));
+  if(i>0) sh.appendChild(ghost("← Back",()=>prelude(i-1)));
+  sh.scrollTop=0;
+}
 function introScreen(){
-  const sh=$("#sheet"); sh.innerHTML="";
+  const sh=$("#sheet"); sh.innerHTML=""; lockModal=false;
   $("#modal").classList.add("on");
   sh.appendChild(el("h2",null,shopLabel())).style.marginBottom="10px";
-  sh.appendChild(el("div","say","A corner kiosk on an old shopping street. Yours since this morning. Two shelves, a counter, and $1,500 — rent is only $30 a day here, but the space is small. Grow reputation and cash and you can upgrade to a bigger lot."));
+  sh.appendChild(el("div","say","Grandfather's shop, yours since this morning. Twelve shelves holding a hundred books, one copy each, a counter, a palm and a cat — and $1,500 in the business account. Rent is $50 a day. Grow your reputation and cash and you can expand the floor, add shelves, and in time open a Coffee Corner."));
   sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
   sh.appendChild(phaseList());
-  sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
+  sh.appendChild(el("p",null,"Every book is real. The clipboard at the top opens the stock take — the whole inventory, with every description — any time you like."));
   sh.appendChild(primary("Open up",()=>{ closeModal(); paint(); }));
 }
 if(takeFresh()){ cloudLoad(); newShop(); }      // Start over reloads straight into naming the new shop
