@@ -6,6 +6,22 @@ is a real book and the player can order a physical copy.
 This document records the decisions taken during the design session and the reasoning
 behind them, so the prototype can be argued with rather than just played.
 
+## Revision pass (visual overhaul)
+
+The whole game was restyled to a flat, outlined UI kit look (white cards with a navy ink
+outline sitting on offset blue / orange / yellow blocks, pill buttons, rounded sans type).
+This supersedes the 16-bit / Kairosoft art direction in the day-2 pass below.
+
+| Area | What changed |
+|---|---|
+| Menus | Stat strip HUD, orange tab bar with a yellow active pill, book cards with stars and price, a QTY-style price stepper, blue list panels for the shop and dialogue choices, a Total card at close. |
+| Scene | Floor, walls, sign, storefront and furniture are now vector shapes with ink outlines, drawn at the stage's real device resolution instead of an upscaled pixel canvas. |
+| People | The pixel sprite sheets were replaced by one shape-built figure (head, hair style, shirt, walk cycle, four facings) recoloured per customer. The keeper and the name-screen portrait use the same figure. |
+| Covers | Flat covers: genre colour, one outlined motif, bold title. |
+
+Game rules, scoring, prices and the catalogue are unchanged. The old sprite sheets live in git
+history (commit `4399b1f`) if the pixel look is ever wanted back.
+
 ## Revision pass (day 2)
 
 A round of playtest feedback asked for nine specific changes. What actually shipped:
