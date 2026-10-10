@@ -12,6 +12,9 @@ no dependencies, no network.
   a day, sometimes two at a time.
 - **CLOSED** — count the takings and pay the rent.
 
+The title screen has Continue, New shop and How to play; the menu button (or Esc) pauses
+a trading day and offers Resume, How to play, Back to title and Start over.
+
 You start on a small corner kiosk at RM30/day rent. Reputation unlocks better furniture;
 cash and reputation together unlock bigger lots — rent only rises when you choose to
 expand into one.

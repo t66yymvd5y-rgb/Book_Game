@@ -6,6 +6,20 @@ is a real book and the player can order a physical copy.
 This document records the decisions taken during the design session and the reasoning
 behind them, so the prototype can be argued with rather than just played.
 
+## Revision pass (main menu)
+
+The game used to open straight onto the shop with a sheet already over it. It now has a
+title screen and a menu you can reach during play.
+
+| Area | What changed |
+|---|---|
+| Title screen | Every launch opens on Kedai Buku's title: the keeper behind the counter, then **Continue** (only when there is a save, with its day, cash, reputation and lot), **New shop** and **How to play**. Continue appears once the save lookup finishes; a copy from the player's account that arrives late updates it in place. |
+| New shop | With a save on file, New shop asks first. The old save is only replaced when the new shop first saves, so backing out of the naming screen loses nothing. |
+| In-game menu | A menu button in the top bar (or Esc) opens Resume / How to play / Back to title / Start over. While it or the title is up, the trading clock stops, so no customer's patience runs down. |
+| Back to title | Continue from there resumes the game in memory, mid-day included; nothing is reloaded. |
+| Start over | Moved out of the SHOP tab into the menu. It still erases the save, then reloads straight into naming the new shop rather than back to the title. |
+| How to play | The Morning / Open / Closed explainer plus how a sale is decided, readable at any time without starting a game. |
+
 ## Revision pass (artifact sync)
 
 The published Kedai Buku artifact had moved ahead of this repo. Its gameplay changes are now
