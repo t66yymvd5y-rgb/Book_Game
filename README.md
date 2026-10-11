@@ -16,19 +16,25 @@ and you decide to keep it going. The shop starts mature — twelve shelves holdi
 real books, one copy each, and his cat asleep in the corner.
 
 - **MORNING** — from day 2 the distributor's van brings 8 random titles you've never
-  carried; buy what you want before opening. Reorder, set prices (auto or by hand), fit out
+  carried; order what you want before opening. Reorder, set prices (auto or by hand), fit out
   the shop.
 - **OPEN** — customers arrive with patience running down. Tap one, ask up to three
-  questions, then pull books for them: every book on your shelves in the genres they read
-  comes out, and you put up to seven in front of them. If at least one genuinely suits
-  them, it's even odds they buy the best one. Regulars turn up more than once a day.
-- **CLOSED** — count the takings and pay the rent.
+  questions, then pull books for them: up to ten come off your shelves, mostly in the genres
+  they read, and you put up to six in front of them. Only some of the ten suit them, and only
+  two are books they'd actually buy — get either onto the pile and they take one home.
+- **CLOSED** — count the takings, pay the rent, and restock what sold.
+
+Every order — a reorder, a restock or a title off the van — arrives two mornings after you
+place it, before the shop opens.
 
 The clipboard button in the top bar opens the **stock take** at any time (the trading clock
 stops while it's open): the whole inventory with full descriptions, filters by genre and by
-era (pre-AD, AD 0–1500, 1501–1900, 1901–1950, 1951–2000, 2001–now), and reorders of any
-title you carry or have sold out of. Reorders placed in the morning are shelved at once; ones
-placed after opening arrive with the next morning's delivery. New titles only come on the van.
+era (pre-AD, AD 0–1500, 1501–1900, 1901–1950, 1951–2000, 2001–now), reorders of any title
+you carry, and a Sold out tab that restocks with one tap. New titles only come on the van.
+
+The blue information counter by the door holds grandfather's shop stamp, for checking in each
+day, and a guest book that customers sign when they buy. His cat wanders off its cushion now
+and then for a nap somewhere else on the floor.
 
 The title screen has Continue, New shop and How to play; the menu button (or Esc) pauses
 a trading day and offers Resume, How to play, Back to title and Start over.
