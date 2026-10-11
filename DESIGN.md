@@ -3,6 +3,17 @@
 A mobile 16-bit bookshop simulator set on an old shopping street, in which every book
 is a real book and the player can order a physical copy.
 
+## Revision pass (ten-book pull, sold-out restock, information counter)
+
+| Area | What changed |
+|---|---|
+| Pull | "Pull books" now brings out at most **10**: up to 5 that genuinely suit the customer (in their genres, base score ≥ 45 without the question bonus), made up to 10 with genuine misses (scoring < 45), from their genres first, then any genre. Of the fits, **2** are picked at random as the books they'd actually buy. The pull is made once per visit, so asking more questions doesn't reshuffle it. |
+| Buying | Replaces the per-book coin toss. If either of the two is on the pile (max 6), they buy one — the better match. A pile with fits but neither of the two: they like it and leave, no reputation lost. No fits: unchanged. |
+| Sold out | The morning Stock tab's Sold out tags became rows with a **+1** restock button; the stock take has a third tab, **Sold out**, with the same rows (filters still apply). Orders arrive in 2 days as before. |
+| Display table | Tables were never stocked (the slot was never filled), so they stood empty. A table now holds **2** in-stock titles, topped up whenever shelves are restocked: one drawn lying flat and closed, one standing open on a little stand. Tapping it lists them under "On display". Its old "+40% notice" description was never implemented and was removed. |
+| Door | The yellow mat above the door is gone. |
+| Information counter | A two-tile blue counter just left of the door (tiles `INFO` + `INFO_R`), carrying an ink pad, a shop stamp, a stamped card, and an open guest book with a pen. Tapping it pauses the clock and opens: a ten-day **stamp card** (stamp in once per day; stamps saved as `S.stamps`) and the **guest book** — grandfather's line first, then customers who buy (70% of them) sign with a line about their book (`S.guestbook`, capped at 80). Old saves get one placed on the nearest free pair of front-row tiles that doesn't block a shelf front; expanding the floor moves it to stay by the door. |
+
 ## Revision pass (deliveries, restock, six-book pile)
 
 Supersedes the Reordering, Van, Recommending, Buying and Cat rows of the grandfather's-shop

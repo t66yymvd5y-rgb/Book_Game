@@ -181,6 +181,7 @@
   .choice::after{content:"›";font-size:20px;line-height:.8;font-weight:500;}
   .choice.primary{background:var(--orange);color:#fff;border-radius:999px;justify-content:center;font-weight:600;font-size:14px;box-shadow:var(--lift-ink);margin-top:12px;}
   .choice.primary::after{content:"";}
+  .choice.primary:disabled{background:#eef0f5;color:var(--muted);border-color:#c5c9d8;box-shadow:none;}
   .choice.ghost{border-color:transparent;background:none;justify-content:center;color:var(--ink-dim);}
   .choice.ghost::after{content:"";}
   .clues{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
@@ -265,6 +266,17 @@
   .sl .check{width:24px;height:24px;}
   .sl.off{opacity:.5;}
   .li .mini{flex:none;border:1.5px solid var(--ink);border-radius:4px;}
+  /* information counter: stamp card and guest book */
+  .stampcard{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;background:var(--cream,#fff4e0);border:var(--lw) solid var(--ink);
+    border-radius:var(--r);padding:12px;margin-bottom:6px;}
+  .stampcell{aspect-ratio:1;border:1.5px dashed #c5c9d8;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--muted);}
+  .stampcell.today{border-color:var(--orange);color:var(--orange);}
+  .stampcell svg{width:108%;height:108%;}
+  .guestbook{background:#fffaf0;border:var(--lw) solid var(--ink);border-radius:var(--r);padding:4px 14px;}
+  .gb{padding:9px 0;border-bottom:1.5px solid var(--line);}
+  .gb:last-of-type{border-bottom:0;}
+  .gbtext{font-size:13px;color:var(--ink);font-style:italic;line-height:1.5;}
+  .gbby{font-size:11px;color:var(--ink-dim);margin-top:2px;}
   .prelude{font-size:14px;line-height:1.7;color:var(--ink);margin:0 0 12px;}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1066,11 +1078,12 @@ function ratingBlock(bk){
 /* ---------- shop grid ---------- */
 let GW=12, GH=9, PX=4; const TS=16;   // PX: device px per game px, sized to the stage in resizeStage()
 const EMPTY=0, WALL=1, SHELF=2, COUNTER=3, TABLE=4, PLANT=5, CAFE=6, DOOR=7, CAT=8;
+const INFO=9, INFO_R=10;             // the information counter by the door: two tiles, drawn from the left one
 const SHELF_SLOTS=10;                // titles per shelf
 const START_TITLES=100;              // grandfather's stock: this many random titles, one copy each
 const FURN={
   [SHELF]:{name:"Shelf",cost:120,slots:SHELF_SLOTS,desc:"Holds "+SHELF_SLOTS+" titles"},
-  [TABLE]:{name:"Display Table",cost:200,slots:1,desc:"Featured title, +40% notice",lvl:2},
+  [TABLE]:{name:"Display Table",cost:200,slots:2,desc:"Two featured titles on display",lvl:2},
   [PLANT]:{name:"Potted Palm",cost:60,slots:0,desc:"+ambience, slower exits"},
   [CAFE]:{name:"Coffee Corner",cost:900,slots:0,desc:"+50% patience, all customers",lvl:3},
 };
@@ -1097,7 +1110,11 @@ const S={
   seen:{}, tutorial:true, shopName:"", keeper:null, seenToday:[], dayCast:[],
   footfall:0,
   library:{},                 // archetypeKey -> {bookId: dayBought} — what each reader already owns
+  stamps:[],                  // days the keeper stamped the check-in card at the information counter
+  guestbook:[],               // [{day, name, text}] — oldest first; day 0 is grandfather's line
 };
+const GRANDFATHER_ENTRY={day:0,name:"Grandfather",text:"Every book has its reader. Our job is to introduce them."};
+S.guestbook=[GRANDFATHER_ENTRY];
 
 function key(x,y){return x+","+y;}
 function doorX(){ return Math.floor(GW/2); }
@@ -1133,6 +1150,7 @@ function initGrid(preserve){
     [[1,1],[2,1],[3,1],[4,1],[8,1],[9,1],[10,1],[2,4],[3,4],[4,4],[8,4],[9,4]]
       .forEach(([x,y])=>{S.grid[y][x]=SHELF; S.slots[key(x,y)]=[];});
     S.grid[2][dx]=COUNTER; S.grid[GH-2][1]=PLANT; S.grid[GH-2][GW-2]=CAT;
+    S.grid[GH-2][dx-2]=INFO; S.grid[GH-2][dx-1]=INFO_R;
     S.keeper=[dx,1];   // you, standing behind the counter
   }
   resizeStage();
@@ -1171,14 +1189,33 @@ function upgradeSpace(){
   const [cx,cy]=[GW-2,GH-2];
   if(S.grid[cy][cx]===EMPTY) tilesOf(CAT).forEach(([x,y])=>{ S.grid[y][x]=EMPTY; S.grid[cy][cx]=CAT; });
   catGoHome();
+  placeInfoDesk(true);                 // the information counter stays by the (moved) door
   drawMorning(); hud(); autosave();
+}
+
+/* The information counter sits just inside the door, to its left. Older saves and expanded floors
+   get one placed (or moved) on the nearest free pair of floor tiles in the front rows that doesn't
+   block the space in front of a shelf or table. */
+function placeInfoDesk(move){
+  const has=tilesOf(INFO).length>0;
+  if(has && !move) return;
+  const old=tilesOf(INFO).concat(tilesOf(INFO_R));
+  old.forEach(([x,y])=>S.grid[y][x]=EMPTY);
+  const ok=(x,y)=>x>=1&&x+1<=GW-2&&S.grid[y][x]===EMPTY&&S.grid[y][x+1]===EMPTY&&!isKeeperTile(x,y)&&!isKeeperTile(x+1,y)
+    &&![x,x+1].some(cx=>[SHELF,TABLE].includes(S.grid[y-1][cx]))&&x!==doorX()&&x+1!==doorX();
+  const dx=doorX(), spots=[];
+  for(const y of [GH-2,GH-3]) for(let x=1;x<GW-2;x++) if(ok(x,y)) spots.push([x,y,Math.abs(x+1-dx)+(GH-2-y)*3+(x>dx?0.5:0)]);
+  spots.sort((a,b2)=>a[2]-b2[2]);
+  if(spots.length){ const [x,y]=spots[0]; S.grid[y][x]=INFO; S.grid[y][x+1]=INFO_R; }
+  else old.forEach(([x,y],i)=>S.grid[y][x]=i<old.length/2?INFO:INFO_R);   // nowhere better: leave it be
 }
 
 /* ---------- stock helpers ---------- */
 // 1.45x is a real bookshop's margin. 1.75x priced a $29 title at $50.90, which is over
 // the ceiling of two thirds of the cast — the shop was unsellable by arithmetic, not by play.
 const autoPrice = cost => Math.round(cost*1.45) - 0.10;
-function shelvedIds(){ const o=[]; Object.keys(S.slots).forEach(k=>S.slots[k].forEach(id=>o.push(id))); return o; }
+// every title out in the shop, once each — a display table shows copies of titles that are also shelved
+function shelvedIds(){ const o=new Set(); Object.keys(S.slots).forEach(k=>S.slots[k].forEach(id=>o.add(id))); return [...o]; }
 function shelfCapacity(){ return tilesOf(SHELF).length*SHELF_SLOTS; }
 function priceOf(id){ const s=S.stock[id]; return s.auto?autoPrice(s.cost):s.price; }
 function inStock(id){ return !!(S.stock[id] && S.stock[id].copies>0); }
@@ -1198,6 +1235,12 @@ function restockShelves(){
   tilesOf(SHELF).forEach(([x,y])=>{ const k=key(x,y); S.slots[k]=S.slots[k]||[];
     for(let i=S.slots[k].length;i<SHELF_SLOTS;i++) free.push(k); });
   stockedIds().forEach(id=>{ if(on.has(id)||!free.length) return; S.slots[free.shift()].push(id); on.add(id); });
+  // display tables: two in-stock titles each, no title on two tables at once
+  const tables=tilesOf(TABLE).map(([x,y])=>key(x,y));
+  tables.forEach(k=>S.slots[k]=(S.slots[k]||[]).filter(inStock));
+  const shown=new Set(tables.flatMap(k=>S.slots[k]));
+  const pick=shuffled(stockedIds().filter(id=>!shown.has(id)));
+  tables.forEach(k=>{ while(S.slots[k].length<2 && pick.length){ const id=pick.shift(); S.slots[k].push(id); shown.add(id); } });
 }
 function addCopies(id,n){
   const bk=BOOK(id), st=S.stock[id];
@@ -1348,10 +1391,23 @@ function drawFurn(x,y,t){
     blob(g,X+8.6,Y+12.6,6.6,2,C.shadow,false);
     box(g,X+3,Y+9,1.4,5,0.6,INK,false); box(g,X+11.6,Y+9,1.4,5,0.6,INK,false);
     box(g,X+1,Y+6,TS-2,4.4,2.2,C.yellow);
-    const id=S.slots[key(x,y)]&&S.slots[key(x,y)][0];
-    if(id!=null){ const bk=BOOK(id);
-      box(g,X+5,Y+1.4,6,6,0.8,SPINE[bk.genre]||C.orange);
-      box(g,X+6,Y+2.4,4,1.2,0.4,C.white,false); }
+    const ids=S.slots[key(x,y)]||[];
+    if(ids[0]!=null){                                       // lying flat, closed
+      const col=SPINE[BOOK(ids[0]).genre]||C.orange;
+      box(g,X+1.8,Y+5,6.4,2.4,0.7,C.white);                 // the page block, seen edge-on
+      box(g,X+1.6,Y+3.8,6.8,1.6,0.6,col);                   // front cover on top
+      box(g,X+3,Y+4.25,2.6,0.6,0.3,shade(col,1.35),false);
+      px(X+2.6,Y+6,4.8,0.3,"#d5d8e4"); px(X+2.6,Y+6.7,4.8,0.3,"#d5d8e4");
+    }
+    if(ids[1]!=null){                                       // standing up, opened out on a little stand
+      const col=SPINE[BOOK(ids[1]).genre]||C.blue;
+      box(g,X+10.9,Y+5.4,1.2,1.6,0.4,INK,false);            // stand
+      box(g,X+8.2,Y-0.4,6.6,6.2,0.9,col);                   // cover behind the pages
+      box(g,X+8.8,Y+0.2,2.8,5,0.5,C.white,INK,0.3);         // left page
+      box(g,X+11.4,Y+0.2,2.8,5,0.5,C.white,INK,0.3);        // right page
+      px(X+11.45,Y+0.4,0.35,4.6,INK);                       // the gutter
+      [1.4,2.4,3.4].forEach(dy=>{ px(X+9.3,Y+dy,1.9,0.35,"#b9c0d4"); px(X+11.9,Y+dy,1.9,0.35,"#b9c0d4"); });
+    }
   }
   if(t===PLANT){
     blob(g,X+8.5,Y+14.6,4.4,1.3,C.shadow,false);
@@ -1359,6 +1415,24 @@ function drawFurn(x,y,t){
     blob(g,X+8,Y+4.4,3.4,3.4,C.green);
     box(g,X+4.6,Y+8.8,6.8,5.6,1.6,C.orange);
     box(g,X+4,Y+8.2,8,1.8,0.9,shade(C.orange,1.15));
+  }
+  if(t===INFO){                                          // two tiles wide, drawn from the left one
+    const W=2*TS;
+    box(g,X+1.2,Y+6.6,W-1.4,TS-6.6,2,C.shadow,false);
+    box(g,X+0.4,Y+5.6,W-1.6,TS-6.4,2,C.blue);
+    box(g,X+0.4,Y+4.4,W-1.6,3.4,1.6,C.white);
+    blob(g,X+W/2,Y+11.2,2.3,2.3,C.white);                 // the "i" roundel on the front
+    box(g,X+W/2-0.4,Y+10.6,0.8,2,0.3,INK,false); blob(g,X+W/2,Y+9.8,0.45,0.45,INK,false);
+    // check-in stamp: ink pad, the stamp on its wooden knob, a stamped card
+    box(g,X+2,Y+2.2,4.6,2.6,0.7,INK,false); box(g,X+2.6,Y+2.7,3.4,1.6,0.5,"#d6453d",false);
+    box(g,X+7.4,Y+2.4,3,2.2,0.6,"#3d4466");
+    box(g,X+8.3,Y+0.8,1.2,2,0.5,C.wood,false); blob(g,X+8.9,Y+0.4,1.5,1.2,C.wood);
+    box(g,X+11,Y+1.6,3.6,3.4,0.5,C.white,INK,0.3); blob(g,X+12.8,Y+3.3,1.2,1.2,null,"#d6453d",0.35);
+    // the guest book, lying open, with a pen
+    box(g,X+16.4,Y+1.2,12,5,1,"#8c3b3b");
+    box(g,X+17,Y+1.6,5.4,4,0.5,C.cream,INK,0.3); box(g,X+22.4,Y+1.6,5.4,4,0.5,C.cream,INK,0.3);
+    [2.6,3.4,4.2].forEach(dy=>{ px(X+17.6,Y+dy,4.2,0.3,"#b9c0d4"); px(X+23,Y+dy,3.6,0.3,"#b9c0d4"); });
+    g.beginPath(); g.moveTo(X+26.4,Y+5.2); g.lineTo(X+29.8,Y+1.2); g.lineWidth=0.8; g.strokeStyle=INK; g.lineCap="round"; g.stroke();
   }
   if(t===CAFE){
     box(g,X+1.2,Y+5.4,TS-1.4,TS-5.4,2,C.shadow,false);
@@ -1642,13 +1716,12 @@ function render(){
   box(g,dx*TS+0.6,fy-2,TS-1.2,TS-3.4,2,C.orange);
   box(g,dx*TS+2.6,fy,TS-5.2,5.4,1.2,C.glass);
   blob(g,dx*TS+12.2,fy+6.8,0.8,0.8,C.yellow);
-  box(g,(dx-1)*TS+9,fy-5.4,TS-2,2.6,1.3,C.yellow);
 
   drawKeeper();
   for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
     const t=S.grid[y][x];
     if(t===SHELF) drawShelf(x,y,S.slots[key(x,y)]);
-    else if(t===COUNTER||t===TABLE||t===PLANT||t===CAFE) drawFurn(x,y,t);
+    else if(t===COUNTER||t===TABLE||t===PLANT||t===CAFE||t===INFO) drawFurn(x,y,t);
     else if(t===CAT){ drawCushion(x,y); if(CATW.state==="home") drawSleepingCat(x*TS,y*TS); }
   }
   if(S.placing!=null){
@@ -1784,7 +1857,7 @@ function stepCustomer(p){
   }
 }
 const SALE_SCORE=45;                                // score at or above this and they buy
-function scoreMatch(p,id){
+function scoreMatch(p,id,noClues){
   const bk=BOOK(id), w=p.arch.want, price=priceOf(id);
   let s=18;
   if(w.genres.includes(bk.genre)) s+=40;
@@ -1800,7 +1873,7 @@ function scoreMatch(p,id){
   const fair=autoPrice(bk.cost);
   if(price>fair*1.3) s-=10;
   if(price<fair*0.9) s+=5;
-  s+=(p.clues?p.clues.length:0)*3;                  // asking earns you the benefit of the doubt
+  if(!noClues) s+=(p.clues?p.clues.length:0)*3;     // asking earns you the benefit of the doubt
   return Math.round(clamp(s,0,100));
 }
 function bestMatchFor(p){
@@ -1818,6 +1891,7 @@ function completeSale(p,id,passive){
   const price=priceOf(id);
   st.copies--; S.cash=Math.round((S.cash+price)*100)/100; S.stats.rev+=price; S.stats.served++;
   recordPurchase(p,id);
+  signGuestbook(p,id);
   p.paid=price;
   S.soldEver[id]=(S.soldEver[id]||0)+1;
   p.served=true; p.bubble=false;
@@ -2025,12 +2099,11 @@ function drawMorning(){
         P.appendChild(c);
       });
     }
-    const sold=Object.keys(S.stock).map(Number).filter(id=>!inStock(id));
+    const sold=soldOutIds();
     if(sold.length){
       P.appendChild(el("h3",null,"Sold out"));
-      const tr=el("div","tagrow");
-      sold.slice(0,24).forEach(id=>tr.appendChild(el("span","tag r",BOOK(id).title)));
-      P.appendChild(tr);
+      P.appendChild(el("p",null,"Tap +1 to restock a copy. It arrives on day "+(S.day+ORDER_DAYS)+", before opening."));
+      P.appendChild(soldOutList(sold,()=>drawMorning()));
     }
     if(used>=cap) P.appendChild(el("p",null,"Shelves full. Buy another shelf in SHOP, or sell through what you have."));
   }
@@ -2101,6 +2174,28 @@ function drawMorning(){
   });
   tip(shopLabel()+" · day "+S.day+", morning. Stock, price, then open.");
 }
+/* Sold-out titles, each with a +1 restock button. Shared by the morning Stock tab and the stock take. */
+function soldOutIds(){
+  return Object.keys(S.stock).map(Number).filter(id=>!inStock(id)).sort((a,b2)=>BOOK(a).title.localeCompare(BOOK(b2).title));
+}
+function soldOutList(ids,redraw,back){
+  const L=el("div","list");
+  ids.forEach(id=>{
+    const bk=BOOK(id), li=el("div","li"), coming=incomingOf(id);
+    li.appendChild(coverCanvas(bk,30,45)).classList.add("mini");
+    const m=el("div","meta"); m.appendChild(el("div","t",bk.title));
+    m.appendChild(el("div","a",bk.author+" · "+(coming?coming+" on order, arriving day "+nextDueOf(id):"none on order")));
+    li.appendChild(m);
+    m.onclick=()=>openBook(id,back);
+    const btn=el("button","btn-sm btn-y","+1 · "+rm(bk.cost));
+    btn.setAttribute("aria-label","Restock one copy of "+bk.title);
+    btn.disabled=!canOrder(id);
+    btn.onclick=e=>{ e.stopPropagation(); if(orderCopy(id)) redraw(); };
+    li.appendChild(btn);
+    L.appendChild(li);
+  });
+  return L;
+}
 /* ---------- stock take ----------
    Reachable at any time from the clipboard in the top bar. The trading clock stops while it is open. */
 const STK={tab:"inv",genre:"all",era:"all",prevPaused:false,open:false};
@@ -2117,7 +2212,7 @@ function stockTake(){
     (inc?" · <b>"+inc+"</b> on order":"")+(S.phase==="open"?" · the clock is stopped":"")));
 
   const seg=el("div","seg");
-  [["inv","Inventory"],["order","Order stock"]].forEach(([k,l])=>{
+  [["inv","Inventory"],["order","Order stock"],["sold","Sold out"]].forEach(([k,l])=>{
     const b2=el("button",STK.tab===k?"on":"",l); b2.onclick=()=>{ STK.tab=k; stockTake(); }; seg.appendChild(b2);
   });
   sh.appendChild(seg);
@@ -2132,6 +2227,15 @@ function stockTake(){
   sh.appendChild(el("h3",null,"Era")).style.marginTop="4px";
   chipRow([["all","All"]].concat(ERAS.map(e=>[e.k,e.label])),STK.era,k=>STK.era=k);
 
+  if(STK.tab==="sold"){
+    const sold=soldOutIds().filter(id=>{ const bk=BOOK(id); return (STK.genre==="all"||bk.genre===STK.genre)&&(STK.era==="all"||eraOf(bk)===STK.era); });
+    sh.appendChild(el("div","count",sold.length+" sold-out "+(sold.length===1?"title":"titles")));
+    sh.appendChild(el("p",null,"Everything you've sold the last copy of. Reorder with +1: it arrives "+ORDER_DAYS+" days later, on day "+(S.day+ORDER_DAYS)+", before opening.")).style.marginBottom="10px";
+    if(sold.length){ const y=()=>{ const t=sh.scrollTop; stockTake(); sh.scrollTop=t; }; sh.appendChild(soldOutList(sold,y,stockTake)); }
+    else sh.appendChild(el("div","empty","Nothing sold out"+(STK.genre!=="all"||STK.era!=="all"?" for that genre and era.":" yet.")));
+    sh.appendChild(ghost("Back to the shop",closeStockTake));
+    return;
+  }
   const pool = STK.tab==="inv"
     ? BOOKS.filter(bk=>inStock(bk.id)||incomingOf(bk.id))
     : BOOKS.filter(bk=>S.stock[bk.id]||incomingOf(bk.id));
@@ -2261,14 +2365,27 @@ function renderTalk(p,convo){
   sh.appendChild(primary("Pull books for "+p.name,()=>renderPick(p,convo)));
   sh.appendChild(ghost("Leave them to browse",endTalk));
 }
-/* Recommending: every book on the shelves in the genres this customer reads is pulled out.
-   The player puts up to six of them in front of the customer. Each one that genuinely suits
-   them is an even-odds "I'd buy that" — so four that fit means about two they'd actually buy —
-   but they only ever take one: the best of those. If none suits them, they leave it. */
-const SHORTLIST_MAX=6, BUY_CHANCE=0.5;
-function pulledFor(p){
+/* Recommending: up to PULL_MAX books come off the shelves for this customer — up to PULL_FITS
+   that genuinely suit them, made up to ten with others from their genres (then any genre).
+   Of the ones that suit them, PULL_KEEN are the ones they'd actually buy. The player puts up
+   to six on the counter; if either of those two is among them, they buy one (the better
+   match). The pull is made once per visit, so asking more questions doesn't reshuffle it. */
+const SHORTLIST_MAX=6, PULL_MAX=10, PULL_FITS=5, PULL_KEEN=2;
+function makePull(p){
   const want=p.arch.want.genres;
-  return shelvedIds().filter(id=>inStock(id) && !ownsBook(p,id) && want.includes(BOOK(id).genre))
+  const pool=shuffled(shelvedIds().filter(id=>inStock(id) && !ownsBook(p,id)));
+  const suits=id=>want.includes(BOOK(id).genre) && scoreMatch(p,id,true)>=SALE_SCORE;
+  const fits=pool.filter(suits).slice(0,PULL_FITS);
+  // the other five are genuine misses: nothing that would pass for a match, whatever its genre
+  const rest=pool.filter(id=>!suits(id) && scoreMatch(p,id,true)<SALE_SCORE)
+    .sort((a,b2)=>(want.includes(BOOK(b2).genre)?1:0)-(want.includes(BOOK(a).genre)?1:0));
+  p.pulled=fits.concat(rest.slice(0,PULL_MAX-fits.length));
+  p.fits=fits;
+  p.keen=shuffled(fits).slice(0,PULL_KEEN);
+}
+function pulledFor(p){
+  if(!p.pulled) makePull(p);
+  return p.pulled.filter(id=>inStock(id) && !ownsBook(p,id))
     .sort((a,b2)=>BOOK(a).title.localeCompare(BOOK(b2).title));
 }
 function renderPick(p,convo){
@@ -2278,8 +2395,8 @@ function renderPick(p,convo){
   if(p.clues.length){ const cl=el("div","clues"); p.clues.forEach(c=>cl.appendChild(el("span","tag g",c))); sh.appendChild(cl); }
   const ids=pulledFor(p);
   const genres=p.arch.want.genres.map(g=>GENRE_LABEL[g]||g).join(", ");
-  sh.appendChild(el("p",null,"Pulled from your shelves: <b>"+ids.length+"</b> "+(ids.length===1?"book":"books")+" in "+genres+
-    ". Tap a book to add it to the pile; tap Read to look it up first."));
+  sh.appendChild(el("p",null,"Pulled from your shelves: <b>"+ids.length+"</b> "+(ids.length===1?"book":"books")+", mostly "+genres+
+    ". Only some of them suit "+p.name+", and only a couple would they actually buy. Tap a book to add it to the pile; tap Read to look it up first."));
   const count=el("h3",null,""); sh.appendChild(count);
   const list=el("div");
   const go=primary("",()=>resolve(p,p.shortlist.slice(),convo));
@@ -2321,7 +2438,7 @@ function renderPick(p,convo){
     list.appendChild(row);
   });
   sh.appendChild(list);
-  if(!ids.length) sh.appendChild(el("div","empty","Nothing on your shelves in "+genres+" that "+p.name+
+  if(!ids.length) sh.appendChild(el("div","empty","Nothing on your shelves that "+p.name+
     " doesn't already own.<br>Order some in from the stock take."));
   const all=shelvedIds().filter(inStock), owned=all.filter(id=>ownsBook(p,id));
   if(owned.length){
@@ -2400,9 +2517,10 @@ function resolve(p,ids,convo){
   sh.appendChild(el("div","say me",ids.length===1 ? "\""+BOOK(ids[0]).title+"\" — I think this is you."
     : "I've pulled "+ids.length+" for you: "+ids.map(id=>BOOK(id).title).join(", ")+"."));
   const scored=ids.map(id=>({id,score:scoreMatch(p,id)})).sort((a,b2)=>b2.score-a.score);
-  const best=scored[0], fit=best.score>=SALE_SCORE;
-  const keen=scored.filter(x=>x.score>=SALE_SCORE && Math.random()<BUY_CHANCE);
-  const bought=keen.length>0, pick=bought?keen[0]:best;
+  const fitOn=scored.filter(x=>(p.fits||[]).includes(x.id));
+  const keenOn=scored.filter(x=>(p.keen||[]).includes(x.id));
+  const fit=fitOn.length>0, bought=keenOn.length>0;
+  const best=fit?fitOn[0]:scored[0], pick=bought?keenOn[0]:best;
   const v=el("div","verdict "+(bought?"good":"bad"));
   if(bought){
     sh.appendChild(el("div","say",p.arch.yes+"\n\nI'll take \""+BOOK(pick.id).title+"\"."));
@@ -2414,11 +2532,12 @@ function resolve(p,ids,convo){
       : "— but that was the last copy, and it just walked out the door. Nothing to sell them.";
     sh.appendChild(pay);
   } else if(fit){
-    // a good pile that didn't sell: every coin came up tails. No reputation lost — they liked what they saw.
+    // a good pile that didn't sell: it suited them, but neither of the two they'd buy was on it.
+    // No reputation lost — they liked what they saw.
     sh.appendChild(el("div","say",rnd(MAYBE_LINES)));
     v.textContent="Not today · they liked \""+BOOK(best.id).title+"\"";
     sh.appendChild(v);
-    sh.appendChild(el("p",null,"Each book that suited them was a coin toss, and none came up. More good fits on the pile means better odds."));
+    sh.appendChild(el("p",null,"Some of the pile suited them, but not the one or two books they'd actually have bought."));
     p.served=true; p.state="leave"; p.bubble=false; p.path=pathTo(p,doorX(),GH-1); p.pi=0;
     S.stats.missed++;
     log(p.name+" liked "+BOOK(best.id).title+" but didn't buy");
@@ -2444,6 +2563,77 @@ function endTalk(){
   const p=S.talking; closeModal(); S.talking=null;
   if(p && p.state==="talking") p.state="browse";
   drawOpenPanel();
+}
+
+/* ---------- information counter ----------
+   A shop stamp for the keeper's daily check-in (the kind Japanese bookshops keep by the till for
+   visitors' stamp books) and a guest book that customers sign when they buy. Opening it stops the
+   trading clock, like the stock take. */
+const GUEST_LINES=[
+  t=>"Came in to browse, left with \""+t+"\".",
+  t=>"\""+t+"\" — exactly what I didn't know I wanted. Thank you!",
+  t=>"Lovely shop. The cat ignored me. Bought \""+t+"\".",
+  t=>"Asked for something good and got \""+t+"\". Will be back.",
+  t=>"Bought \""+t+"\". Please never close.",
+];
+const GUEST_DELIGHT=[
+  t=>"\""+t+"\" is PERFECT. How did you know?",
+  t=>"You read me like a book. \""+t+"\" it is.",
+];
+function signGuestbook(p,id){
+  if(Math.random()>0.7) return;                       // not everyone stops to write
+  const t=BOOK(id).title, delighted=scoreMatch(p,id)>=85;
+  S.guestbook.push({day:S.day,name:p.name,text:rnd(delighted?GUEST_DELIGHT:GUEST_LINES)(t)});
+  if(S.guestbook.length>80) S.guestbook.splice(1,1);  // grandfather's first line always stays
+}
+function stampSVG(day,rot){
+  const red="#d6453d";
+  return '<svg viewBox="0 0 40 40" aria-hidden="true" style="transform:rotate('+rot+'deg)">'+
+    '<circle cx="20" cy="20" r="17" fill="none" stroke="'+red+'" stroke-width="2.4"/>'+
+    '<circle cx="20" cy="20" r="13.2" fill="none" stroke="'+red+'" stroke-width="0.8"/>'+
+    '<path d="M12.5 13.5q3.75-2 7.5 0q3.75-2 7.5 0v6q-3.75-2-7.5 0q-3.75-2-7.5 0zM20 13.5v6" fill="none" stroke="'+red+'" stroke-width="1.4" stroke-linejoin="round"/>'+
+    '<text x="20" y="28.6" text-anchor="middle" font-size="5.4" letter-spacing=".2" font-weight="700" fill="'+red+'" font-family="Poppins,sans-serif">DAY '+day+'</text></svg>';
+}
+function infoDesk(){
+  if(S.talking || titleOn()) return;
+  paused=true;
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("h2",null,"Information counter")).style.marginBottom="6px";
+  sh.appendChild(el("p",null,"Grandfather kept a shop stamp here, the way bookshops in Japan do, and a guest book for anyone who wants to leave a line."));
+
+  sh.appendChild(el("h3",null,"Check-in stamp"));
+  const stamped=S.stamps.includes(S.day), card=Math.floor((S.day-1)/10);
+  const grid=el("div","stampcard");
+  for(let d=card*10+1; d<=card*10+10; d++){
+    const cell=el("div","stampcell"+(d===S.day?" today":""));
+    if(S.stamps.includes(d)) cell.innerHTML=stampSVG(d,((d*37)%15)-7);
+    else cell.appendChild(el("span",null,d));
+    grid.appendChild(cell);
+  }
+  sh.appendChild(grid);
+  sh.appendChild(el("div","count","Card "+(card+1)+" · days "+(card*10+1)+"–"+(card*10+10)+" · "+S.stamps.length+" "+(S.stamps.length===1?"day":"days")+" stamped in all"));
+  const go=primary(stamped?"Stamped for today ✓":"Stamp in for day "+S.day,()=>{
+    if(S.stamps.includes(S.day)) return;
+    S.stamps.push(S.day); autosave(); infoDesk();
+    tip("Thunk. Day "+S.day+", stamped in.");
+  });
+  go.disabled=stamped;
+  sh.appendChild(go);
+
+  sh.appendChild(el("h3",null,"Guest book"));
+  const book=el("div","guestbook");
+  const latest=S.guestbook.slice().reverse();
+  latest.slice(0,12).forEach(g=>{
+    const e=el("div","gb");
+    e.appendChild(el("div","gbtext",g.text));
+    e.appendChild(el("div","gbby","— "+g.name+" · "+(g.day?"day "+g.day:"years ago")));
+    book.appendChild(e);
+  });
+  if(latest.length>12) book.appendChild(el("div","count",(latest.length-12)+" earlier "+(latest.length-12===1?"entry":"entries")+", back through the pages"));
+  sh.appendChild(book);
+  sh.appendChild(el("p",null,"Customers who buy from you sometimes stop to sign it on the way out.")).style.marginTop="8px";
+  sh.appendChild(ghost("Back to the shop",dismissSheet));
 }
 
 /* ---------- book card ---------- */
@@ -2535,7 +2725,7 @@ cv.addEventListener("click",e=>{
       const f=FURN[S.placing];
       if(S.cash>=f.cost){ S.cash-=f.cost; S.stats.spent+=f.cost; S.grid[y][x]=S.placing;
         if(f.slots) S.slots[key(x,y)]=[];
-        if(S.placing===SHELF) restockShelves(); }
+        if(S.placing===SHELF||S.placing===TABLE) restockShelves(); }
     }
     S.placing=null; tip("Placed."); paint(); autosave(); return;
   }
@@ -2549,10 +2739,11 @@ cv.addEventListener("click",e=>{
     if(hit){ talk(hit); return; }
   }
   const t=S.grid[y]&&S.grid[y][x];
+  if(t===INFO||t===INFO_R){ infoDesk(); return; }
   if(t===SHELF||t===TABLE){
     const ids=S.slots[key(x,y)]||[];
     if(ids.length){ const sh=$("#sheet"); sh.innerHTML=""; $("#modal").classList.add("on");
-      sh.appendChild(el("h3",null,"This shelf")).style.marginTop="0";
+      sh.appendChild(el("h3",null,t===TABLE?"On display":"This shelf")).style.marginTop="0";
       ids.forEach(id=>sh.appendChild(bookCard(BOOK(id),
         "<div class='price' style='margin-top:4px'>"+rm(priceOf(id))+" · "+(S.stock[id]?S.stock[id].copies:0)+" left</div>",
         ()=>openBook(id))));
@@ -2644,7 +2835,7 @@ function takeSnapshot(){
     grid:S.grid, slots:S.slots, stock:S.stock, incoming:S.incoming, sales:S.sales, offers:S.offers, keeper:S.keeper,
     stats:S.stats, history:S.history, soldEver:S.soldEver, featured:S.featured,
     seen:S.seen, tutorial:S.tutorial, shopName:S.shopName, library:S.library,
-    footfall:S.footfall,
+    footfall:S.footfall, stamps:S.stamps, guestbook:S.guestbook,
   };
 }
 function validSave(d){
@@ -2669,12 +2860,16 @@ function applySnapshot(d){
   S.soldEver=d.soldEver||{}; S.featured=d.featured; S.seen=d.seen||{};
   S.tutorial=!!d.tutorial; S.shopName=d.shopName||""; S.library=d.library||{};
   S.footfall=d.footfall||0;
+  S.stamps=Array.isArray(d.stamps)?d.stamps:[];
+  S.guestbook=Array.isArray(d.guestbook)&&d.guestbook.length?d.guestbook:[GRANDFATHER_ENTRY];
   S.phase=(d.phase==="evening")?"evening":"morning";
   // anything that only exists inside a trading day is rebuilt, never restored
   S.customers=[]; S.spawnQueue=[]; S.talking=null; S.placing=null;
   S.seenToday=[]; S.dayCast=[]; S.tick=0; S.tab="stock";
   catGoHome();
   resizeStage();
+  placeInfoDesk(false);                // saves from before the information counter get one
+  restockShelves();                    // and display tables saved empty get their two books
 }
 
 /* ---------- browser copy ---------- */
@@ -2904,10 +3099,12 @@ function howToPlay(back){
   sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
   sh.appendChild(phaseList());
   sh.appendChild(el("h3",null,"Making a sale"));
-  sh.appendChild(el("p",null,"Tap a customer to talk. Each question costs them a little patience and turns up a clue — a mood, a budget, something they won't read. Then pull books for them: every book on your shelves in the genres they read comes out, and you choose up to six to show them."));
-  sh.appendChild(el("p",null,"Each book on the pile that genuinely suits them — right mood, within budget, nothing they refuse — is even odds to be one they'd buy. Show four good fits and they'll want about two of them, but they only ever take one home: the best of those. If none suits them, they won't buy, and they tell you what they were after. A perfect match grows your reputation fastest."));
+  sh.appendChild(el("p",null,"Tap a customer to talk. Each question costs them a little patience and turns up a clue — a mood, a budget, something they won't read. Then pull books for them: up to ten come off your shelves, mostly in the genres they read, and you choose up to six to show them."));
+  sh.appendChild(el("p",null,"Of the ten, up to five genuinely suit them — right mood, within budget, nothing they refuse — and of those, just two are books they would actually buy. Put either of those two on the pile and they take one home. A pile that suits them but misses both, they'll admire and leave; a pile that doesn't suit them, they'll tell you what they were after. A perfect match grows your reputation fastest."));
   sh.appendChild(el("h3",null,"Stock take"));
-  sh.appendChild(el("p",null,"The clipboard in the top bar opens the stock take at any time: every book you hold with its full description, filters by genre and era, and reorders of anything you carry. The clock stops while it's open. New titles come only on the distributor's van, which turns up every morning from day 2 with eight books you've never stocked. Every order — reorder, restock or van — arrives two days after you place it, before the shop opens."));
+  sh.appendChild(el("p",null,"The clipboard in the top bar opens the stock take at any time: every book you hold with its full description, filters by genre and era, and reorders of anything you carry. The clock stops while it's open. New titles come only on the distributor's van, which turns up every morning from day 2 with eight books you've never stocked. Every order — reorder, restock or van — arrives two days after you place it, before the shop opens. The stock take's Sold out tab, and the Sold out list on the morning Stock tab, restock any title with +1."));
+  sh.appendChild(el("h3",null,"Information counter"));
+  sh.appendChild(el("p",null,"The blue counter by the door holds grandfather's shop stamp and the guest book. Tap it to stamp in for the day, and to read what your customers have written."));
   sh.appendChild(el("h3",null,"Money"));
   sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to expand the floor. More floor means room for more shelves; the Coffee Corner unlocks as your reputation grows."));
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
