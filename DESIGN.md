@@ -3,6 +3,24 @@
 A mobile 16-bit bookshop simulator set on an old shopping street, in which every book
 is a real book and the player can order a physical copy.
 
+## Revision pass (deliveries, restock, six-book pile)
+
+Supersedes the Reordering, Van, Recommending, Buying and Cat rows of the grandfather's-shop
+pass below.
+
+| Area | What changed |
+|---|---|
+| Keeper | The published artifact had missed the earlier keeper fix, so the day-progress bar still cut through the keeper's head while open. The fix (keeper stands lower, bar drawn on the wall under everything) is now published. |
+| Orders | **Every order arrives 2 days after it is placed** (`ORDER_DAYS`), at any time of day: stock-take reorders, evening restocks and van titles alike. Cash is taken when ordering. Orders are kept as `S.incoming = [{id, n, due}]`; slots for pending titles stay reserved. |
+| Delivery | On the morning an order is due, it is unpacked onto the shelves and a **"Delivery's in"** pop-up lists each title, copies received and copies now on the shelf, before the shop opens. |
+| Van | The van still calls each morning from day 2 with 8 never-carried titles, but its titles are now *ordered* (arrive in 2 days) rather than shelved at once. A title on order can be reordered from the stock take before it arrives. |
+| Evening | The Sales list is now one row per sale (who, price, copies left) with a **Restock** button that orders one copy at trade cost. Today's sales are saved with the evening. |
+| Recommending | The pile holds up to **6** (was 7). |
+| Buying | Each book on the pile scoring ≥ 45 is independently a 50% "would buy" — four good fits means about two the customer would actually take — but **they buy only one**: the highest-scoring of those. If none comes up, they liked the pile but leave (no reputation lost). A pile with no fit is unchanged. More genuine fits on the pile now raise the odds of a sale (1 fit 50%, 2 fits 75%, 4 fits ~94%). |
+| Close button | Every pop-up has an X in its top-right corner, outside the scrolling sheet so it never scrolls away. It closes the whole stack (a book opened from the stock take closes the stock take too); in a conversation it lets the customer go back to browsing. Hidden during the prelude and the sign-naming screen. |
+| Cat | The cushion stays in the corner; the cat leaves it now and then (roughly every 15–40 s of unpaused play), walks to open floor within six tiles that isn't in front of a shelf, table, counter or the door, naps there, and wanders back. It never blocks customers, isn't saved (it is home on load), and goes straight home if furniture is placed on its spot. Tapping it or the empty cushion gets its own lines. |
+| Saves | Same key and format version. Old saves' `incoming` map converts to orders due the next morning. |
+
 ## Revision pass (grandfather's shop)
 
 The game no longer starts on an empty kiosk. It now opens on an inherited, mature bookshop, and
