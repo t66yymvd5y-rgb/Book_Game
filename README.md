@@ -6,7 +6,8 @@ real book and the player can order a physical copy.
 Playable prototype: open `index.html` in any browser, desktop or phone. No build step,
 no dependencies, no network.
 
-Background music ("Paperback Afternoon") loops from `audio/paperback-afternoon.mp3`, so keep the
+Background music is a four-track playlist in `audio/` ("Paperback Afternoon", "A Chapter for
+Later", "A Quiet Corner", "Sunlight on the Shelf"), played in order and looped, so keep the
 `audio/` folder next to `index.html`. It starts on the first tap (browsers block audio before
 that). The note button in the top bar mutes it, and the choice is remembered on that device.
 

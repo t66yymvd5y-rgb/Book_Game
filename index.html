@@ -269,7 +269,7 @@
     <button id="stockBtn" aria-label="Stock take"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6v3H9zM7 5.5H5v15h14v-15h-2M8.5 11h7M8.5 15h7"/></svg></button>
     <button id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
   </header>
-  <audio id="bgm" src="audio/paperback-afternoon.mp3" loop preload="auto"></audio>
+  <audio id="bgm" src="audio/paperback-afternoon.mp3" preload="auto"></audio>
   <div id="hud">
     <div class="stat"><span>Day</span><b id="hDay">1</b></div>
     <div class="stat"><span>Cash</span><b id="hCash">$1500</b></div>
@@ -2394,7 +2394,8 @@ window.addEventListener("unhandledrejection",e=>reportError(e.reason&&e.reason.m
 
 /* ============================================================
    MUSIC
-   One looping track ("Paperback Afternoon"). Browsers refuse to start audio
+   A four-track playlist played in order, wrapping back to the first after the
+   last, so the music never stops while the game is open. Browsers refuse to start audio
    before the player has touched the page, so it starts on the first tap or key
    rather than on load. The on/off choice is a per-browser preference, kept out
    of the save on purpose — it belongs to the device, not the shop.
@@ -2408,6 +2409,19 @@ const MUSIC_ICON={
 let musicOn=true;
 try{ musicOn=localStorage.getItem(MUSIC_KEY)!=="off"; }catch(e){}
 bgm.volume=0.35;
+const PLAYLIST=[
+  "audio/paperback-afternoon.mp3",
+  "audio/a-chapter-for-later.mp3",
+  "audio/a-quiet-corner.mp3",
+  "audio/sunlight-on-the-shelf.mp3"
+];
+let track=0;
+// a track only ends while it is playing, so the next one may start straight away
+bgm.addEventListener("ended",()=>{
+  track=(track+1)%PLAYLIST.length;
+  bgm.src=PLAYLIST[track];
+  playMusic();
+});
 function playMusic(){ if(musicOn && !document.hidden) bgm.play().catch(()=>{}); }
 function paintMusic(){
   musicBtn.innerHTML=musicOn?MUSIC_ICON.on:MUSIC_ICON.off;
