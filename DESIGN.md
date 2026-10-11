@@ -3,6 +3,25 @@
 A mobile 16-bit bookshop simulator set on an old shopping street, in which every book
 is a real book and the player can order a physical copy.
 
+## Revision pass (artifact sync, grandfather's shop)
+
+The published Corner Books artifact had again moved ahead of this repo. Its changes are folded
+in here and supersede the Reordering, Van, Recommending, Buying and Cat rows of the
+grandfather's-shop pass below.
+
+| Area | What changed |
+|---|---|
+| Ordering | Every order — a reorder, a sold-out restock or a title off the van — is paid for at once and arrives **2 mornings later**, before opening, whatever time of day it was placed. Nothing goes straight onto a shelf any more. Each morning a "Delivery's in" sheet lists what arrived, and the Stock tab shows how many copies are on order and when the next delivery is due. |
+| Sold out | The stock take has a third tab, **Sold out**, and the morning Stock tab lists sold-out titles too; each has a +1 restock button. |
+| Close of day | The evening screen lists the day's sales, each with its own Restock button. |
+| Recommending | "Pull books" brings out **up to 10** books: up to 5 that genuinely suit the customer (their genre, and a score ≥ 45 before the clue bonus), made up to 10 with genuine misses, in-genre first. The pull is made once per visit, so asking more questions doesn't reshuffle it. The player shows them **up to 6**. |
+| Buying | Of the books that suit them, 2 are ones the customer would actually buy. If either is on the pile they buy one (the better match) — no coin flip. A pile that suits them but misses both, they admire and leave with no reputation lost; a pile with no fit, they say what they wanted, as before. ≥ 85 still counts as delighted. |
+| Display table | Holds **2 titles**, one lying flat and one standing open, filled automatically from stock that isn't on another table. The titles stay on their shelves as well. Tapping a table shows what's on display. |
+| Information counter | A blue two-tile counter just inside the door, to its left; older saves get one on load, and it moves with the door when the floor expands. Tapping it stops the clock and opens a daily check-in stamp card (ten days to a card) and a guest book. Customers sign it on most purchases, delighted ones with warmer lines; grandfather's line is always the first entry. |
+| Cat | Now and then the cat gets up, walks to a nearby patch of open floor, naps there and wanders back. It is not saved: a loaded shop always has it on its cushion. |
+| Pop-ups | Every pop-up has a close button in its top-right corner, outside the scrolling area so it stays put. It is hidden on the prelude, which still can't be dismissed. Closing a conversation sends the customer back to browsing. |
+| Saves | Same key (`cornerbooks.save.v2`). Older saves load: pending orders are converted to arrive the next morning, and the shop gets its information counter. |
+
 ## Revision pass (grandfather's shop)
 
 The game no longer starts on an empty kiosk. It now opens on an inherited, mature bookshop, and
