@@ -46,6 +46,9 @@ tracks, or lift it to stop the music.
 The title screen has Continue, New shop and How to play; the menu button (or Esc) pauses
 a trading day and offers Resume, How to play, Back to title and Start over.
 
+The shop looks as grandfather left it (old paper, walnut, brass and a serif sign) and gets
+refreshed as you expand: a half-refresh with the Extended Shop, the full modern look with the
+Double Shopfront.
 Grandfather's shop costs $50/day in rent. Reputation unlocks better furniture (the Coffee
 Corner at level 3); cash and reputation together let you expand the floor for more shelves —
 rent only rises when you choose to expand.

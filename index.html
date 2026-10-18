@@ -1,18 +1,23 @@
 <title>Corner Books</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  /* Flat, outlined UI: white cards with a navy ink outline, each sitting on an offset coloured
-     block (blue, orange or yellow), pill buttons, rounded sans. */
+  /* The shop's look follows its floor (see applyLook()). These :root values are the modern look the
+     Double Shopfront gets: white cards with a navy ink outline, each sitting on an offset coloured
+     block (blue, orange or yellow), pill buttons, rounded sans. Grandfather's shop overrides them
+     with body[data-look="vintage"], and the first expansion with body[data-look="refreshed"]. */
   :root{
     --ink:#1d2340; --ink-dim:#5d6382; --muted:#9a9fb6; --bg:#f6f6fa; --card:#ffffff; --line:#e7e8f0;
     --blue:#3aa8e8; --blue-soft:#e4f3fd; --orange:#f26b3a; --orange-soft:#fde8e0;
     --yellow:#ffc527; --yellow-soft:#fff4cf; --green:#3fbf68; --green-soft:#e1f6e7; --red:#e5484d; --red-soft:#fde5e5;
-    --lw:2px; --r:18px;
+    --off:#eef0f5; --off-line:#c5c9d8; --handle:#d5d8e4; --veil:rgba(29,35,64,.45);
+    --lw:2px; --r:18px; --r-sm:14px; --r-lg:22px; --pill:999px;
     --lift-blue:5px 6px 0 -2px var(--blue),5px 6px 0 0 var(--ink);
     --lift-orange:5px 6px 0 -2px var(--orange),5px 6px 0 0 var(--ink);
     --lift-yellow:5px 6px 0 -2px var(--yellow),5px 6px 0 0 var(--ink);
     --lift-ink:0 3px 0 0 var(--ink);
     --sans:"Poppins", ui-rounded, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --display:var(--sans);
+    --sign-fg:var(--ink);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -29,7 +34,7 @@
   #wrap{max-width:460px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:12px 16px 28px;gap:14px;}
 
   /* ---- top bar ---- */
-  #top{display:flex;align-items:center;gap:10px;background:var(--card);border:var(--lw) solid var(--ink);border-radius:22px;
+  #top{display:flex;align-items:center;gap:10px;background:var(--card);border:var(--lw) solid var(--ink);border-radius:var(--r-lg);
     padding:8px 10px;box-shadow:var(--lift-yellow);}
   .logo{width:36px;height:36px;flex:none;border-radius:50%;background:var(--orange);border:var(--lw) solid var(--ink);
     display:grid;place-items:center;color:#fff;}
@@ -42,10 +47,10 @@
   /* sits above the pop-up layer (#modal, z-index 50) so it can be muted mid-conversation */
   #music{position:relative;z-index:60;width:38px;height:38px;flex:none;padding:0;border-radius:50%;background:var(--blue-soft);display:grid;place-items:center;}
   #music svg{width:18px;height:18px;}
-  #music.off{background:#eef0f5;color:var(--muted);}
+  #music.off{background:var(--off);color:var(--muted);}
 
   /* ---- HUD: the stat strip ---- */
-  #hud{display:flex;background:var(--card);border:var(--lw) solid var(--ink);border-radius:999px;padding:7px 6px;}
+  #hud{display:flex;background:var(--card);border:var(--lw) solid var(--ink);border-radius:var(--pill);padding:7px 6px;}
   .stat{flex:1;text-align:center;min-width:0;}
   .stat+.stat{border-left:var(--lw) solid var(--ink);}
   .stat span{display:block;font-size:10px;color:var(--ink-dim);font-weight:500;line-height:1.3;}
@@ -56,7 +61,7 @@
     overflow:hidden;background:#fbf6ec;box-shadow:var(--lift-blue);}
   #stageWrap{padding:0 5px 6px 0;}
   canvas{display:block;width:100%;touch-action:manipulation;}
-  #signText{position:absolute;left:10%;right:10%;top:0;text-align:center;font-weight:700;color:var(--ink);
+  #signText{position:absolute;left:10%;right:10%;top:0;text-align:center;font-weight:700;color:var(--sign-fg);font-family:var(--display);
     line-height:1; letter-spacing:.4px; white-space:nowrap; overflow:hidden; text-overflow:clip;
     pointer-events:none; transform:translateY(-50%);}
   #tip{font-size:12px;color:var(--ink-dim);font-weight:500;display:flex;gap:8px;align-items:flex-start;min-height:20px;}
@@ -71,17 +76,17 @@
   #sheet p{margin:0 0 10px;}
 
   /* tabs: the orange "Explore" bar */
-  .tabs{display:flex;gap:6px;align-items:center;background:var(--orange);border:var(--lw) solid var(--ink);border-radius:999px;padding:6px;}
-  .tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 4px;border-radius:999px;color:#fff;
+  .tabs{display:flex;gap:6px;align-items:center;background:var(--orange);border:var(--lw) solid var(--ink);border-radius:var(--pill);padding:6px;}
+  .tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 4px;border-radius:var(--pill);color:#fff;
     font-size:12px;font-weight:600;cursor:pointer;border:var(--lw) solid transparent;}
   .tab svg{width:16px;height:16px;flex:none;}
   .tab.on{background:var(--yellow);color:var(--ink);border-color:var(--ink);}
 
   /* buttons: pills */
   button{font-family:var(--sans);font-size:12px;font-weight:600;line-height:1.3;cursor:pointer;color:var(--ink);
-    border:var(--lw) solid var(--ink);border-radius:999px;background:var(--card);padding:8px 14px;}
+    border:var(--lw) solid var(--ink);border-radius:var(--pill);background:var(--card);padding:8px 14px;}
   button:active{transform:translateY(1px);}
-  button:disabled{cursor:default;background:#eef0f5;color:var(--muted);border-color:#c5c9d8;}
+  button:disabled{cursor:default;background:var(--off);color:var(--muted);border-color:var(--off-line);}
   .btn-go{display:block;width:100%;background:var(--yellow);padding:14px;font-size:15px;font-weight:700;box-shadow:var(--lift-ink);}
   .btn-go:active{box-shadow:none;transform:translateY(3px);}
   .btn-sm{padding:7px 14px;font-size:12px;}
@@ -98,7 +103,7 @@
   .t{font-size:15px;font-weight:700;line-height:1.3;color:var(--ink);}
   .a{font-size:12px;color:var(--ink-dim);margin-top:2px;}
   .tagrow{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;}
-  .tag{font-size:11px;font-weight:500;padding:2px 9px;border-radius:999px;background:var(--yellow-soft);border:1.5px solid var(--ink);color:var(--ink);}
+  .tag{font-size:11px;font-weight:500;padding:2px 9px;border-radius:var(--pill);background:var(--yellow-soft);border:1.5px solid var(--ink);color:var(--ink);}
   .tag.g{background:var(--green-soft);}
   .tag.b{background:var(--blue-soft);}
   .tag.r{background:var(--orange-soft);}
@@ -112,9 +117,9 @@
     border:var(--lw) dashed var(--ink);border-radius:var(--r);}
 
   /* stepper: the QTY bar */
-  .qty{display:flex;align-items:center;gap:8px;background:var(--blue);border:var(--lw) solid var(--ink);border-radius:999px;padding:5px;margin-top:8px;}
+  .qty{display:flex;align-items:center;gap:8px;background:var(--blue);border:var(--lw) solid var(--ink);border-radius:var(--pill);padding:5px;margin-top:8px;}
   .stepper{flex:1;display:flex;align-items:center;justify-content:space-between;background:var(--card);border:var(--lw) solid var(--ink);
-    border-radius:999px;padding:2px 4px 2px 12px;min-width:0;}
+    border-radius:var(--pill);padding:2px 4px 2px 12px;min-width:0;}
   .stepper > span{font-size:11px;font-weight:600;color:var(--ink-dim);}
   .stepper b{font-size:13px;font-weight:700;}
   .stepper button{border:0;background:none;padding:4px 7px;font-size:16px;line-height:1;}
@@ -122,8 +127,8 @@
   .qty > button{flex:none;}
 
   /* list: the blue settings panel */
-  .list{background:var(--blue);border:var(--lw) solid var(--ink);border-radius:22px;padding:10px;display:flex;flex-direction:column;gap:8px;}
-  .li{display:flex;align-items:center;gap:10px;background:var(--card);border:var(--lw) solid var(--ink);border-radius:14px;padding:9px 10px;text-align:left;width:100%;}
+  .list{background:var(--blue);border:var(--lw) solid var(--ink);border-radius:var(--r-lg);padding:10px;display:flex;flex-direction:column;gap:8px;}
+  .li{display:flex;align-items:center;gap:10px;background:var(--card);border:var(--lw) solid var(--ink);border-radius:var(--r-sm);padding:9px 10px;text-align:left;width:100%;}
   .li .ic{width:32px;height:32px;flex:none;border-radius:50%;background:var(--orange-soft);border:1.5px solid var(--orange);color:var(--orange);display:grid;place-items:center;}
   .li .ic svg{width:16px;height:16px;}
   .li .meta{flex:1;min-width:0;}
@@ -138,7 +143,7 @@
   .avatar{width:46px;height:46px;flex:none;border-radius:50%;border:var(--lw) solid var(--ink);display:block;}
   .card .avatar{border-radius:50%;}
   .cust{align-items:center;padding:10px;}
-  .cust .inner{flex:1;display:flex;align-items:center;gap:10px;border:1.5px dashed var(--ink);border-radius:14px;padding:6px 8px;min-width:0;}
+  .cust .inner{flex:1;display:flex;align-items:center;gap:10px;border:1.5px dashed var(--ink);border-radius:var(--r-sm);padding:6px 8px;min-width:0;}
   .go{width:34px;height:34px;flex:none;padding:0;border-radius:10px;display:grid;place-items:center;font-size:16px;}
   .feed{display:flex;flex-direction:column;gap:2px;}
 
@@ -156,12 +161,12 @@
   .total.neg b{color:var(--red);}
 
   /* ---- modal ---- */
-  #modal{position:fixed;inset:0;background:rgba(29,35,64,.45);display:none;z-index:50;align-items:flex-end;justify-content:center;}
+  #modal{position:fixed;inset:0;background:var(--veil);display:none;z-index:50;align-items:flex-end;justify-content:center;}
   #modal.on{display:flex;}
   #sheetWrap{position:relative;width:100%;max-width:460px;}
   #sheet{width:100%;max-height:92vh;overflow-y:auto;background:var(--card);
     border:var(--lw) solid var(--ink);border-bottom:0;border-radius:26px 26px 0 0;padding:10px 16px 20px;}
-  #sheet::before{content:"";display:block;width:44px;height:5px;border-radius:9px;background:#d5d8e4;margin:0 auto 26px;}
+  #sheet::before{content:"";display:block;width:44px;height:5px;border-radius:9px;background:var(--handle);margin:0 auto 26px;}
   /* close button: outside the scrolling sheet, so it stays in the top-right corner however far down you are */
   #sheetX{position:absolute;top:10px;right:12px;z-index:2;width:34px;height:34px;padding:0;border-radius:50%;
     display:grid;place-items:center;background:var(--card);box-shadow:var(--lift-ink);}
@@ -176,23 +181,23 @@
   .say.me{background:var(--blue);color:#fff;border-radius:16px 4px 16px 16px;margin:0 0 8px 34px;}
   .keeper-portrait{display:block;width:100%;border-radius:var(--r);margin-bottom:14px;border:var(--lw) solid var(--ink);}
   .choice{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;font-size:13px;font-weight:500;
-    padding:11px 14px;border-radius:14px;margin-bottom:8px;}
+    padding:11px 14px;border-radius:var(--r-sm);margin-bottom:8px;}
   .list .choice{margin:0;}
   .choice::after{content:"›";font-size:20px;line-height:.8;font-weight:500;}
-  .choice.primary{background:var(--orange);color:#fff;border-radius:999px;justify-content:center;font-weight:600;font-size:14px;box-shadow:var(--lift-ink);margin-top:12px;}
+  .choice.primary{background:var(--orange);color:#fff;border-radius:var(--pill);justify-content:center;font-weight:600;font-size:14px;box-shadow:var(--lift-ink);margin-top:12px;}
   .choice.primary::after{content:"";}
-  .choice.primary:disabled{background:#eef0f5;color:var(--muted);border-color:#c5c9d8;box-shadow:none;}
+  .choice.primary:disabled{background:var(--off);color:var(--muted);border-color:var(--off-line);box-shadow:none;}
   .choice.ghost{border-color:transparent;background:none;justify-content:center;color:var(--ink-dim);}
   .choice.ghost::after{content:"";}
   .clues{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
   .clues .tag::before{content:"✓ ";color:var(--green);font-weight:700;}
   .pick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0 12px;}
-  .pick .bk{background:var(--card);border:var(--lw) solid var(--ink);border-radius:14px;padding:7px;text-align:center;cursor:pointer;}
+  .pick .bk{background:var(--card);border:var(--lw) solid var(--ink);border-radius:var(--r-sm);padding:7px;text-align:center;cursor:pointer;}
   .pick .bk canvas{width:100%;height:auto;aspect-ratio:2/3;border:var(--lw) solid var(--ink);border-radius:6px;}
   .pick .bk div{font-size:11px;font-weight:600;margin-top:5px;line-height:1.35;}
   .pick .bk span{color:var(--orange);font-weight:700;}
   .verdict{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;font-size:14px;font-weight:700;margin:10px 0;
-    border-radius:999px;border:var(--lw) solid var(--ink);}
+    border-radius:var(--pill);border:var(--lw) solid var(--ink);}
   .verdict.good{background:var(--green-soft);}
   .verdict.bad{background:var(--red-soft);}
   .verdict.good::before{content:"✓";display:grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--green);color:#fff;border:1.5px solid var(--ink);font-size:12px;}
@@ -204,7 +209,7 @@
   .bookhead .price{margin-top:6px;}
   .review{font-size:12px;color:var(--ink-dim);line-height:1.6;}
   .review b{display:block;font-size:13px;color:var(--ink);margin-bottom:3px;}
-  .facts{display:flex;border:var(--lw) solid var(--ink);border-radius:999px;padding:6px 4px;margin:4px 0 12px;}
+  .facts{display:flex;border:var(--lw) solid var(--ink);border-radius:var(--pill);padding:6px 4px;margin:4px 0 12px;}
   .buy{display:block;width:100%;background:var(--yellow);padding:13px;margin-top:14px;font-size:14px;font-weight:700;box-shadow:var(--lift-ink);}
   .note{font-size:11px;color:var(--muted);line-height:1.6;margin-top:12px;}
 
@@ -216,7 +221,7 @@
   #shopName{flex:1;min-width:0;font-family:var(--sans);font-size:15px;font-weight:700;padding:2px 0;border:0;background:none;color:var(--ink);}
   #shopName:focus{outline:none;}
   #shopName::placeholder{color:#c3c6d4;font-weight:500;}
-  .check{width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid var(--ink);background:#eef0f5;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;}
+  .check{width:22px;height:22px;flex:none;border-radius:6px;border:1.5px solid var(--ink);background:var(--off);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;}
   .check.on{background:var(--green);}
   .t,button,h2,h3,.speaker,.verdict,.stat b{overflow-wrap:anywhere;}
 
@@ -256,7 +261,7 @@
   .stlist .card{cursor:pointer;}
   .count{font-size:12px;color:var(--ink-dim);margin:0 0 8px;}
   /* shortlist: books pulled for a customer */
-  .sl{display:flex;align-items:center;gap:10px;background:var(--card);border:var(--lw) solid var(--ink);border-radius:14px;padding:8px;margin-bottom:8px;cursor:pointer;}
+  .sl{display:flex;align-items:center;gap:10px;background:var(--card);border:var(--lw) solid var(--ink);border-radius:var(--r-sm);padding:8px;margin-bottom:8px;cursor:pointer;}
   .sl canvas{width:40px;height:60px;flex:none;border:1.5px solid var(--ink);border-radius:4px;}
   .sl .meta{flex:1;min-width:0;}
   .sl .t{font-size:13px;}
@@ -269,7 +274,7 @@
   /* information counter: stamp card and guest book */
   .stampcard{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;background:var(--cream,#fff4e0);border:var(--lw) solid var(--ink);
     border-radius:var(--r);padding:12px;margin-bottom:6px;}
-  .stampcell{aspect-ratio:1;border:1.5px dashed #c5c9d8;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--muted);}
+  .stampcell{aspect-ratio:1;border:1.5px dashed var(--off-line);border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--muted);}
   .stampcell.today{border-color:var(--orange);color:var(--orange);}
   .stampcell svg{width:108%;height:108%;}
   .records{display:flex;flex-direction:column;gap:8px;}
@@ -288,8 +293,109 @@
   .gbtext{font-size:13px;color:var(--ink);font-style:italic;line-height:1.5;}
   .gbby{font-size:11px;color:var(--ink-dim);margin-top:2px;}
   .prelude{font-size:14px;line-height:1.7;color:var(--ink);margin:0 0 12px;}
+  /* ---- the look follows the floor ----
+     Headings, the sign and titles take the display face; in the modern look that is the sans. */
+  h2,.t,.mark h1,.total b,.speaker,#brand b,.prelude-head{font-family:var(--display);}
+
+  /* Grandfather's shop, as he left it: aged paper, sepia ink, walnut, bottle green, oxblood and
+     tarnished brass; a serif throughout; cards ruled like bookplates instead of floating on
+     coloured blocks; square-cornered stationery instead of pills. */
+  body[data-look="vintage"]{
+    --ink:#3b2a1e; --ink-dim:#6b5643; --muted:#9c8669; --bg:#ece0c6; --card:#fbf5e6; --line:#e3d5b8;
+    --blue:#3f6b52; --blue-soft:#e2e9d9; --orange:#8e3b2e; --orange-soft:#f2dfd2;
+    --yellow:#c99a3b; --yellow-soft:#f5e8cb; --green:#5b7a3a; --green-soft:#e5ebd2; --red:#a33a2a; --red-soft:#f4dcd3;
+    --off:#e6dcc8; --off-line:#c4b496; --handle:#d6c6a4; --veil:rgba(40,26,14,.5);
+    --lw:1.5px; --r:6px; --r-sm:5px; --r-lg:8px; --pill:4px;
+    --lift-blue:inset 0 0 0 3px var(--card),inset 0 0 0 4px rgba(59,42,30,.4),3px 4px 0 rgba(59,42,30,.2);
+    --lift-orange:inset 0 0 0 3px var(--card),inset 0 0 0 4px rgba(142,59,46,.55),3px 4px 0 rgba(59,42,30,.2);
+    --lift-yellow:inset 0 0 0 3px var(--card),inset 0 0 0 4px rgba(201,154,59,.8),3px 4px 0 rgba(59,42,30,.2);
+    --lift-ink:0 2px 0 0 var(--ink);
+    --sans:"Lora", Georgia, "Times New Roman", serif;
+    --display:"Playfair Display", "Lora", Georgia, serif;
+    --sign-fg:#e7c77a;
+    font-size:13.5px;
+    background:
+      radial-gradient(ellipse at 50% 40%, transparent 55%, rgba(110,78,40,.2) 100%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .38 0 0 0 0 .27 0 0 0 0 .14 0 0 0 .11 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+      var(--bg);
+    background-attachment:fixed;
+  }
+  body[data-look="vintage"] button{font-weight:600;letter-spacing:.2px;}
+  body[data-look="vintage"] h3{font-variant:small-caps;text-transform:none;font-size:13px;letter-spacing:1.2px;color:var(--ink-dim);}
+  body[data-look="vintage"] .logo{background:var(--orange);color:#f3e2b6;box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--yellow);}
+  body[data-look="vintage"] #brand small{font-style:italic;}
+  body[data-look="vintage"] #brand b{font-size:17px;letter-spacing:.3px;}
+  body[data-look="vintage"] .stat span{font-variant:small-caps;font-size:11.5px;letter-spacing:.8px;}
+  body[data-look="vintage"] .stat+.stat{border-left-style:dotted;}
+  /* the scene hangs in a walnut frame */
+  body[data-look="vintage"] #stageWrap{padding:5px;}
+  body[data-look="vintage"] #stage{border:1.5px solid var(--ink);
+    box-shadow:0 0 0 4px #8a5a35,0 0 0 5.5px var(--ink),3px 6px 0 5px rgba(59,42,30,.2);}
+  body[data-look="vintage"] #signText{letter-spacing:1.4px;text-shadow:0 .5px 0 #6e5320;}
+  body[data-look="vintage"] #tip{font-style:italic;}
+  body[data-look="vintage"] #tip::before{border-radius:1px;transform:rotate(45deg) translate(2px,-1px);background:var(--yellow);}
+  /* tabs: an oxblood leather spine with a brass label on the open one */
+  body[data-look="vintage"] .tabs{background:linear-gradient(#9a4535,#7c3226);box-shadow:inset 0 1px 0 rgba(255,235,200,.25);}
+  body[data-look="vintage"] .tab{color:#f3e2c4;font-variant:small-caps;font-size:13px;letter-spacing:.6px;}
+  body[data-look="vintage"] .tab.on{background:linear-gradient(#dcb460,#b98a34);color:var(--ink);}
+  body[data-look="vintage"] .btn-go,body[data-look="vintage"] .buy,body[data-look="vintage"] .btn-y,
+  body[data-look="vintage"] .chip.on,body[data-look="vintage"] .choice.record.playing{background:linear-gradient(#dcb460,#bb8c38);}
+  body[data-look="vintage"] .btn-go{font-family:var(--display);font-size:16px;letter-spacing:.6px;}
+  body[data-look="vintage"] button:disabled,body[data-look="vintage"] .choice.primary:disabled{background:var(--off);}
+  body[data-look="vintage"] .btn-o,body[data-look="vintage"] .choice.primary,body[data-look="vintage"] .seg button.on{background:linear-gradient(#9a4535,#7c3226);color:#f8ead0;}
+  /* the green baize desk under lists and dialogue choices */
+  body[data-look="vintage"] .list{background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    var(--blue);}
+  body[data-look="vintage"] .li .ic{border-radius:50%;background:var(--yellow-soft);border-color:var(--yellow);color:#8a6420;}
+  body[data-look="vintage"] .say{border-radius:2px 10px 10px 10px;}
+  body[data-look="vintage"] .say.me{border-radius:10px 2px 10px 10px;color:#f6efdf;}
+  body[data-look="vintage"] .tag{border-width:1px;border-radius:3px;font-style:italic;}
+  body[data-look="vintage"] .card canvas,body[data-look="vintage"] .sl canvas,body[data-look="vintage"] .pick .bk canvas{border-radius:2px;}
+  body[data-look="vintage"] .bookhead canvas{border-radius:2px;box-shadow:3px 4px 0 rgba(59,42,30,.3);}
+  body[data-look="vintage"] .price{color:var(--orange);font-family:var(--display);}
+  body[data-look="vintage"] .stars{color:var(--yellow);}
+  body[data-look="vintage"] .empty{border-style:dashed;background:transparent;font-style:italic;}
+  /* the evening takings in a ruled ledger with a red double margin */
+  body[data-look="vintage"] .ledgerbox{padding-left:24px;background:
+    linear-gradient(90deg,transparent 12px,rgba(163,58,42,.45) 12px 13px,transparent 13px 15px,rgba(163,58,42,.45) 15px 16px,transparent 16px),var(--card);}
+  body[data-look="vintage"] .ledger{border-bottom-color:rgba(63,107,82,.25);}
+  body[data-look="vintage"] .total b{font-size:26px;}
+  body[data-look="vintage"] #sheet{border-radius:10px 10px 0 0;background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .38 0 0 0 0 .27 0 0 0 0 .14 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),var(--card);}
+  body[data-look="vintage"] .keeper-portrait,body[data-look="vintage"] .hero img{filter:sepia(.18);}
+  body[data-look="vintage"] .mark h1{font-size:30px;letter-spacing:.4px;}
+  body[data-look="vintage"] .mark small{font-style:italic;}
+  body[data-look="vintage"] .prelude{font-size:15px;line-height:1.75;}
+  body[data-look="vintage"] .gbtext{font-family:var(--display);}
+  body[data-look="vintage"] .check{border-radius:3px;}
+  body[data-look="vintage"] #shopName::placeholder{color:var(--muted);}
+
+  /* The first expansion: a half-refresh. Warm paper and a serif display face stay, the colours
+     brighten towards the modern kit (teal, terracotta, mustard), corners soften, and cards sit on
+     their coloured blocks again. */
+  body[data-look="refreshed"]{
+    --ink:#2e2a26; --ink-dim:#615a52; --muted:#a09686; --bg:#f5efe3; --card:#fffdf8; --line:#ebe3d4;
+    --blue:#2f8f8a; --blue-soft:#ddf0ee; --orange:#d0623a; --orange-soft:#fbe4da;
+    --yellow:#eab13b; --yellow-soft:#fcf0d2; --green:#4aa66a; --green-soft:#e0f2e6; --red:#d24b43; --red-soft:#fbe3e1;
+    --off:#efe9de; --off-line:#cdc3b2; --handle:#ddd3c2; --veil:rgba(46,42,38,.45);
+    --r:14px; --r-sm:12px; --r-lg:18px; --pill:12px;
+    --lift-blue:5px 6px 0 -2px var(--blue),5px 6px 0 0 var(--ink);
+    --lift-orange:5px 6px 0 -2px var(--orange),5px 6px 0 0 var(--ink);
+    --lift-yellow:5px 6px 0 -2px var(--yellow),5px 6px 0 0 var(--ink);
+    --lift-ink:0 3px 0 0 var(--ink);
+    --display:"Playfair Display", Georgia, serif;
+    --sign-fg:var(--ink);
+    background:
+      radial-gradient(circle at 6% 30%, #e1f1ef 0 90px, transparent 91px),
+      radial-gradient(circle at 96% 62%, #fbe6dc 0 120px, transparent 121px),
+      radial-gradient(circle at 88% 8%, #fcefcf 0 60px, transparent 61px),
+      var(--bg);
+    background-attachment:fixed;
+  }
+  body[data-look="refreshed"] .tag{border-radius:6px;}
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Playfair+Display:wght@600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <div id="wrap">
   <header id="top">
@@ -1393,15 +1499,67 @@ function ownedCount(p){ const lib=S.library[p.key]; return lib?Object.keys(lib).
    ============================================================ */
 const cv=$("#cv"), ctx=cv.getContext("2d");
 
-/* Flat, outlined art: every shape is a filled vector with a navy ink outline, drawn in game units
-   (TS per tile) and scaled to the stage's real device-pixel size, so it stays crisp at any width. */
-const INK="#1d2340", LW=0.55;
-const C={floorA:"#fbf6ec",floorB:"#f6efe1",grout:"#ece3d0",wall:"#5ab4ec",wallL:"#8fcdf3",shadow:"rgba(29,35,64,.13)",
-  wood:"#f7b267",woodL:"#fff1dc",glass:"#c4e8fb",glassL:"#eef9ff",white:"#ffffff",
-  yellow:"#ffc527",orange:"#f26b3a",blue:"#3aa8e8",green:"#3fbf68",greenL:"#7fd88f",cream:"#fff4e0"};
-const SPINE={literary:"#f26b3a",crime:"#3d4466",scifi:"#3aa8e8",fantasy:"#3fbf68",horror:"#6c4a8c",
+/* Flat, outlined art: every shape is a filled vector with an ink outline, drawn in game units
+   (TS per tile) and scaled to the stage's real device-pixel size, so it stays crisp at any width.
+   INK, C and SPINE are the palette of the current look; applyLook() swaps them in place. */
+let INK="#1d2340"; const LW=0.55;
+const C={}, SPINE={};
+
+/* The shop's look follows its floor. Grandfather's shop is as he left it: oak parquet, a bottle-green
+   wall, walnut shelves of faded spines, a brass till. The first expansion is a half-refresh, and the
+   Double Shopfront gets the flat, bright look. The CSS follows body[data-look]. */
+const LOOKS=["vintage","refreshed","modern"];
+const MODERN_SPINE={literary:"#f26b3a",crime:"#3d4466",scifi:"#3aa8e8",fantasy:"#3fbf68",horror:"#6c4a8c",
   romance:"#f27a9a",history:"#c98a35",biography:"#8a7ae0",nonfiction:"#22b3a3",philosophy:"#7d8597",
   poetry:"#ffc527",children:"#ff9f43",business:"#4a6fd6",ya:"#b65fd6"};
+const VINTAGE_SPINE={literary:"#9c4a3a",crime:"#3c3a44",scifi:"#4d6e7c",fantasy:"#4f6b45",horror:"#5a3d55",
+  romance:"#b06f74",history:"#a77b45",biography:"#6f6390",nonfiction:"#3f7a70",philosophy:"#7a7466",
+  poetry:"#c7a24f",children:"#c98450",business:"#4a5a7f",ya:"#86577f"};
+function mixHex(a,b,f){
+  const x=parseInt(a.slice(1),16), y=parseInt(b.slice(1),16), m=(s)=>Math.round(((x>>s)&255)*(1-f)+((y>>s)&255)*f);
+  return "#"+((m(16)<<16)|(m(8)<<8)|m(0)).toString(16).padStart(6,"0");
+}
+const PALETTES={
+  vintage:{ink:"#3b2a1e", keeper:"#3f6b52", spine:VINTAGE_SPINE, c:{
+    floorA:"#d8b583",floorB:"#ceaa76",grout:"#b48c5c",wall:"#3f5e4a",wallL:"#4d705a",shadow:"rgba(59,42,30,.2)",
+    wood:"#8a5a35",woodL:"#e8d2ae",glass:"#cfdccf",glassL:"#eef3ea",white:"#f8efda",
+    yellow:"#c99a3b",orange:"#8e3b2e",blue:"#3f6b52",green:"#5b7a3a",greenL:"#87a063",cream:"#efe0bf",
+    shelfIn:"#5e3d24",board:"#24382c",boardDot:"#c99a3b",boardShadow:"rgba(40,26,14,.35)",
+    till:"#b08a3e",tillScreen:"#f3e6c4",halo:"#f1e4c6",
+    page:"#d9c9a6",rule:"#b9a582",frame:"#6b4529",
+    portrait:["#e7d6b4","#efe2c6","#dcc6a0","#d6c09a"]}},
+  refreshed:{ink:"#2e2a26", keeper:"#2f8f8a", spine:null, c:{
+    floorA:"#f3e7cf",floorB:"#ecdcbe",grout:"#ddc9a6",wall:"#2f8f8a",wallL:"#5fb2ad",shadow:"rgba(46,42,38,.14)",
+    wood:"#c98f55",woodL:"#fbecd6",glass:"#cdeaee",glassL:"#f0fafb",white:"#fffdf8",
+    yellow:"#eab13b",orange:"#d0623a",blue:"#2f8f8a",green:"#4aa66a",greenL:"#86c99a",cream:"#fbf0dc",
+    shelfIn:"#fbf0dc",board:"#fffdf8",boardDot:"#d0623a",boardShadow:"rgba(46,42,38,.25)",
+    till:"#2e2a26",tillScreen:"#a9dfe0",halo:"#fcf0d2",
+    page:"#e3dccd",rule:"#c9bfae",frame:null,
+    portrait:["#ddf0ee","#fcf0d2","#fbe4da","#bfe3e0"]}},
+  modern:{ink:"#1d2340", keeper:"#3aa8e8", spine:MODERN_SPINE, c:{
+    floorA:"#fbf6ec",floorB:"#f6efe1",grout:"#ece3d0",wall:"#5ab4ec",wallL:"#8fcdf3",shadow:"rgba(29,35,64,.13)",
+    wood:"#f7b267",woodL:"#fff1dc",glass:"#c4e8fb",glassL:"#eef9ff",white:"#ffffff",
+    yellow:"#ffc527",orange:"#f26b3a",blue:"#3aa8e8",green:"#3fbf68",greenL:"#7fd88f",cream:"#fff4e0",
+    shelfIn:"#fff4e0",board:"#ffffff",boardDot:"#f26b3a",boardShadow:"rgba(29,35,64,.25)",
+    till:"#1d2340",tillScreen:"#9bd8fb",halo:"#fff4cf",
+    page:"#d5d8e4",rule:"#b9c0d4",frame:null,
+    portrait:["#e4f3fd","#fff4cf","#fde8e0","#c9e7fa"]}},
+};
+PALETTES.refreshed.spine={};
+Object.keys(MODERN_SPINE).forEach(k=>PALETTES.refreshed.spine[k]=mixHex(VINTAGE_SPINE[k],MODERN_SPINE[k],0.5));
+let LOOK=null;
+function lookOf(tier){ return LOOKS[clamp(tier|0,0,LOOKS.length-1)]; }
+function applyLook(){
+  const name=lookOf(S.tier);
+  if(name===LOOK) return;
+  LOOK=name;
+  const pal=PALETTES[name];
+  INK=pal.ink; Object.assign(C,pal.c); Object.assign(SPINE,pal.spine);
+  KEEPER.shirt=pal.keeper;
+  document.body.dataset.look=name;
+  avatarCache.clear();
+  const me=$("#me"); if(me) me.innerHTML="";
+}
 
 function px(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
 function shade(hex,f){
@@ -1427,7 +1585,7 @@ function drawShelf(x,y,ids){
   const X=x*TS,Y=y*TS, g=ctx;
   box(g,X+1.4,Y+2.6,TS-1.6,TS-2.4,2.2,C.shadow,false);
   box(g,X+0.6,Y+1.4,TS-1.8,TS-2.4,2.2,C.wood);
-  box(g,X+2,Y+2.8,TS-4.6,TS-5.2,1,C.cream,false);
+  box(g,X+2,Y+2.8,TS-4.6,TS-5.2,1,C.shelfIn,false);
   // three rows of four spines: one spine per title shelved, coloured by genre
   for(let r=0;r<3;r++){
     const sy=Y+3+r*3.9;
@@ -1449,8 +1607,8 @@ function drawFurn(x,y,t){
     box(g,X+1.2,Y+6.6,TS-1.4,TS-6.6,2,C.shadow,false);
     box(g,X+0.4,Y+5.6,TS-1.6,TS-6.4,2,C.orange);
     box(g,X+0.4,Y+4.4,TS-1.6,3.4,1.6,C.white);
-    box(g,X+9.2,Y+0.8,5,4.4,1,INK,false);                  // till
-    box(g,X+10,Y+1.5,3.4,1.6,0.5,"#9bd8fb",false);
+    box(g,X+9.2,Y+0.8,5,4.4,1,C.till,false);               // till
+    box(g,X+10,Y+1.5,3.4,1.6,0.5,C.tillScreen,false);
     box(g,X+2.2,Y+2.4,5.4,1.4,0.5,C.blue,INK,0.35);        // books on the counter
     box(g,X+2.6,Y+1,4.6,1.4,0.5,C.yellow,INK,0.35);
   }
@@ -1464,7 +1622,7 @@ function drawFurn(x,y,t){
       box(g,X+1.8,Y+5,6.4,2.4,0.7,C.white);                 // the page block, seen edge-on
       box(g,X+1.6,Y+3.8,6.8,1.6,0.6,col);                   // front cover on top
       box(g,X+3,Y+4.25,2.6,0.6,0.3,shade(col,1.35),false);
-      px(X+2.6,Y+6,4.8,0.3,"#d5d8e4"); px(X+2.6,Y+6.7,4.8,0.3,"#d5d8e4");
+      px(X+2.6,Y+6,4.8,0.3,C.page); px(X+2.6,Y+6.7,4.8,0.3,C.page);
     }
     if(ids[1]!=null){                                       // standing up, opened out on a little stand
       const col=SPINE[BOOK(ids[1]).genre]||C.blue;
@@ -1473,7 +1631,7 @@ function drawFurn(x,y,t){
       box(g,X+8.8,Y+0.2,2.8,5,0.5,C.white,INK,0.3);         // left page
       box(g,X+11.4,Y+0.2,2.8,5,0.5,C.white,INK,0.3);        // right page
       px(X+11.45,Y+0.4,0.35,4.6,INK);                       // the gutter
-      [1.4,2.4,3.4].forEach(dy=>{ px(X+9.3,Y+dy,1.9,0.35,"#b9c0d4"); px(X+11.9,Y+dy,1.9,0.35,"#b9c0d4"); });
+      [1.4,2.4,3.4].forEach(dy=>{ px(X+9.3,Y+dy,1.9,0.35,C.rule); px(X+11.9,Y+dy,1.9,0.35,C.rule); });
     }
   }
   if(t===PLANT){
@@ -1498,14 +1656,15 @@ function drawFurn(x,y,t){
     // the guest book, lying open, with a pen
     box(g,X+16.4,Y+1.2,12,5,1,"#8c3b3b");
     box(g,X+17,Y+1.6,5.4,4,0.5,C.cream,INK,0.3); box(g,X+22.4,Y+1.6,5.4,4,0.5,C.cream,INK,0.3);
-    [2.6,3.4,4.2].forEach(dy=>{ px(X+17.6,Y+dy,4.2,0.3,"#b9c0d4"); px(X+23,Y+dy,3.6,0.3,"#b9c0d4"); });
+    [2.6,3.4,4.2].forEach(dy=>{ px(X+17.6,Y+dy,4.2,0.3,C.rule); px(X+23,Y+dy,3.6,0.3,C.rule); });
     g.beginPath(); g.moveTo(X+26.4,Y+5.2); g.lineTo(X+29.8,Y+1.2); g.lineWidth=0.8; g.strokeStyle=INK; g.lineCap="round"; g.stroke();
   }
   if(t===RACK){
     blob(g,X+8.4,Y+14.8,6.8,1.4,C.shadow,false);
     box(g,X+2,Y+0.6,1.2,14,0.5,C.wood,INK,0.35); box(g,X+12.8,Y+0.6,1.2,14,0.5,C.wood,INK,0.35);   // side posts
     // three tiers of covers facing out, each standing on a wooden lip
-    const covers=[["#3d4466","#f26b3a","#22b3a3"],["#ffc527","#f3efe6","#f27a9a"],["#3aa8e8","#8a7ae0","#c98a35"]];
+    const covers=[["crime","literary","nonfiction"],["poetry",null,"romance"],["scifi","biography","history"]]
+      .map(row=>row.map(k=>k?SPINE[k]:C.cream));
     covers.forEach((row,r)=>{
       const ty=Y+0.8+r*4.5;
       row.forEach((col,i)=>{ const cx=X+3.5+i*3.1;
@@ -1808,21 +1967,40 @@ function render(){
   ANIM++;
   updateSign();
   const g=ctx;
-  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++) px(x*TS,y*TS,TS,TS,(x+y)%2?C.floorA:C.floorB);
-  g.strokeStyle=C.grout; g.lineWidth=0.3; g.beginPath();
-  for(let x=1;x<GW;x++){ g.moveTo(x*TS,0); g.lineTo(x*TS,GH*TS); }
-  for(let y=1;y<GH;y++){ g.moveTo(0,y*TS); g.lineTo(GW*TS,y*TS); }
-  g.stroke();
+  const old=LOOK==="vintage";
+  if(old){
+    // grandfather's floor: worn oak boards, four to a tile, joints staggered row by row
+    const PL=TS/4;
+    for(let r=0;r<GH*4;r++){
+      const off=((r*7)%4)*PL;
+      for(let x=-off;x<GW*TS;x+=TS*1.5){
+        const i=Math.floor((x+off)/(TS*1.5));
+        px(x,r*PL,TS*1.5,PL,(r+i)%3===0?C.floorB:(r+i)%3===1?C.floorA:shade(C.floorA,0.97));
+        px(x,r*PL,0.3,PL,C.grout);
+      }
+      px(0,r*PL+PL-0.25,GW*TS,0.25,C.grout);
+    }
+  } else {
+    for(let y=0;y<GH;y++)for(let x=0;x<GW;x++) px(x*TS,y*TS,TS,TS,(x+y)%2?C.floorA:C.floorB);
+    g.strokeStyle=C.grout; g.lineWidth=0.3; g.beginPath();
+    for(let x=1;x<GW;x++){ g.moveTo(x*TS,0); g.lineTo(x*TS,GH*TS); }
+    for(let y=1;y<GH;y++){ g.moveTo(0,y*TS); g.lineTo(GW*TS,y*TS); }
+    g.stroke();
+  }
   // back wall, side walls + the sign (its lettering is a sharp HTML overlay, see updateSign())
   px(0,0,GW*TS,TS,C.wall);
-  blob(g,TS*0.9,TS*0.2,6,6,C.wallL,false); blob(g,GW*TS-TS*0.7,TS*0.75,4,4,C.wallL,false);
+  if(old){                                             // striped wallpaper above a dado rail
+    for(let x=1;x<GW*TS;x+=3) px(x,0,1,TS-2.4,C.wallL);
+    px(0,TS-2.4,GW*TS,1.2,C.wood); px(0,TS-2.4,GW*TS,0.3,INK);
+  } else { blob(g,TS*0.9,TS*0.2,6,6,C.wallL,false); blob(g,GW*TS-TS*0.7,TS*0.75,4,4,C.wallL,false); }
   px(0,TS-0.6,GW*TS,0.6,INK);
   px(0,TS,3.4,GH*TS,C.wall); px(3.4,TS,0.6,GH*TS,INK);
   px(GW*TS-3.4,TS,3.4,GH*TS,C.wall); px(GW*TS-4,TS,0.6,GH*TS,INK);
   const boardX=1*TS+4, boardW=(GW-2)*TS-8;
-  box(g,boardX+0.8,3,boardW,10,5,"rgba(29,35,64,.25)",false);
-  box(g,boardX,2,boardW,10,5,C.white);
-  blob(g,boardX+5,7,1.6,1.6,C.orange); blob(g,boardX+boardW-5,7,1.6,1.6,C.orange);
+  box(g,boardX+0.8,3,boardW,10,old?1.2:5,C.boardShadow,false);
+  box(g,boardX,2,boardW,10,old?1.2:5,C.board);
+  if(old) box(g,boardX+1.2,3.2,boardW-2.4,7.6,0.6,null,C.boardDot,0.35);   // a gilt line round the signwriting
+  blob(g,boardX+5,7,1.6,1.6,C.boardDot); blob(g,boardX+boardW-5,7,1.6,1.6,C.boardDot);
   // day-progress bar sits on the wall, under everything else, so it never slices through a head
   if(S.phase==="open"){
     const w=(GW*TS-12)*clamp(S.tick/S.dayLen,0,1);
@@ -1865,7 +2043,7 @@ function avatarSrc(o){
   if(avatarCache.has(ck)) return avatarCache.get(ck);
   const n=96, c=document.createElement("canvas"); c.width=c.height=n;
   const g=c.getContext("2d"); g.scale(n/16,n/16);
-  blob(g,8,8,8,8,"#fff4cf",false);
+  blob(g,8,8,8,8,C.halo,false);
   g.save(); g.beginPath(); g.arc(8,8,8,0,Math.PI*2); g.clip();
   g.translate(8,8); g.scale(1.25,1.25); g.translate(-8,-8);
   drawFigure(g,8,8.6,Object.assign({dir:"down"},o));
@@ -1876,16 +2054,24 @@ function avatarImg(o,cls){ const i=document.createElement("img"); i.className=cl
 function keeperPortrait(){
   const W=640,H=300, c=document.createElement("canvas"); c.width=W; c.height=H;
   const g=c.getContext("2d"), s=W/80; g.scale(s,s);
-  box(g,0,0,80,H/s,0,"#e4f3fd",false);
-  blob(g,10,6,10,10,"#fff4cf",false); blob(g,72,30,13,13,"#fde8e0",false); blob(g,66,4,3,3,"#c9e7fa",false);
+  const bg=C.portrait;
+  box(g,0,0,80,H/s,0,bg[0],false);
+  if(LOOK==="vintage"){ g.fillStyle=bg[3]; for(let x=2;x<80;x+=4) g.fillRect(x,0,1.2,H/s); }    // his old striped wallpaper
+  else { blob(g,10,6,10,10,bg[1],false); blob(g,72,30,13,13,bg[2],false); blob(g,66,4,3,3,bg[3],false); }
   drawFigure(g,40,12,Object.assign({dir:"down"},KEEPER));
   box(g,13,24,54,16,3,C.orange);
   box(g,11,21.4,58,4,2,C.white);
   blob(g,33.5,22,1.6,1.3,KEEPER.skin); blob(g,46.5,22,1.6,1.3,KEEPER.skin);
   [[16,17.8,10,C.blue],[17,15,9,C.yellow],[15.5,12.2,11,C.green]].forEach(([x,y,w,col])=>box(g,x,y,w,2.8,0.7,col));
-  box(g,52,12.2,13,8.6,1.4,"#d7dcea");
-  blob(g,58.5,16.5,1.4,1.4,C.white,false);
-  box(g,50.6,20.4,15.8,1.4,0.7,"#b9c0d4");
+  if(LOOK==="vintage"){                                  // grandfather's brass cash register
+    box(g,52,15,13,6.6,1,C.till);
+    box(g,54.5,10.4,8,4.6,0.8,C.till); box(g,55.6,11.4,5.8,2.4,0.4,C.tillScreen,false);
+    for(let r=0;r<2;r++) for(let k=0;k<4;k++) blob(g,54.6+k*2.6,16.8+r*2.3,0.8,0.8,C.white,INK,0.3);
+  } else {
+    box(g,52,12.2,13,8.6,1.4,"#d7dcea");
+    blob(g,58.5,16.5,1.4,1.4,C.white,false);
+    box(g,50.6,20.4,15.8,1.4,0.7,C.rule);
+  }
   box(g,25.5,19.4,4.4,2.6,1.1,C.white); box(g,29.4,20.2,1.4,1.4,0.6,C.white,INK,0.35);
   return c.toDataURL();
 }
@@ -2112,6 +2298,7 @@ function setAction(label,fn){
 const DEFAULT_SHOP="Corner Books";
 function shopLabel(n){ return (n===undefined?S.shopName:n)||DEFAULT_SHOP; }
 function hud(){
+  applyLook();
   $("#hDay").textContent=S.day;
   $("#hCash").textContent="$"+money(S.cash);
   $("#hRep").textContent=Math.round(S.rep)+"/100";
@@ -2275,7 +2462,7 @@ function drawMorning(){
     const nt=nextTier();
     if(nt){
       const locked=S.rep<nt.rep;
-      row(ICON.grow,"Upgrade to "+nt.name,"Bigger floor, more foot traffic · rent "+rm(nt.rent)+"/day"+(locked?" · needs rep "+nt.rep:""),
+      row(ICON.grow,"Upgrade to "+nt.name,"Bigger floor, more foot traffic, "+(S.tier===0?"and a fresh coat of paint":"and a full modern refit")+" · rent "+rm(nt.rent)+"/day"+(locked?" · needs rep "+nt.rep:""),
         locked?"Locked":rm(nt.cost),locked,locked||S.cash<nt.cost,()=>upgradeSpace());
     }
     const icons={[SHELF]:ICON.shelf,[TABLE]:ICON.table,[PLANT]:ICON.plant,[CAFE]:ICON.cafe};
@@ -2410,7 +2597,7 @@ function shopClock(){
 function ringHTML(frac){
   const r=19, c=2*Math.PI*r, pct=Math.round(100*clamp(frac,0,1));
   const col=frac>.5?"var(--green)":frac>.25?"var(--yellow)":"var(--orange)";
-  return '<svg viewBox="0 0 46 46"><circle cx="23" cy="23" r="'+r+'" fill="none" stroke="#e7e8f0" stroke-width="4"/>'+
+  return '<svg viewBox="0 0 46 46"><circle cx="23" cy="23" r="'+r+'" fill="none" stroke="var(--line)" stroke-width="4"/>'+
     '<circle cx="23" cy="23" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="4" stroke-linecap="round" stroke-dasharray="'+
     (c*pct/100).toFixed(1)+' '+c.toFixed(1)+'"/></svg><b>'+pct+'%</b>';
 }
@@ -3448,6 +3635,7 @@ function introScreen(){
   sh.appendChild(el("p",null,"Every book is real. The clipboard at the top opens the stock take — the whole inventory, with every description — any time you like."));
   sh.appendChild(primary("Open up",()=>{ closeModal(); paint(); }));
 }
+applyLook();
 if(takeFresh()){ cloudLoad(); newShop(); }      // Start over reloads straight into naming the new shop
 else { titleScreen(); setTimeout(boot,200); }
 </script>

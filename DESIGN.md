@@ -3,6 +3,19 @@
 A mobile 16-bit bookshop simulator set on an old shopping street, in which every book
 is a real book and the player can order a physical copy.
 
+## Revision pass (vintage look)
+
+The shop is inherited from the player's grandfather, so it should look like his shop at first,
+not like a new app. The look now follows the floor tier and changes when the player expands.
+
+| Area | What changed |
+|---|---|
+| Three looks | **Grandfather's Shop** is vintage. **Extended Shop** is a half-refresh. **Double Shopfront** is the flat, bright look from the visual overhaul, unchanged. `applyLook()` picks the look from `S.tier` (called from `hud()` and at start-up), sets `body[data-look]`, and swaps the canvas palette (`INK`, `C`, `SPINE`, the keeper's shirt) from `PALETTES`. The upgrade row in the SHOP tab says the expansion brings "a fresh coat of paint" / "a full modern refit". |
+| Vintage UI | Aged-paper background with grain and a vignette, sepia ink, bottle green, oxblood and tarnished brass. Type is Lora for body text and Playfair Display for headings, titles and the sign. Cards are ruled like bookplates (inset double line) instead of sitting on offset coloured blocks, and corners are near-square instead of pills. The tab bar is an oxblood leather spine with a brass label, main buttons are brass, lists sit on green baize, and the evening takings are a ruled ledger with a red double margin. |
+| Vintage scene | Oak boards with staggered joints instead of the checker floor, a striped green wall above a dado rail, a dark green signboard with gilt lettering and a gilt line, walnut shelves with dark backs, faded spine colours (covers and the magazine rack follow them), a brass till, and the stage set in a walnut frame. The keeper portrait gets the striped wallpaper and a brass cash register. |
+| Refreshed | Keeps warm paper and the serif display face, brightens to teal, terracotta and mustard, softens the corners (12px) and puts cards back on their coloured blocks. Spine colours are a 50/50 mix of vintage and modern. |
+| What didn't change | Rules, economy, saves and the customer and cat designs. The CSS radii and greys that were hard-coded are now variables (`--pill`, `--r-sm`, `--r-lg`, `--off`, `--off-line`, `--handle`, `--veil`) so each look can override them; their `:root` values are the old ones. |
+
 ## Revision pass (magazine rack and record corner)
 
 Two more fixtures came with grandfather's shop. Neither changes the economy; both are things to
