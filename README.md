@@ -36,6 +36,13 @@ The blue information counter by the door holds grandfather's shop stamp, for che
 day, and a guest book that customers sign when they buy. His cat wanders off its cushion now
 and then for a nap somewhere else on the floor.
 
+On the other side of the door, the **magazine rack** introduces one new real magazine every
+real-world week (Monday to Sunday, on the player's clock); a yellow dot over it means this
+week's title is waiting. The list lives in `MAGAZINES` in `index.html` and currently holds
+*Monocle*. In the corner by the window, grandfather's **record corner** — a turntable on a
+sideboard of records — plays the soundtrack: tap it to drop the needle on any of the four
+tracks, or lift it to stop the music.
+
 The title screen has Continue, New shop and How to play; the menu button (or Esc) pauses
 a trading day and offers Resume, How to play, Back to title and Start over.
 

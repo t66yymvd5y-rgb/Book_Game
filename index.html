@@ -272,6 +272,16 @@
   .stampcell{aspect-ratio:1;border:1.5px dashed #c5c9d8;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--muted);}
   .stampcell.today{border-color:var(--orange);color:var(--orange);}
   .stampcell svg{width:108%;height:108%;}
+  .records{display:flex;flex-direction:column;gap:8px;}
+  .choice.record{justify-content:flex-start;gap:12px;margin:0;}
+  .choice.record::after{content:"▶";font-size:12px;margin-left:auto;}
+  .choice.record.playing{background:var(--yellow);}
+  .choice.record.playing::after{content:"♪";font-size:16px;}
+  .choice.record .meta{display:flex;flex-direction:column;min-width:0;}
+  .choice.record .t{font-size:14px;}
+  .sleeve{width:38px;height:38px;flex:none;border:var(--lw) solid var(--ink);border-radius:5px;position:relative;overflow:hidden;}
+  .sleeve::after{content:"";position:absolute;width:18px;height:18px;left:9px;top:9px;border-radius:50%;
+    background:radial-gradient(circle,#fff 0 3px,var(--ink) 3.5px 9px);}
   .guestbook{background:#fffaf0;border:var(--lw) solid var(--ink);border-radius:var(--r);padding:4px 14px;}
   .gb{padding:9px 0;border-bottom:1.5px solid var(--line);}
   .gb:last-of-type{border-bottom:0;}
@@ -1079,6 +1089,8 @@ function ratingBlock(bk){
 let GW=12, GH=9, PX=4; const TS=16;   // PX: device px per game px, sized to the stage in resizeStage()
 const EMPTY=0, WALL=1, SHELF=2, COUNTER=3, TABLE=4, PLANT=5, CAFE=6, DOOR=7, CAT=8;
 const INFO=9, INFO_R=10;             // the information counter by the door: two tiles, drawn from the left one
+const RACK=11;                       // the magazine rack by the door: a new magazine every real-world week
+const VINYL=12, VINYL_R=13;          // grandfather's record corner: turntable and records, two tiles, drawn from the left one
 const SHELF_SLOTS=10;                // titles per shelf
 const START_TITLES=100;              // grandfather's stock: this many random titles, one copy each
 const FURN={
@@ -1112,6 +1124,7 @@ const S={
   library:{},                 // archetypeKey -> {bookId: dayBought} — what each reader already owns
   stamps:[],                  // days the keeper stamped the check-in card at the information counter
   guestbook:[],               // [{day, name, text}] — oldest first; day 0 is grandfather's line
+  mags:[],                    // magazines put up on the rack: [{id, week}] — week is the real-world Monday, "yyyy-mm-dd"
 };
 const GRANDFATHER_ENTRY={day:0,name:"Grandfather",text:"Every book has its reader. Our job is to introduce them."};
 S.guestbook=[GRANDFATHER_ENTRY];
@@ -1145,12 +1158,14 @@ function initGrid(preserve){
     S.slots={};
     const dx=doorX();
     // Grandfather's layout: a run of shelves along the back wall either side of the counter,
-    // two island runs in the middle, a palm by the window and the cat in the far corner.
+    // two island runs in the middle, his record corner by the window with a palm above it, the
+    // magazine rack just inside the door and the cat in the far corner.
     // Every shelf has open floor directly below it, which is where a browsing customer stands.
     [[1,1],[2,1],[3,1],[4,1],[8,1],[9,1],[10,1],[2,4],[3,4],[4,4],[8,4],[9,4]]
       .forEach(([x,y])=>{S.grid[y][x]=SHELF; S.slots[key(x,y)]=[];});
-    S.grid[2][dx]=COUNTER; S.grid[GH-2][1]=PLANT; S.grid[GH-2][GW-2]=CAT;
-    S.grid[GH-2][dx-2]=INFO; S.grid[GH-2][dx-1]=INFO_R;
+    S.grid[2][dx]=COUNTER; S.grid[GH-3][1]=PLANT; S.grid[GH-2][GW-2]=CAT;
+    S.grid[GH-2][1]=VINYL; S.grid[GH-2][2]=VINYL_R;
+    S.grid[GH-2][dx-2]=INFO; S.grid[GH-2][dx-1]=INFO_R; S.grid[GH-2][dx+1]=RACK;
     S.keeper=[dx,1];   // you, standing behind the counter
   }
   resizeStage();
@@ -1190,6 +1205,8 @@ function upgradeSpace(){
   if(S.grid[cy][cx]===EMPTY) tilesOf(CAT).forEach(([x,y])=>{ S.grid[y][x]=EMPTY; S.grid[cy][cx]=CAT; });
   catGoHome();
   placeInfoDesk(true);                 // the information counter stays by the (moved) door
+  placeRack(true);                     // and so does the magazine rack
+  placeRecordCorner(true);             // the record corner follows the corner, like the cat
   drawMorning(); hud(); autosave();
 }
 
@@ -1208,6 +1225,56 @@ function placeInfoDesk(move){
   spots.sort((a,b2)=>a[2]-b2[2]);
   if(spots.length){ const [x,y]=spots[0]; S.grid[y][x]=INFO; S.grid[y][x+1]=INFO_R; }
   else old.forEach(([x,y],i)=>S.grid[y][x]=i<old.length/2?INFO:INFO_R);   // nowhere better: leave it be
+}
+
+/* The magazine rack and the record corner came with the shop too. Older saves get them placed, and
+   an expanded floor moves them: the rack to just inside the (moved) door, the record corner to the
+   new bottom-left corner. A spot must be open floor, not the space in front of a shelf, table or the
+   counter, not the doorway column, and must not cut any shelf or table off from the door. */
+function fixtureFits(x,y,w){
+  for(let cx=x;cx<x+w;cx++){
+    if(cx<1||cx>GW-2||y<2||y>GH-2||cx===doorX()) return false;
+    if(S.grid[y][cx]!==EMPTY||isKeeperTile(cx,y)) return false;
+    if([SHELF,TABLE,COUNTER].includes(S.grid[y-1][cx])) return false;
+  }
+  return true;
+}
+// how many shelf and table fronts a customer can walk to from the door, with these tiles blocked
+function reachableFronts(blocked){
+  const shut=new Set(blocked.map(([x,y])=>key(x,y))), start=[doorX(),GH-1];
+  const seen=new Set([key(start[0],start[1])]), q=[start];
+  while(q.length){
+    const [x,y]=q.shift();
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
+      const nx=x+dx, ny=y+dy, k=key(nx,ny);
+      if(nx<1||ny<1||nx>GW-2||ny>GH-2||seen.has(k)||shut.has(k)||isKeeperTile(nx,ny)||S.grid[ny][nx]!==EMPTY) return;
+      seen.add(k); q.push([nx,ny]);
+    });
+  }
+  return tilesOf(SHELF).concat(tilesOf(TABLE)).filter(([x,y])=>seen.has(key(x,y+1))).length;
+}
+// types: the fixture's tiles left to right; score: lower is a better spot
+function placeFixture(types,score,move){
+  if(tilesOf(types[0]).length && !move) return;
+  const old=types.flatMap(t=>tilesOf(t).map(([x,y])=>[x,y,t]));
+  old.forEach(([x,y])=>S.grid[y][x]=EMPTY);
+  const w=types.length, before=reachableFronts([]), spots=[];
+  for(let y=2;y<=GH-2;y++) for(let x=1;x+w-1<=GW-2;x++) if(fixtureFits(x,y,w)) spots.push([x,y,score(x,y)]);
+  spots.sort((a,b2)=>a[2]-b2[2]);
+  for(const [x,y] of spots){
+    const run=types.map((t,i)=>[x+i,y]);
+    if(reachableFronts(run)<before) continue;
+    types.forEach((t,i)=>S.grid[y][x+i]=t);
+    return;
+  }
+  old.forEach(([x,y,t])=>S.grid[y][x]=t);                 // nowhere better: leave it be
+}
+function placeRack(move){
+  const dx=doorX();
+  placeFixture([RACK],(x,y)=>Math.abs(x-(dx+1))+(GH-2-y)*3+(x<dx?0.5:0),move);
+}
+function placeRecordCorner(move){
+  placeFixture([VINYL,VINYL_R],(x,y)=>(x-1)+(GH-2-y)*1.5,move);
 }
 
 /* ---------- stock helpers ---------- */
@@ -1433,6 +1500,63 @@ function drawFurn(x,y,t){
     box(g,X+17,Y+1.6,5.4,4,0.5,C.cream,INK,0.3); box(g,X+22.4,Y+1.6,5.4,4,0.5,C.cream,INK,0.3);
     [2.6,3.4,4.2].forEach(dy=>{ px(X+17.6,Y+dy,4.2,0.3,"#b9c0d4"); px(X+23,Y+dy,3.6,0.3,"#b9c0d4"); });
     g.beginPath(); g.moveTo(X+26.4,Y+5.2); g.lineTo(X+29.8,Y+1.2); g.lineWidth=0.8; g.strokeStyle=INK; g.lineCap="round"; g.stroke();
+  }
+  if(t===RACK){
+    blob(g,X+8.4,Y+14.8,6.8,1.4,C.shadow,false);
+    box(g,X+2,Y+0.6,1.2,14,0.5,C.wood,INK,0.35); box(g,X+12.8,Y+0.6,1.2,14,0.5,C.wood,INK,0.35);   // side posts
+    // three tiers of covers facing out, each standing on a wooden lip
+    const covers=[["#3d4466","#f26b3a","#22b3a3"],["#ffc527","#f3efe6","#f27a9a"],["#3aa8e8","#8a7ae0","#c98a35"]];
+    covers.forEach((row,r)=>{
+      const ty=Y+0.8+r*4.5;
+      row.forEach((col,i)=>{ const cx=X+3.5+i*3.1;
+        box(g,cx,ty,2.8,4.2,0.4,col,INK,0.3); px(cx+0.5,ty+0.7,1.8,0.45,lum(col)>0.6?INK:shade(col,1.6)); });
+      box(g,X+2.4,ty+3.6,11.4,1.1,0.4,C.wood,INK,0.35);
+    });
+    if(magazineDue()){                                    // this week's magazine is waiting to go up
+      const bob=Math.sin(ANIM*0.12)*0.8;
+      blob(g,X+13.4,Y-0.6+bob,2.3,2.3,C.yellow);
+      box(g,X+13.05,Y-2+bob,0.7,1.7,0.3,INK,false); blob(g,X+13.4,Y+0.6+bob,0.4,0.4,INK,false);
+    }
+  }
+  if(t===VINYL){                                         // two tiles wide, drawn from the left one
+    const W=2*TS, walnut="#c98a35";
+    box(g,X+1.2,Y+6.6,W-1.4,TS-6.6,2,C.shadow,false);
+    box(g,X+0.4,Y+5.6,W-1.6,TS-6.4,2,walnut);
+    box(g,X+0.4,Y+4.4,W-1.6,3.4,1.6,shade(walnut,1.35));
+    // the records themselves, spines out, in the sideboard's two cubbies
+    [X+2,X+16.4].forEach((cx,c)=>{
+      box(g,cx,Y+8.6,12.6,5.4,0.8,"#6b4423",INK,0.35);
+      for(let i=0;i<14;i++) px(cx+0.8+i*0.8,Y+9.1,0.6,4.5,RECORD_SPINES[(i*5+c*3)%RECORD_SPINES.length]);
+    });
+    // turntable on top: plinth, platter, record, tonearm
+    const playing=musicPlaying(), cx=X+7.2, cy=Y+1.2;
+    box(g,X+1.6,Y-3,13.4,7.4,1.2,C.cream);
+    blob(g,cx,cy,4.9,3.3,"#7d8597");
+    blob(g,cx,cy,4.4,2.9,INK,false);
+    blob(g,cx,cy,3.2,2.1,null,"#3d4466",0.3); blob(g,cx,cy,2.3,1.5,null,"#3d4466",0.3);
+    blob(g,cx,cy,1.3,0.9,playing?RECORDS[track].color:C.orange,false);
+    if(playing){                                         // the shine sweeping round as it turns
+      const a=ANIM*0.16;
+      g.beginPath(); g.moveTo(cx+Math.cos(a)*1.7,cy+Math.sin(a)*1.1); g.lineTo(cx+Math.cos(a)*4.1,cy+Math.sin(a)*2.7);
+      g.strokeStyle="rgba(255,255,255,.5)"; g.lineWidth=0.5; g.lineCap="round"; g.stroke();
+    }
+    const arm=playing?[cx+2.6,cy+0.9]:[X+13.4,Y+3];        // needle down on the record, or up on its rest
+    g.beginPath(); g.moveTo(X+13.2,Y-1.6); g.lineTo(arm[0],arm[1]);
+    g.strokeStyle=INK; g.lineWidth=0.9; g.lineCap="round"; g.stroke();
+    g.strokeStyle="#c0c6da"; g.lineWidth=0.4; g.stroke();
+    blob(g,X+13.2,Y-1.6,1.1,1.1,"#c0c6da");
+    // a couple of sleeves leaning by the turntable, and a little speaker
+    box(g,X+17.2,Y-2.4,6.8,6.8,0.6,C.orange); blob(g,X+20.6,Y+1,2,2,null,C.white,0.5);
+    box(g,X+20.4,Y-1.2,6.4,5.8,0.6,C.blue); px(X+21.4,Y+0.2,4.4,0.6,C.white); px(X+21.4,Y+1.4,3,0.6,C.white);
+    box(g,X+26.4,Y-3.4,4.2,7.8,0.8,"#3d4466"); blob(g,X+28.5,Y+1.6,1.4,1.4,"#7d8597"); blob(g,X+28.5,Y-1.6,0.7,0.7,"#7d8597");
+    if(playing){                                         // notes drifting up off the record
+      for(let k=0;k<2;k++){
+        const f=(ANIM*0.012+k*0.5)%1, nx=X+6+k*12+Math.sin(f*7)*1.4, ny=Y-4-f*9;
+        g.globalAlpha=1-f;
+        blob(g,nx,ny,0.95,0.7,INK,false); px(nx+0.6,ny-3,0.35,3,INK); px(nx+0.6,ny-3,1.6,0.5,INK);
+        g.globalAlpha=1;
+      }
+    }
   }
   if(t===CAFE){
     box(g,X+1.2,Y+5.4,TS-1.4,TS-5.4,2,C.shadow,false);
@@ -1721,7 +1845,7 @@ function render(){
   for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
     const t=S.grid[y][x];
     if(t===SHELF) drawShelf(x,y,S.slots[key(x,y)]);
-    else if(t===COUNTER||t===TABLE||t===PLANT||t===CAFE||t===INFO) drawFurn(x,y,t);
+    else if(t===COUNTER||t===TABLE||t===PLANT||t===CAFE||t===INFO||t===RACK||t===VINYL) drawFurn(x,y,t);
     else if(t===CAT){ drawCushion(x,y); if(CATW.state==="home") drawSleepingCat(x*TS,y*TS); }
   }
   if(S.placing!=null){
@@ -2636,6 +2760,94 @@ function infoDesk(){
   sh.appendChild(ghost("Back to the shop",dismissSheet));
 }
 
+/* ---------- magazine rack ----------
+   One new magazine a week, in real-world weeks (Monday to Sunday, on the player's own clock). The
+   first time the rack is opened in a week, the next title on MAGAZINES goes up on it; a week the
+   player doesn't open the rack doesn't use one up, so nobody misses a title. When the list runs
+   out, the latest stays up. Saves record titles by id, so new ones can go anywhere in the list
+   after the titles already introduced — the end is safest. */
+const MAGAZINES=[
+  {id:"monocle", title:"Monocle", from:"London", since:2007, freq:"Ten issues a year",
+   dek:"Global affairs, business, culture and design",
+   cover:"#f3efe6", ink:"#1d2340", band:"#c9a227",
+   about:["Monocle was founded in London in 2007 by Tyler Brûlé, the Canadian journalist who had earlier co-founded Wallpaper*. It covers global affairs, business, culture and design between the same two covers, and it will take you from a cabinet reshuffle to a family-run hardware shop in a dozen pages.",
+          "It comes out ten times a year. The July/August double issue carries its annual Quality of Life Survey, a ranking of the cities it thinks are best to live in. The brand has grown well beyond paper, into Monocle Radio, a daily newsletter, travel guides, shops and cafés."],
+   readFor:["World news with the shouting turned down","Design, craft and small businesses run well","An hour out of your own city"],
+   pairs:"On a bookshop floor it sits happily alongside Business, Non-Fiction and History."},
+];
+function MAG(id){ return MAGAZINES.find(m=>m.id===id); }
+function weekOf(d){ const m=new Date(d.getFullYear(),d.getMonth(),d.getDate()); m.setDate(m.getDate()-((m.getDay()+6)%7)); return m; }
+function weekKey(d){ const m=weekOf(d); return m.getFullYear()+"-"+String(m.getMonth()+1).padStart(2,"0")+"-"+String(m.getDate()).padStart(2,"0"); }
+function weekLabel(k){ const [y,mo,d]=k.split("-").map(Number); return new Date(y,mo-1,d).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"}); }
+function nextMagazine(){ return MAGAZINES.find(m=>!S.mags.some(s=>s.id===m.id)); }
+// a new week has started and there is a title the player hasn't been introduced to yet
+function magazineDue(){
+  const last=S.mags[S.mags.length-1];
+  return !!nextMagazine() && (!last || last.week!==weekKey(new Date()));
+}
+function magCover(m,w,h){
+  const c=document.createElement("canvas"), r=window.devicePixelRatio||1;
+  c.width=w*r; c.height=h*r; c.style.width=w+"px"; c.style.height=h+"px";
+  const g=c.getContext("2d"); g.scale(r,r);
+  g.fillStyle=m.cover; g.fillRect(0,0,w,h);
+  g.fillStyle=m.band; g.fillRect(0,h*0.62,w,h*0.07);
+  g.fillStyle=m.ink; g.textAlign="center"; g.textBaseline="top";
+  let fs=w*0.24; g.font="700 "+fs+"px Poppins,sans-serif";
+  while(g.measureText(m.title.toUpperCase()).width>w*0.86 && fs>6){ fs--; g.font="700 "+fs+"px Poppins,sans-serif"; }
+  g.fillText(m.title.toUpperCase(),w/2,h*0.08);
+  g.font="600 "+Math.max(5,w*0.075)+"px Poppins,sans-serif";
+  g.fillText(m.from.toUpperCase()+" · "+m.since,w/2,h*0.08+fs*1.15);
+  g.beginPath(); g.arc(w/2,h*0.45,w*0.16,0,Math.PI*2); g.lineWidth=Math.max(1,w*0.025); g.strokeStyle=m.ink; g.stroke();
+  return c;
+}
+function magazineRack(){
+  if(S.talking || titleOn()) return;
+  paused=true;
+  if(magazineDue()){
+    const m=nextMagazine();
+    S.mags.push({id:m.id, week:weekKey(new Date())}); autosave();
+    tip("New on the rack this week: "+m.title+".");
+  }
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("h2",null,"Magazine rack")).style.marginBottom="6px";
+  sh.appendChild(el("p",null,"Grandfather kept a rack of magazines by the door, for anyone who wanted something shorter than a book. A new title goes up on it every week."));
+  const cur=S.mags[S.mags.length-1], m=cur&&MAG(cur.id);
+  if(!m){ sh.appendChild(ghost("Back to the shop",dismissSheet)); return; }
+  magazinePage(sh,m,cur.week);
+  const more=nextMagazine();
+  sh.appendChild(el("div","note",more?"Next week, a new title goes up — open the rack any time from Monday.":m.title+" stays on the rack until the next title arrives."));
+  const back=S.mags.slice(0,-1).reverse();
+  if(back.length){
+    sh.appendChild(el("h3",null,"Back issues"));
+    back.forEach(b2=>{ const bm=MAG(b2.id); if(!bm) return;
+      const c=el("div","card"); c.style.marginBottom="8px"; c.style.cursor="pointer";
+      c.appendChild(magCover(bm,40,54));
+      const mt=el("div","meta"); mt.appendChild(el("div","t",bm.title)); mt.appendChild(el("div","a","On the rack the week of "+weekLabel(b2.week)));
+      c.appendChild(mt); c.onclick=()=>{ sh.innerHTML=""; magazinePage(sh,bm,b2.week); sh.appendChild(ghost("← Back to the rack",magazineRack)); sh.scrollTop=0; };
+      sh.appendChild(c);
+    });
+  }
+  sh.appendChild(ghost("Back to the shop",dismissSheet));
+}
+function magazinePage(sh,m,week){
+  const c=el("div","card"); c.style.marginBottom="12px";
+  c.appendChild(magCover(m,58,78));
+  const mt=el("div","meta");
+  mt.appendChild(el("div","t",m.title));
+  mt.appendChild(el("div","a",m.dek));
+  mt.appendChild(el("div","a",m.from+" · since "+m.since+" · "+m.freq));
+  mt.appendChild(el("div","count","On the rack the week of "+weekLabel(week))).style.margin="4px 0 0";
+  c.appendChild(mt); sh.appendChild(c);
+  sh.appendChild(el("h3",null,"About"));
+  m.about.forEach(t=>sh.appendChild(el("p",null,t)));
+  sh.appendChild(el("h3",null,"Read it for"));
+  const L=el("div","ledgerbox");
+  m.readFor.forEach(t=>L.appendChild(el("div","ledger",t)));
+  sh.appendChild(L);
+  if(m.pairs) sh.appendChild(el("p",null,m.pairs)).style.marginTop="8px";
+}
+
 /* ---------- book card ---------- */
 function openBook(id,back){
   const bk=BOOK(id);
@@ -2740,6 +2952,8 @@ cv.addEventListener("click",e=>{
   }
   const t=S.grid[y]&&S.grid[y][x];
   if(t===INFO||t===INFO_R){ infoDesk(); return; }
+  if(t===RACK){ magazineRack(); return; }
+  if(t===VINYL||t===VINYL_R){ recordCorner(); return; }
   if(t===SHELF||t===TABLE){
     const ids=S.slots[key(x,y)]||[];
     if(ids.length){ const sh=$("#sheet"); sh.innerHTML=""; $("#modal").classList.add("on");
@@ -2794,6 +3008,14 @@ const PLAYLIST=[
   "audio/a-quiet-corner.mp3",
   "audio/sunlight-on-the-shelf.mp3"
 ];
+// the same four tracks are the records in grandfather's record corner, one sleeve colour each
+const RECORDS=[
+  {title:"Paperback Afternoon",    color:"#f26b3a"},
+  {title:"A Chapter for Later",    color:"#3aa8e8"},
+  {title:"A Quiet Corner",         color:"#3fbf68"},
+  {title:"Sunlight on the Shelf",  color:"#ffc527"},
+];
+const RECORD_SPINES=["#f26b3a","#3aa8e8","#3fbf68","#ffc527","#f3efe6","#3d4466","#f27a9a","#8a7ae0","#22b3a3"];
 let track=0;
 // a track only ends while it is playing, so the next one may start straight away
 bgm.addEventListener("ended",()=>{
@@ -2802,18 +3024,20 @@ bgm.addEventListener("ended",()=>{
   playMusic();
 });
 function playMusic(){ if(musicOn && !document.hidden) bgm.play().catch(()=>{}); }
+function musicPlaying(){ return !bgm.paused && !bgm.ended; }
+function setMusic(on){
+  musicOn=on;
+  try{ localStorage.setItem(MUSIC_KEY,musicOn?"on":"off"); }catch(e){}
+  paintMusic();
+  if(musicOn) playMusic(); else bgm.pause();
+}
 function paintMusic(){
   musicBtn.innerHTML=musicOn?MUSIC_ICON.on:MUSIC_ICON.off;
   musicBtn.classList.toggle("off",!musicOn);
   musicBtn.setAttribute("aria-pressed",String(musicOn));
   musicBtn.setAttribute("aria-label",musicOn?"Music on":"Music off");
 }
-musicBtn.addEventListener("click",()=>{
-  musicOn=!musicOn;
-  try{ localStorage.setItem(MUSIC_KEY,musicOn?"on":"off"); }catch(e){}
-  paintMusic();
-  if(musicOn) playMusic(); else bgm.pause();
-});
+musicBtn.addEventListener("click",()=>setMusic(!musicOn));
 // the first touch anywhere is what the browser counts as permission to play
 function firstGesture(){
   document.removeEventListener("pointerdown",firstGesture,true);
@@ -2825,6 +3049,37 @@ document.addEventListener("keydown",firstGesture,true);
 // don't play to an empty room when the phone is locked or the tab is in the background
 document.addEventListener("visibilitychange",()=>{ if(document.hidden) bgm.pause(); else if(bgm.played.length) playMusic(); });
 paintMusic();
+
+/* ---------- record corner ----------
+   Grandfather's turntable. Choosing a record drops the needle on that track and the playlist
+   carries on from there; lifting the needle is the same as turning the music off. */
+function recordCorner(){
+  if(S.talking || titleOn()) return;
+  paused=true;
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("h2",null,"Record corner")).style.marginBottom="6px";
+  sh.appendChild(el("p",null,"Grandfather's turntable, and the records he played while the shop was open. Pick one to drop the needle — the rest play on after it, in order."));
+  const playing=musicPlaying();
+  sh.appendChild(el("div","count",playing?"Now playing: "+RECORDS[track].title:"The needle is up."));
+  const L=el("div","records");
+  RECORDS.forEach((r,i)=>{
+    const on=playing && i===track;
+    const b2=el("button","choice record"+(on?" playing":""));
+    b2.appendChild(el("span","sleeve")).style.background=r.color;
+    const m=el("span","meta"); m.appendChild(el("span","t",r.title)); m.appendChild(el("span","a",on?"Playing ♪":"Side A · "+(i+1)+" of "+RECORDS.length));
+    b2.appendChild(m);
+    b2.onclick=()=>{ if(on) return; track=i; bgm.src=PLAYLIST[i]; setMusic(true); };
+    L.appendChild(b2);
+  });
+  sh.appendChild(L);
+  const up=primary(playing?"Lift the needle":"Needle's up",()=>setMusic(false));
+  up.disabled=!playing;
+  sh.appendChild(up);
+  sh.appendChild(ghost("Back to the shop",dismissSheet));
+}
+// keep the record corner honest when a record starts, stops or the next one comes on
+["play","pause"].forEach(ev=>bgm.addEventListener(ev,()=>{ if($("#modal").classList.contains("on") && $("#sheet .records")) recordCorner(); }));
 
 /* ============================================================
    SAVE
@@ -2849,7 +3104,7 @@ function takeSnapshot(){
     grid:S.grid, slots:S.slots, stock:S.stock, incoming:S.incoming, sales:S.sales, offers:S.offers, keeper:S.keeper,
     stats:S.stats, history:S.history, soldEver:S.soldEver, featured:S.featured,
     seen:S.seen, tutorial:S.tutorial, shopName:S.shopName, library:S.library,
-    footfall:S.footfall, stamps:S.stamps, guestbook:S.guestbook,
+    footfall:S.footfall, stamps:S.stamps, guestbook:S.guestbook, mags:S.mags,
   };
 }
 function validSave(d){
@@ -2876,6 +3131,7 @@ function applySnapshot(d){
   S.footfall=d.footfall||0;
   S.stamps=Array.isArray(d.stamps)?d.stamps:[];
   S.guestbook=Array.isArray(d.guestbook)&&d.guestbook.length?d.guestbook:[GRANDFATHER_ENTRY];
+  S.mags=Array.isArray(d.mags)?d.mags.filter(m=>m&&MAG(m.id)):[];
   S.phase=(d.phase==="evening")?"evening":"morning";
   // anything that only exists inside a trading day is rebuilt, never restored
   S.customers=[]; S.spawnQueue=[]; S.talking=null; S.placing=null;
@@ -2883,6 +3139,8 @@ function applySnapshot(d){
   catGoHome();
   resizeStage();
   placeInfoDesk(false);                // saves from before the information counter get one
+  placeRack(false);                    // and the magazine rack
+  placeRecordCorner(false);            // and the record corner
   restockShelves();                    // and display tables saved empty get their two books
 }
 
@@ -3119,6 +3377,8 @@ function howToPlay(back){
   sh.appendChild(el("p",null,"The clipboard in the top bar opens the stock take at any time: every book you hold with its full description, filters by genre and era, and reorders of anything you carry. The clock stops while it's open. New titles come only on the distributor's van, which turns up every morning from day 2 with eight books you've never stocked. Every order — reorder, restock or van — arrives two days after you place it, before the shop opens. The stock take's Sold out tab, and the Sold out list on the morning Stock tab, restock any title with +1."));
   sh.appendChild(el("h3",null,"Information counter"));
   sh.appendChild(el("p",null,"The blue counter by the door holds grandfather's shop stamp and the guest book. Tap it to stamp in for the day, and to read what your customers have written."));
+  sh.appendChild(el("h3",null,"Magazine rack and record corner"));
+  sh.appendChild(el("p",null,"The rack on the other side of the door puts up a new magazine every real-world week — a yellow dot over it means this week's title is waiting. Grandfather's turntable sits in the corner by the window: tap it to choose which record is playing, or lift the needle."));
   sh.appendChild(el("h3",null,"Money"));
   sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to expand the floor. More floor means room for more shelves; the Coffee Corner unlocks as your reputation grows."));
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
@@ -3182,7 +3442,7 @@ function introScreen(){
   const sh=$("#sheet"); sh.innerHTML=""; setLock(false);
   $("#modal").classList.add("on");
   sh.appendChild(el("h2",null,shopLabel())).style.marginBottom="10px";
-  sh.appendChild(el("div","say","Grandfather's shop, yours since this morning. Twelve shelves holding a hundred books, one copy each, a counter, a palm and a cat — and $1,500 in the business account. Rent is $50 a day. Grow your reputation and cash and you can expand the floor, add shelves, and in time open a Coffee Corner."));
+  sh.appendChild(el("div","say","Grandfather's shop, yours since this morning. Twelve shelves holding a hundred books, one copy each, a counter, a magazine rack, his record player, a palm and a cat — and $1,500 in the business account. Rent is $50 a day. Grow your reputation and cash and you can expand the floor, add shelves, and in time open a Coffee Corner."));
   sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
   sh.appendChild(phaseList());
   sh.appendChild(el("p",null,"Every book is real. The clipboard at the top opens the stock take — the whole inventory, with every description — any time you like."));

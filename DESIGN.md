@@ -3,6 +3,19 @@
 A mobile 16-bit bookshop simulator set on an old shopping street, in which every book
 is a real book and the player can order a physical copy.
 
+## Revision pass (magazine rack and record corner)
+
+Two more fixtures came with grandfather's shop. Neither changes the economy; both are things to
+tap.
+
+| Area | What changed |
+|---|---|
+| Magazine rack | A one-tile rack just inside the door, to its right (the information counter is to its left). Tapping it stops the clock and shows **this week's magazine**: cover, origin, founding year, frequency, a short introduction and what to read it for. One new title per **real-world week** (Monday to Sunday, local clock): the first time the rack is opened in a new week, the next unseen title in `MAGAZINES` goes up. A week the player skips doesn't use a title up, so nobody misses one. When the list runs out, the latest stays up. Earlier titles are kept as back issues. A yellow dot bobs over the rack while a new title is waiting. The list currently holds one title, *Monocle*. |
+| Why real weeks | The trading day is a minute long, so an in-game week would burn through any list in minutes. Tying the rack to the calendar makes it a reason to come back, the way a real magazine is. |
+| Record corner | A two-tile walnut sideboard in the bottom-left corner, records spine-out in its cubbies, grandfather's turntable on top. The record spins and the tonearm sits on it while music is playing. Tapping it stops the clock and lists the four soundtrack tracks as records: choosing one drops the needle on it and the playlist carries on from there; **Lift the needle** turns the music off (the same setting as the top-bar note button). |
+| Layout | New shops put the record corner at the bottom-left (the palm moves up a tile to sit above it) and the rack right of the door. Older saves get both placed on load, on open floor that isn't in front of a shelf, table or the counter and doesn't cut any shelf off from the door. Expanding moves the rack with the door and the record corner to the new corner. |
+| Saves | Same key (`cornerbooks.save.v2`); the save gains `mags` (`[{id, week}]`). Titles are recorded by id, so new magazines can be added to `MAGAZINES` without breaking saves. |
+
 ## Revision pass (artifact sync, grandfather's shop)
 
 The published Corner Books artifact had again moved ahead of this repo. Its changes are folded
