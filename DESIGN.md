@@ -3,6 +3,18 @@
 A mobile 16-bit bookshop simulator set on an old shopping street, in which every book
 is a real book and the player can order a physical copy.
 
+## Revision pass (George's visit)
+
+A one-off story moment on the first trading day.
+
+| Area | What changed |
+|---|---|
+| Trigger | Day 1, when the shop clock reaches **12:00** (tick 200 of 900), as soon as no pop-up is open. Once per shop. |
+| Sequence | The music stops and an old man, **George**, walks in from the door to the counter. A pop-up opens: he introduces himself, says he was a regular when grandfather was alive, that he is glad the shop has reopened, and tells you to work hard and keep it running. Closing it brings the music back. He then walks over to the cat, pats it (a heart rises over it) and a second pop-up opens: *"Hey, Mimi! Long time no see!"* Closing that sends him out of the door. This is how the player learns the cat's name. |
+| Clock | The shop clock holds at noon from the moment he walks in until he leaves, so the visit reads as "around noon". Customers already in the shop keep browsing; nobody new arrives meanwhile, and passive self-serve sales pause. The trading clock and customers stop entirely while either of his pop-ups is open, as in a conversation. |
+| Music | Stopping the music is a temporary hold, not the player's music setting. Turning music on from the top bar or the record corner overrides the hold. |
+| Interruptions | If the menu or stock take replaces one of his pop-ups, it comes back when that is closed. If the cat is mid-stroll, he waits for it to settle before walking over. |
+| Saves | Same key (`cornerbooks.save.v2`); the save gains `events` (`{george:true}`), written at the evening. Quitting part-way through day 1 replays the day, and the visit with it. |
 ## Revision pass (cozy pixel restyle)
 
 The whole game was restyled again, this time to warm, cozy pixel art in the spirit of country-life
