@@ -15,6 +15,25 @@ A one-off story moment on the first trading day.
 | Music | Stopping the music is a temporary hold, not the player's music setting. Turning music on from the top bar or the record corner overrides the hold. |
 | Interruptions | If the menu or stock take replaces one of his pop-ups, it comes back when that is closed. If the cat is mid-stroll, he waits for it to settle before walking over. |
 | Saves | Same key (`cornerbooks.save.v2`); the save gains `events` (`{george:true}`), written at the evening. Quitting part-way through day 1 replays the day, and the visit with it. |
+## Revision pass (cozy pixel restyle)
+
+The whole game was restyled again, this time to warm, cozy pixel art in the spirit of country-life
+farming games: chunky pixels, earthy greens and wood browns, wooden UI boards, cream paper panels,
+teal and amber buttons, pixel hearts. It is our own art in that mood, not a copy of any one game's
+sprites or layout. The setting is unchanged (the old-quarter bookshop); only the look moved. This
+supersedes the flat, outlined look of the visual-overhaul pass below.
+
+| Area | What changed |
+|---|---|
+| Scene | Drawn at one canvas pixel per game pixel (192×144 for grandfather's shop) and scaled up with nearest-neighbour, so every pixel is a crisp square. Plank floor, a timber-and-plaster back wall, a carved wooden signboard, and shop windows looking out onto a garden. Furniture is redrawn as pixel blocks with a dark-brown outline: shelves of genre-coloured spines, a wooden counter and till, a teal information counter, a walnut record sideboard, a terracotta palm. |
+| People | Customers, the keeper and the cat are pixel sprites built from letter maps in the code (a face per facing, five hairstyles laid over it, a torso, legs with three walking frames), recoloured per customer from their existing skin, hair and shirt, plus trouser colours. Portraits in the UI are the same sprite, enlarged. |
+| UI | Every panel, card, button and tag is a 9-slice pixel frame (tiny SVGs in `:root`, used as border-images): wooden boards for the top bar, HUD, panel and pop-ups; plank rows in lists; teal price buttons; an amber close button. The page sits on a grassy pixel backdrop. Patience in the customer list is a row of five pixel hearts. The HUD has pixel icons for day, cash, reputation and phase. |
+| Icons | All 18 interface icons (tabs, list rows, top-bar buttons, menu, close) are 12×12 pixel letter maps in `PIX`, drawn as crisp SVG in the colour of whatever they sit on, at 24 px so each icon pixel lands on whole screen pixels. |
+| Type | Pixelify Sans (Google Fonts), with a plain sans fallback when offline. Book covers and the sign use it too, and redraw once it has loaded. |
+| Covers | 30×45 pixel pictures in 4-pixel blocks: genre colour, one motif (sun, hills, bands or stars), the title set on top. |
+
+Game rules, scoring, prices, saves and the catalogue are unchanged. The flat look is in git history
+(the commit before this pass) if it is ever wanted back.
 
 ## Revision pass (magazine rack and record corner)
 
