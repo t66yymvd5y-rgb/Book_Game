@@ -1125,6 +1125,7 @@ const S={
   stamps:[],                  // days the keeper stamped the check-in card at the information counter
   guestbook:[],               // [{day, name, text}] — oldest first; day 0 is grandfather's line
   mags:[],                    // magazines put up on the rack: [{id, week}] — week is the real-world Monday, "yyyy-mm-dd"
+  events:{},                  // one-off story events already seen: {george:true}
 };
 const GRANDFATHER_ENTRY={day:0,name:"Grandfather",text:"Every book has its reader. Our job is to introduce them."};
 S.guestbook=[GRANDFATHER_ENTRY];
@@ -1855,7 +1856,9 @@ function render(){
   // customers and a wandering cat, back to front by where their feet are
   const actors=S.customers.map(p=>({y:p.py+13, draw:()=>drawPerson(p)}));
   const cat=catAway(); if(cat) actors.push(cat);
+  const geo=georgeActor(); if(geo) actors.push(geo);
   actors.sort((a,b)=>a.y-b.y).forEach(a=>a.draw());
+  drawPatHeart();
 }
 
 /* ---------- small portraits for the UI ---------- */
@@ -1975,7 +1978,7 @@ function stepCustomer(p){
     else if(p.state==="leave"){ p.dead=true; }
   }
   // passive self-serve: small chance if a shelved book fits them well
-  if(p.state==="browse" && !p.served && S.tick%30===0){
+  if(p.state==="browse" && !p.served && S.tick%30===0 && !GEO.p){
     const best=bestMatchFor(p);
     if(best && best.score>=70 && Math.random()<0.32) completeSale(p,best.id,true);
   }
@@ -2039,15 +2042,16 @@ function loop(ts){
   requestAnimationFrame(loop);
   if(ts-last<66) { render(); return; }
   last=ts;
-  if(S.phase==="open" && !S.talking && !paused){
-    S.tick++;
+  if(S.phase==="open" && !S.talking && !paused && !georgeHold()){
+    if(!GEO.p) S.tick++;      // while George is in, the clock stays at noon (customers carry on)
     while(S.spawnQueue.length && S.spawnQueue[0]<=S.tick){ S.spawnQueue.shift(); spawnCustomer(); }
     S.customers.forEach(stepCustomer);
     S.customers=S.customers.filter(c=>!c.dead);
-    if(S.tick>=S.dayLen && S.customers.length===0) endDay();
-    else if(S.tick%10===0) drawOpenPanel();
+    if(S.tick>=S.dayLen && S.customers.length===0 && !GEO.p) endDay();
+    else if(GEO.p ? ++GEO.f%10===0 : S.tick%10===0) drawOpenPanel();
   }
-  if(!paused && !S.talking) catStep();
+  if(S.phase==="open" && !S.talking && !paused) georgeStep();
+  if(!paused && !S.talking && !georgeHoldsCat()) catStep();
   render();
 }
 
@@ -2055,6 +2059,7 @@ function loop(ts){
 function startDay(){
   S.offers=[];                                       // the van leaves when the shop opens
   S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[]; S.seenToday=[]; S.dayCast=[]; S.sales=[];
+  georgeReset();
   S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0};
   const n=rollFootfall();
   S.footfall=n;
@@ -2972,6 +2977,7 @@ $("#modal").addEventListener("click",e=>{
 // The X in the corner of every pop-up: close it all the way, from whatever page of it you're on.
 function dismissSheet(){
   if(lockModal) return;
+  if(georgeTalking()){ georgeNext(); return; }
   if(S.talking){ endTalk(); return; }
   if(STK.open){ closeStockTake(); return; }
   closeModal();
@@ -3000,6 +3006,7 @@ const MUSIC_ICON={
   off:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><path d="M3 3l18 18"/></svg>'
 };
 let musicOn=true;
+let musicHold=false;          // a story moment has stopped the music for a while, without changing the setting
 try{ musicOn=localStorage.getItem(MUSIC_KEY)!=="off"; }catch(e){}
 bgm.volume=0.35;
 const PLAYLIST=[
@@ -3023,10 +3030,11 @@ bgm.addEventListener("ended",()=>{
   bgm.src=PLAYLIST[track];
   playMusic();
 });
-function playMusic(){ if(musicOn && !document.hidden) bgm.play().catch(()=>{}); }
+function playMusic(){ if(musicOn && !musicHold && !document.hidden) bgm.play().catch(()=>{}); }
 function musicPlaying(){ return !bgm.paused && !bgm.ended; }
 function setMusic(on){
   musicOn=on;
+  if(on) musicHold=false;               // the player asked for music: that beats any story pause
   try{ localStorage.setItem(MUSIC_KEY,musicOn?"on":"off"); }catch(e){}
   paintMusic();
   if(musicOn) playMusic(); else bgm.pause();
@@ -3081,6 +3089,141 @@ function recordCorner(){
 // keep the record corner honest when a record starts, stops or the next one comes on
 ["play","pause"].forEach(ev=>bgm.addEventListener(ev,()=>{ if($("#modal").classList.contains("on") && $("#sheet .records")) recordCorner(); }));
 
+/* ---------- George: a one-off visit on day 1 ----------
+   Around noon on the first trading day the music stops and an old man comes in: George, one of
+   grandfather's regulars. He walks up to the counter and says his piece (the clock stops while
+   he talks), the music comes back, and then he goes over to the cat, gives it a pat and calls it
+   by its name. Then he leaves. The shop clock holds at noon from the moment he walks in until he
+   is out of the door; customers keep browsing, and nobody new comes in meanwhile. Seen once per shop: S.events.george is saved at the evening, so
+   quitting mid-way through day 1 replays the day and the visit with it. */
+const GEORGE_TICK=200;                 // 12:00 on the shop clock (10am + 2/9 of the 900-tick day)
+const GEORGE={key:"george",name:"George",role:"One of grandfather's regulars",
+  skin:"#eabf98",hair:"#e3e4ea",shirt:"#8c6a4f",style:"crop"};
+// state: null → "in" (walking to the counter) → "talk1" → "waitcat" → "tocat" → "pat" → "talk2" → "out" → "done"
+const GEO={state:null,p:null,t:0,cat:null,f:0};
+function georgeReset(){
+  if(musicHold){ musicHold=false; playMusic(); }
+  GEO.state=null; GEO.p=null; GEO.t=0; GEO.cat=null;
+}
+function georgeTalking(){ return GEO.state==="talk1"||GEO.state==="talk2"; }
+function georgeHold(){ return georgeTalking(); }                       // the trading clock stops while he talks
+function georgeHoldsCat(){ return GEO.state==="tocat"||GEO.state==="pat"||GEO.state==="talk2"; }
+function modalOn(){ return $("#modal").classList.contains("on"); }
+function georgeWalk(p){
+  if(p.path && p.pi<p.path.length){
+    const [tx,ty]=p.path[p.pi], dx=(tx*TS+8)-p.px, dy=(ty*TS+2)-p.py, sp=1.0;   // an unhurried walk
+    p.moving=true; p.t++;
+    if(Math.abs(dx)>Math.abs(dy)) p.dir=dx>0?"right":"left"; else if(Math.abs(dy)>0.5) p.dir=dy>0?"down":"up";
+    if(Math.abs(dx)<=sp&&Math.abs(dy)<=sp){ p.px=tx*TS+8; p.py=ty*TS+2; p.gx=tx; p.gy=ty; p.pi++; }
+    else { p.px+=clamp(dx,-sp,sp); p.py+=clamp(dy,-sp,sp); }
+    return false;
+  }
+  p.moving=false; return true;
+}
+// the first open, reachable floor tile from a list of candidates
+function georgeRoute(p,spots){
+  for(const [x,y] of spots){
+    if(!S.grid[y] || S.grid[y][x]!==EMPTY || isKeeperTile(x,y)) continue;
+    const path=pathTo(p,x,y); if(path) return path;
+  }
+  return null;
+}
+function georgeEnter(){
+  const dx=doorX();
+  const p={gx:dx, gy:GH-1, px:dx*TS+8, py:(GH-1)*TS+2, dir:"up", moving:true, path:null, pi:0, t:0};
+  const c=tilesOf(COUNTER)[0]||[dx,2];
+  p.path=georgeRoute(p,[[c[0],c[1]+1],[c[0]-1,c[1]+1],[c[0]+1,c[1]+1],[dx,GH-2]])||[];
+  p.pi=0;
+  GEO.p=p; GEO.state="in";
+  musicHold=true; bgm.pause();
+  tip("The music stops. An old man in a cardigan comes in through the door.");
+}
+function georgeSpeaker(){
+  const d=el("div","speaker");
+  d.appendChild(avatarImg(GEORGE));
+  d.appendChild(el("div",null,GEORGE.name+"<small>"+GEORGE.role+"</small>"));
+  return d;
+}
+function georgeSheet(lines,label){
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(georgeSpeaker());
+  lines.forEach(t=>sh.appendChild(el("div","say",t)));
+  sh.appendChild(primary(label,georgeNext));
+}
+function georgeTalk(){
+  if(GEO.state==="talk1") georgeSheet([
+    "Well, well. The shutters are up! You must be the grandchild. I'm George.",
+    "I was a regular here for years, back when your grandfather was still alive. Every Saturday, without fail. He always had something put aside for me.",
+    "I can't tell you how happy I am to see this place open again. I walked past it every day while it was closed.",
+    "You work hard, now, and keep the shop running. He'd have liked that very much.",
+  ],"Thank you, George. I will.");
+  else if(GEO.state==="talk2") georgeSheet(["Hey, Mimi! Long time no see!"],"Continue");
+}
+// closing either of his pop-ups moves the visit on
+function georgeNext(){
+  if(GEO.state==="talk1"){
+    closeModal(); GEO.state="waitcat";
+    musicHold=false; playMusic();
+    tip("George looks round the shop, then spots the cushion in the corner.");
+  } else if(GEO.state==="talk2"){
+    closeModal(); GEO.state="out";
+    S.events.george=true;
+    const p=GEO.p; p.path=pathTo(p,doorX(),GH-1)||[]; p.pi=0;
+    tip("So grandfather's cat is called Mimi. George waves on his way out.");
+  }
+}
+function georgeStep(){
+  if(GEO.state==="done") return;
+  if(GEO.state===null){
+    if(S.day!==1 || S.events.george || S.tick<GEORGE_TICK || S.tick>=S.dayLen-60 || modalOn()) return;
+    georgeEnter(); return;
+  }
+  const p=GEO.p;
+  if(georgeTalking()){ if(!modalOn()) georgeTalk(); return; }   // something else replaced his pop-up: bring it back
+  if(modalOn()) return;                                          // another pop-up is up: he waits
+  if(GEO.state==="in"){
+    if(georgeWalk(p)){ p.dir="up"; GEO.state="talk1"; georgeTalk(); }
+  } else if(GEO.state==="waitcat"){
+    if(CATW.state==="walk") return;                              // let the cat finish its stroll first
+    const cat=CATW.state==="home"?catHome():[CATW.x,CATW.y];
+    if(!cat){ GEO.state="talk2"; georgeTalk(); return; }
+    GEO.cat=cat;
+    const [cx,cy]=cat;
+    const path=georgeRoute(p,[[cx-1,cy],[cx,cy-1],[cx+1,cy],[cx,cy+1],[cx-1,cy-1],[cx+1,cy-1]]);
+    if(path){ p.path=path; p.pi=0; GEO.state="tocat"; }
+    else { GEO.state="pat"; GEO.t=0; }                           // nowhere to stand: he says hello from here
+  } else if(GEO.state==="tocat"){
+    if(georgeWalk(p)){
+      const [cx,cy]=GEO.cat;
+      p.dir=cx>p.gx?"right":cx<p.gx?"left":cy<p.gy?"up":"down";
+      GEO.state="pat"; GEO.t=0;
+      tip("George crouches down by the cat and gives it a pat.");
+    }
+  } else if(GEO.state==="pat"){
+    if(++GEO.t>=26){ GEO.state="talk2"; georgeTalk(); }
+  } else if(GEO.state==="out"){
+    if(georgeWalk(p)){ GEO.state="done"; GEO.p=null; }
+  }
+}
+function georgeActor(){
+  const p=GEO.p; if(!p) return null;
+  const step=p.moving?Math.sin(p.t*0.8):0;
+  const bob=GEO.state==="pat"?(((GEO.t>>2)&1)?0.7:0):p.moving?Math.abs(step)*0.4:0;
+  return {y:p.py+13, draw:()=>drawFigure(ctx,p.px,p.py,Object.assign({},GEORGE,{dir:p.dir,step,bob}))};
+}
+// a little heart rising over the cat while George pats it
+function drawPatHeart(){
+  if(!(GEO.state==="pat"||GEO.state==="talk2") || !GEO.cat) return;
+  const t=GEO.state==="pat"?GEO.t:26, [cx,cy]=GEO.cat;
+  const X=cx*TS+7, Y=cy*TS+5-Math.min(t,26)*0.12, r=1.3, g=ctx;
+  g.beginPath();
+  g.moveTo(X,Y+r*1.6);
+  g.bezierCurveTo(X-r*2.4,Y+r*0.2,X-r*1.2,Y-r*1.4,X,Y-r*0.3);
+  g.bezierCurveTo(X+r*1.2,Y-r*1.4,X+r*2.4,Y+r*0.2,X,Y+r*1.6);
+  paintPath(g,"#f27a9a",INK,0.35);
+}
+
 /* ============================================================
    SAVE
    The whole shop is one plain object, so a save is a snapshot of S taken at a
@@ -3104,7 +3247,7 @@ function takeSnapshot(){
     grid:S.grid, slots:S.slots, stock:S.stock, incoming:S.incoming, sales:S.sales, offers:S.offers, keeper:S.keeper,
     stats:S.stats, history:S.history, soldEver:S.soldEver, featured:S.featured,
     seen:S.seen, tutorial:S.tutorial, shopName:S.shopName, library:S.library,
-    footfall:S.footfall, stamps:S.stamps, guestbook:S.guestbook, mags:S.mags,
+    footfall:S.footfall, stamps:S.stamps, guestbook:S.guestbook, mags:S.mags, events:S.events,
   };
 }
 function validSave(d){
@@ -3132,6 +3275,8 @@ function applySnapshot(d){
   S.stamps=Array.isArray(d.stamps)?d.stamps:[];
   S.guestbook=Array.isArray(d.guestbook)&&d.guestbook.length?d.guestbook:[GRANDFATHER_ENTRY];
   S.mags=Array.isArray(d.mags)?d.mags.filter(m=>m&&MAG(m.id)):[];
+  S.events=(d.events&&typeof d.events==="object")?d.events:{};
+  georgeReset();
   S.phase=(d.phase==="evening")?"evening":"morning";
   // anything that only exists inside a trading day is rebuilt, never restored
   S.customers=[]; S.spawnQueue=[]; S.talking=null; S.placing=null;
