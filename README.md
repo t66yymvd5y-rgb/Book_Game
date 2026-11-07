@@ -1,6 +1,6 @@
 # Corner Books
 
-A flat, cartoon-style bookshop simulator set on an old shopping street, where every book is a
+A cozy pixel-art bookshop simulator set on an old shopping street, where every book is a
 real book and the player can order a physical copy.
 
 Playable prototype: open `index.html` in any browser, desktop or phone. No build step,
