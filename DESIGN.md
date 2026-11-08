@@ -253,8 +253,8 @@ raises how many customers show up.
 | Level | At rep | Furniture unlocked |
 |---|---|---|
 | 1 | 0 | Shelf, counter |
-| 2 | 18 | Display table |
-| 3 | 45 | **Coffee Corner** (cafe) |
+| 2 | 18 | Display table, armchair |
+| 3 | 45 | **Coffee Corner** (cafe), cafe table (once there is a corner) |
 
 **Floor space** is a separate, player-chosen purchase: the shop starts on the smallest lot
 and rent starts low, because $150/day before the player has sold a single book was crushing
@@ -273,8 +273,26 @@ everything already stocked exactly where they are and simply extends the floor a
 The cafe is still the reputation-gated expansion from the original design, and it still
 earns its place mechanically rather than cosmetically: it raises every customer's patience
 by 50%. In a game whose central scarcity is *time to talk to people*, that is the most
-valuable thing you can buy. Potted palms do a weaker version of the same job. Selling
-drinks is a later layer; the cafe already changes how the shop plays without it.
+valuable thing you can buy. Potted palms do a weaker version of the same job.
+
+It now sells coffee too. The corner is placed for you, beside the counter (either side,
+whichever has clear floor behind it for you and in front of it for the customer; only if
+neither side is clear does it go wherever you tap, and then you walk). With a corner in,
+half of all customers come in wanting a cup: they queue in front of it — one being served,
+one waiting, anyone else browses first and comes over when there is room — and the keeper
+steps across from the till, makes the cup over a couple of seconds, and goes back once the
+queue is clear. A cup is $5, counted as its own line in the evening ledger, and refills the
+drinker's patience, so the corner is both a second revenue line and a way of keeping people
+in the shop longer. Coffee is deliberately simple — one drink, one price, no stock to order —
+because the matching loop is still the game and the cafe should feed it, not compete with it.
+
+Two seats follow from it. A **cafe table** (a table and two chairs, one purchase, needs the
+corner) is where most coffee drinkers sit for a while before they browse. An **armchair**
+(level 2, no cafe needed) is for readers: now and then a browser settles into a free one
+with the shelved book that suits them best, patience frozen while they read, and when they
+get up there is a fair chance they take it to the till if it genuinely fits them. Anyone
+seated, queueing or being served can still be tapped and talked to, and goes back to what
+they were doing afterwards.
 
 ---
 
@@ -371,8 +389,9 @@ window, and charges nothing. In the live build it opens checkout.
    not before.
 2. **How does stock actually arrive?** Right now the distributor offer is random. It should
    probably reflect the neighbourhood, so curation has information to work with.
-3. **What does the cafe sell?** It currently buys time. Drinks, dwell time and a second
-   revenue line are a whole second economy, and may be a sequel rather than a feature.
+3. **How far does the cafe go?** It now sells one coffee at one price with no stock of its
+   own, and seats people. Whether it wants a menu, beans to order, or a second member of
+   staff so the keeper isn't pulled off the till is a question for after it has been played.
 4. **Where does the storefront live?** The buy path is designed but not wired. The commerce
    integration is a separate piece of work with its own requirements.
 

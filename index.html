@@ -1122,14 +1122,22 @@ const EMPTY=0, WALL=1, SHELF=2, COUNTER=3, TABLE=4, PLANT=5, CAFE=6, DOOR=7, CAT
 const INFO=9, INFO_R=10;             // the information counter by the door: two tiles, drawn from the left one
 const RACK=11;                       // the magazine rack by the door: a new magazine every real-world week
 const VINYL=12, VINYL_R=13;          // grandfather's record corner: turntable and records, two tiles, drawn from the left one
+const SEAT_L=14, SEAT_T=15, SEAT_R=16; // a cafe table and its two chairs: three tiles, bought as a set
+const ARMCHAIR=17;                   // an armchair: someone settles in to read, and may buy the book
+const COFFEE_PRICE=5;                // a cup, over the Coffee Corner
+const COFFEE_SHARE=0.5;              // the share of customers who come in for a coffee, once there is one
+const COFFEE_TICKS=32;               // how long a cup takes to make
 const SHELF_SLOTS=10;                // titles per shelf
 const START_TITLES=100;              // grandfather's stock: this many random titles, one copy each
 const FURN={
   [SHELF]:{name:"Shelf",cost:120,slots:SHELF_SLOTS,desc:"Holds "+SHELF_SLOTS+" titles"},
   [TABLE]:{name:"Display Table",cost:200,slots:2,desc:"Two featured titles on display",lvl:2},
   [PLANT]:{name:"Potted Palm",cost:60,slots:0,desc:"+ambience, slower exits"},
-  [CAFE]:{name:"Coffee Corner",cost:900,slots:0,desc:"+50% patience, all customers",lvl:3},
+  [ARMCHAIR]:{name:"Armchair",cost:180,slots:0,desc:"Someone settles in to read a while, and may buy the book",lvl:2},
+  [CAFE]:{name:"Coffee Corner",cost:900,slots:0,desc:"Beside the counter. Sells coffee at "+rm(COFFEE_PRICE)+" a cup · +50% patience, all customers",lvl:3,one:true},
+  [SEAT_L]:{name:"Cafe Table",cost:260,slots:0,desc:"A table and two chairs: coffee drinkers sit a while before they browse",lvl:3,tiles:[SEAT_L,SEAT_T,SEAT_R],needs:CAFE},
 };
+const FURN_ORDER=[SHELF,TABLE,PLANT,ARMCHAIR,CAFE,SEAT_L];
 
 /* Space tiers. The game starts in grandfather's shop, already a mature bookshop. Rent is tied to
    floor size, not reputation: growth is a choice the player makes and pays for once. */
@@ -1266,7 +1274,7 @@ function fixtureFits(x,y,w){
   for(let cx=x;cx<x+w;cx++){
     if(cx<1||cx>GW-2||y<2||y>GH-2||cx===doorX()) return false;
     if(S.grid[y][cx]!==EMPTY||isKeeperTile(cx,y)) return false;
-    if([SHELF,TABLE,COUNTER].includes(S.grid[y-1][cx])) return false;
+    if([SHELF,TABLE,COUNTER,CAFE].includes(S.grid[y-1][cx])) return false;
   }
   return true;
 }
@@ -1306,6 +1314,59 @@ function placeRack(move){
 }
 function placeRecordCorner(move){
   placeFixture([VINYL,VINYL_R],(x,y)=>(x-1)+(GH-2-y)*1.5,move);
+}
+
+/* ---------- the Coffee Corner ----------
+   It goes in beside the counter, so you can step across from the till to make a cup. The side is
+   chosen for you: the tile must be clear, with clear floor behind it for you to stand on and in
+   front of it for the customer. If neither side is clear it can go anywhere, and you walk over. */
+function cafeTile(){ const t=tilesOf(CAFE); return t.length?t[0]:null; }
+function freeFloor(x,y){ return x>=1&&x<=GW-2&&y>=1&&y<=GH-2&&S.grid[y][x]===EMPTY&&!isKeeperTile(x,y); }
+function cafeSpots(){
+  const c=tilesOf(COUNTER)[0]; if(!c) return [];
+  return [1,-1].map(s=>[c[0]+s,c[1]]).filter(([x,y])=>freeFloor(x,y)&&freeFloor(x,y-1)&&freeFloor(x,y+1));
+}
+function besideCounter(x,y){ const c=tilesOf(COUNTER)[0]; return !!c && c[1]===y && Math.abs(c[0]-x)===1; }
+// older saves may have the corner anywhere on the floor: bring it in beside the counter if there is room
+function placeCafe(){
+  const t=cafeTile(); if(!t||besideCounter(t[0],t[1])) return;
+  S.grid[t[1]][t[0]]=EMPTY;
+  const spots=cafeSpots();
+  if(spots.length){ const [x,y]=spots[0]; S.grid[y][x]=CAFE; } else S.grid[t[1]][t[0]]=CAFE;
+}
+// where you stand to make coffee: behind the corner if you can, else beside it; null means from the till
+function cafeServeSpot(){
+  const t=cafeTile(); if(!t) return null;
+  const [x,y]=t;
+  return [[x,y-1],[x-1,y],[x+1,y]].find(([sx,sy])=>freeFloor(sx,sy)||isKeeperTile(sx,sy))||null;
+}
+// where coffee customers stand: in front of the corner, with room for one more waiting behind
+function cafeQueueSpots(){
+  const t=cafeTile(); if(!t) return [];
+  const [x,y]=t, o=[];
+  if(y+1<=GH-2 && S.grid[y+1][x]===EMPTY) o.push([x,y+1]);
+  if(o.length && y+2<=GH-2 && S.grid[y+2][x]===EMPTY && !(x===doorX()&&y+2>=GH-3)) o.push([x,y+2]);
+  return o;
+}
+// tiles kept clear so the corner keeps working: where you stand to serve, and where the customer stands
+function reservedTile(x,y){
+  const t=cafeTile(); if(!t) return false;
+  const s=cafeServeSpot();
+  return (!!s&&s[0]===x&&s[1]===y) || (t[0]===x&&t[1]+1===y);
+}
+// a piece of furniture laid left to right from (x,y): every tile clear floor, none of them reserved
+function placingFits(k,x,y){
+  const f=FURN[k]; if(!f) return false;
+  return (f.tiles||[k]).every((t,i)=>freeFloor(x+i,y)&&!reservedTile(x+i,y));
+}
+function buyCafe(){
+  const f=FURN[CAFE]; if(S.cash<f.cost||cafeTile()) return;
+  const spots=cafeSpots();
+  if(!spots.length){ S.placing=CAFE; tip("No clear floor beside the counter, so tap a highlighted tile for the Coffee Corner. You'll walk over to make each cup."); return; }
+  const [x,y]=spots[0];
+  S.cash-=f.cost; S.stats.spent+=f.cost; S.grid[y][x]=CAFE;
+  tip("The Coffee Corner goes in beside the counter. Coffee is "+rm(COFFEE_PRICE)+" a cup; you step across to make it.");
+  paint(); autosave();
 }
 
 /* ---------- stock helpers ---------- */
@@ -1634,9 +1695,50 @@ function drawFurn(x,y,t){
     R(g,X+2,Y,5,2,C.iron); R(g,X+4,Y+2,1,2,C.iron);
     PB(g,X+9,Y+1,4,4,C.white); R(g,X+13,Y+2,1,2,OL);     // cups
     PB(g,X+11,Y+3,4,3,C.amber);
-    const s=(ANIM>>4)&1;                                  // a curl of steam
-    g.globalAlpha=0.6; R(g,X+10+s,Y-1,1,1,C.white); R(g,X+11-s,Y-2,1,1,C.white); R(g,X+10+s,Y-3,1,1,C.white); g.globalAlpha=1;
+    const brewing=S.customers.some(p=>p.state==="coffee"), s=(ANIM>>(brewing?2:4))&1;   // a curl of steam, busier mid-cup
+    g.globalAlpha=0.6; R(g,X+10+s,Y-1,1,1,C.white); R(g,X+11-s,Y-2,1,1,C.white); R(g,X+10+s,Y-3,1,1,C.white);
+    if(brewing){ R(g,X+4-s,Y-4,1,1,C.white); R(g,X+5+s,Y-6,1,1,C.white); R(g,X+12-s,Y-5,1,1,C.white); }
+    g.globalAlpha=1;
   }
+  if(t===SEAT_L||t===SEAT_R){                             // a cafe chair, its back to the outside, facing the table
+    const bx=t===SEAT_R?X+11:X+2;
+    SH(g,X+2,Y+14,13,3);
+    PB(g,X+3,Y+8,11,5,C.woodL,C.woodHi,C.wood);           // seat
+    R(g,X+4,Y+12,1,4,C.woodD); R(g,X+12,Y+12,1,4,C.woodD); // legs
+    R(g,X+4,Y+15,1,1,OL); R(g,X+12,Y+15,1,1,OL);
+    PB(g,bx,Y+1,4,9,C.wood,C.woodL,C.woodD);              // back
+    R(g,bx+1,Y+3,2,1,C.woodHi);
+  }
+  if(t===SEAT_T){                                         // a round cafe table, sugar bowl in the middle
+    SH(g,X+1,Y+14,15,3);
+    R(g,X+7,Y+10,2,5,C.woodD); R(g,X+5,Y+14,6,2,OL);     // pedestal and base
+    PB(g,X,Y+4,16,7,C.woodL,C.woodHi,C.wood);             // top
+    PB(g,X+6,Y+1,4,4,C.white); R(g,X+7,Y+2,2,1,C.stoneL);
+    [[x-1,y],[x+1,y]].forEach(([sx,sy],i)=>{             // a cup for whoever is sitting at it
+      const c=seatedAt(sx,sy); if(!c||!c.cup) return;
+      PB(g,X+1+i*10,Y+3,4,4,C.white); R(g,X+2+i*10,Y+4,2,1,"#6b4a2e");
+    });
+  }
+  if(t===ARMCHAIR){                                       // a reading chair in oxblood leather
+    const L="#8a4b3e", LL="#a8604f", LD="#5e3128";
+    SH(g,X+1,Y+14,15,3);
+    PB(g,X+2,Y,12,10,L,LL,LD);                            // back
+    R(g,X+4,Y+2,8,1,LD); R(g,X+4,Y+5,8,1,LD);             // tufting
+    PB(g,X+3,Y+9,10,5,LL,"#c07a66");                      // cushion
+    drawArmchairFront(x,y);
+  }
+}
+// the seat and back of a cafe chair, drawn again over whoever is sitting on it
+function drawChairOver(x,y,t){
+  const X=x*TS,Y=y*TS,g=ctx, bx=t===SEAT_R?X+11:X+2;
+  PB(g,X+3,Y+8,11,5,C.woodL,C.woodHi,C.wood);
+  PB(g,bx,Y+1,4,9,C.wood,C.woodL,C.woodD); R(g,bx+1,Y+3,2,1,C.woodHi);
+}
+// the arms of the armchair, drawn again over whoever is sitting in it
+function drawArmchairFront(x,y){
+  const X=x*TS,Y=y*TS,g=ctx, L="#8a4b3e", LL="#a8604f", LD="#5e3128";
+  PB(g,X,Y+7,5,9,L,LL,LD); PB(g,X+11,Y+7,5,9,L,LL,LD);
+  R(g,X+1,Y+15,1,1,C.woodD); R(g,X+14,Y+15,1,1,C.woodD);
 }
 
 // Grandfather's cat. It came with the shop: its cushion is the CAT tile in the corner, and now
@@ -1736,7 +1838,7 @@ function catSpots(){
   for(let y=2;y<GH-1;y++) for(let x=1;x<GW-1;x++){
     if(S.grid[y][x]!==EMPTY || isKeeperTile(x,y)) continue;
     const above=S.grid[y-1][x];
-    if(above===SHELF||above===TABLE||above===COUNTER) continue;
+    if(above===SHELF||above===TABLE||above===COUNTER||above===CAFE) continue;
     if(x===doorX() && y>=GH-3) continue;
     if(Math.abs(x-cx)+Math.abs(y-cy)>6) continue;
     o.push([x,y]);
@@ -1874,18 +1976,89 @@ const KEEPER={key:"keeper",skin:"#f1c49c",hair:"#5b3a24",shirt:"#4a86b8",style:"
 
 let ANIM=0;
 function isKeeperTile(x,y){ return !!S.keeper && S.keeper[0]===x && S.keeper[1]===y; }
+
+/* Your own walk: behind the counter until someone wants a coffee, then across to the Coffee Corner
+   to make it, and back to the till once the queue is served. Not saved: every day starts at the till. */
+const KW={state:"home",x:0,y:0,px:0,py:0,path:null,pi:0,dir:"down",t:0};
+function keeperHome(){
+  if(!S.keeper) return;
+  KW.state="home"; KW.path=null; KW.x=S.keeper[0]; KW.y=S.keeper[1];
+  KW.px=KW.x*TS+8; KW.py=KW.y*TS+7; KW.dir="down"; KW.t=0;
+}
+function keeperPath(from,to){
+  const k0=key(from[0],from[1]), prev={[k0]:null}, q=[from];
+  while(q.length){
+    const [x,y]=q.shift();
+    if(x===to[0]&&y===to[1]) break;
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
+      const nx=x+dx, ny=y+dy, k=key(nx,ny);
+      if(nx<1||ny<1||nx>GW-2||ny>GH-2 || k in prev || S.grid[ny][nx]!==EMPTY) return;
+      prev[k]=[x,y]; q.push([nx,ny]);
+    });
+  }
+  if(!(key(to[0],to[1]) in prev)) return null;
+  const path=[]; for(let c=to; c; c=prev[key(c[0],c[1])]) path.unshift(c);
+  return path;
+}
+// true if you are there or can get there (the path is set); false if there is no way through
+function keeperGo(to){
+  if(KW.x===to[0]&&KW.y===to[1]){ KW.path=null; return true; }
+  const path=keeperPath([KW.x,KW.y],to);
+  if(!path) return false;
+  KW.path=path; KW.pi=1; return true;
+}
+function keeperWalk(){
+  if(!KW.path||KW.pi>=KW.path.length){ KW.path=null; KW.dir="down"; return true; }
+  const [tx,ty]=KW.path[KW.pi], dx=tx*TS+8-KW.px, dy=ty*TS+7-KW.py, sp=1.0;
+  KW.t++;
+  if(Math.abs(dx)>Math.abs(dy)) KW.dir=dx>0?"right":"left"; else if(Math.abs(dy)>0.5) KW.dir=dy>0?"down":"up";
+  if(Math.abs(dx)<=sp&&Math.abs(dy)<=sp){ KW.px=tx*TS+8; KW.py=ty*TS+7; KW.x=tx; KW.y=ty; KW.pi++; }
+  else { KW.px+=clamp(dx,-sp,sp); KW.py+=clamp(dy,-sp,sp); }
+  return false;
+}
+function keeperServing(){ return KW.state==="serve"; }
+function keeperStep(){
+  if(!S.keeper) return;
+  const queue=cafeQueue();
+  if(KW.state==="home"){
+    if(!queue.length) return;
+    const spot=cafeServeSpot()||S.keeper;
+    KW.t=0;
+    KW.state = keeperGo(spot) ? (KW.path?"tocafe":"serve") : "serve";   // no way through: you serve from the till
+  } else if(KW.state==="tocafe"){
+    if(keeperWalk()){ KW.state="serve"; KW.t=0; }
+  } else if(KW.state==="serve"){
+    if(queue.length){ KW.t=0; return; }
+    if(++KW.t>=24){ KW.state = keeperGo(S.keeper) ? (KW.path?"tohome":"home") : "home"; if(KW.state==="home") keeperHome(); }
+  } else if(KW.state==="tohome"){
+    if(keeperWalk()) keeperHome();
+  }
+}
 function drawKeeper(){
   if(!S.keeper) return;
-  const [kx,ky]=S.keeper;
+  if(KW.state==="home" && (KW.x!==S.keeper[0]||KW.y!==S.keeper[1])) keeperHome();   // the till moved: a new shop, or a load
+  const moving=KW.state==="tocafe"||KW.state==="tohome", step=moving?Math.sin(KW.t*0.8):0;
+  const brewing=KW.state==="serve" && S.customers.some(p=>p.state==="coffee");
+  const bob=moving ? Math.abs(step)>0.5 : !!((ANIM>>(brewing?3:5))&1);
   // stood close up to the counter (drawn before it, so it hides the feet) and low enough that
   // the head clears the back wall and the sign
-  drawFigure(ctx, kx*TS+8, ky*TS+7, Object.assign({dir:"down", bob:((ANIM>>5)&1)?0.35:0}, KEEPER));
+  drawFigure(ctx, KW.px, KW.py, Object.assign({dir:KW.dir, step, bob}, KEEPER));
 }
 function drawPerson(p){
-  const X=Math.round(p.px), Y=Math.round(p.py), g=ctx;
+  const seated=isSeated(p), seatT=seated?S.grid[p.seat[1]][p.seat[0]]:null, onArm=seatT===ARMCHAIR;
+  const X=Math.round(p.px), Y=Math.round(p.py)+(onArm?3:0), g=ctx;
   const step=p.moving?Math.sin(S.tick*0.9):0;
-  drawFigure(g,X,Y,Object.assign(figureOf(p),{dir:p.dir,step,bob:p.moving&&Math.abs(step)>0.5}));
-  if(p.state==="browse"||p.state==="walk"){
+  drawFigure(g,X,Y,Object.assign(figureOf(p),{dir:p.dir,step,bob:p.moving&&Math.abs(step)>0.5,noShadow:seated}));
+  if(onArm) drawArmchairFront(p.seat[0],p.seat[1]);
+  else if(seatT===SEAT_L||seatT===SEAT_R) drawChairOver(p.seat[0],p.seat[1],seatT);
+  if(seated && (p.state==="read"||(p.state==="talking"&&p.before==="read"))){   // the book, held open
+    const col=p.reading!=null?(SPINE[BOOK(p.reading).genre]||C.terra):C.terra;
+    R(g,X-4,Y+2,9,5,OL); R(g,X-3,Y+3,3,3,C.cream); R(g,X+1,Y+3,3,3,C.cream); R(g,X,Y+3,1,3,col); R(g,X-3,Y+3,7,1,shade(col,1.2));
+  }
+  if(p.cup && !seated && p.state!=="leave"){                                     // coffee in hand
+    PB(g,X+5,Y+4,4,4,C.white); R(g,X+6,Y+5,2,1,"#6b4a2e");
+  }
+  if(p.state!=="leave" && p.state!=="talking" && p.state!=="read"){
     const pat=clamp(p.patience/p.patMax,0,1);
     PB(g,X-6,Y-12,12,4,C.cream);
     if(pat>0.04) R(g,X-5,Y-11,Math.max(1,Math.round(10*pat)),2,pat>.5?C.leaf:pat>.25?C.amber:C.red);
@@ -1962,13 +2135,13 @@ function render(){
   for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
     const t=S.grid[y][x];
     if(t===SHELF) drawShelf(x,y,S.slots[key(x,y)]);
-    else if(t===COUNTER||t===TABLE||t===PLANT||t===CAFE||t===INFO||t===RACK||t===VINYL) drawFurn(x,y,t);
+    else if(t===COUNTER||t===TABLE||t===PLANT||t===CAFE||t===INFO||t===RACK||t===VINYL||t===SEAT_L||t===SEAT_T||t===SEAT_R||t===ARMCHAIR) drawFurn(x,y,t);
     else if(t===CAT){ drawCushion(x,y); if(CATW.state==="home") drawSleepingCat(x*TS,y*TS); }
   }
   if(S.placing!=null){
     const on=(ANIM>>4)&1;
     for(let y=1;y<GH-1;y++)for(let x=1;x<GW-1;x++)
-      if(S.grid[y][x]===EMPTY && !isKeeperTile(x,y)){
+      if(placingFits(S.placing,x,y)){
         const X=x*TS+6, Y=y*TS+6+on;
         R(g,X+1,Y,2,4,OL); R(g,X,Y+1,4,2,OL); R(g,X+1,Y+1,2,2,C.amber);
       }
@@ -2070,34 +2243,98 @@ function pickArchetype(){
   S.seenToday.push(arch);
   return arch;
 }
+let QN=0;                                            // order of arrival at the Coffee Corner
 function spawnCustomer(){
   const arch=pickArchetype();
   const dx=doorX();
-  const shelves=tilesOf(SHELF).concat(tilesOf(TABLE));
   const p={
     arch, key:arch.key, name:arch.name, skin:arch.skin, hair:arch.hair, shirt:arch.shirt,
     gx:dx, gy:GH-1, px:dx*TS+8, py:(GH-1)*TS+2,
-    state:"walk", path:null, pi:0, moving:true, bubble:false, dir:"up",
+    state:"walk", goal:"shelf", path:null, pi:0, moving:true, bubble:false, dir:"up",
     patMax: Math.round((430+Math.random()*220) * (tilesOf(CAFE).length?1.5:1) * (1+tilesOf(PLANT).length*0.06)),
     clues:[], probesLeft:3, done:false,
+    wantsCoffee: !!cafeTile() && Math.random()<COFFEE_SHARE, cup:false, seat:null, reading:null, t:0,
   };
   p.patience=p.patMax;
-  const t = shelves.length? rnd(shelves) : [dx,3];
-  p.target=[t[0], t[1]+1];
-  p.path=pathTo(p,p.target[0],p.target[1]);
+  if(p.wantsCoffee && cafeRoom()) sendToCafe(p); else sendToShelf(p);
   S.customers.push(p);
 }
+// off to browse: the floor in front of a random shelf or table
+function sendToShelf(p){
+  const shelves=tilesOf(SHELF).concat(tilesOf(TABLE)), dx=doorX();
+  const t=shelves.length?rnd(shelves):[dx,3];
+  p.goal="shelf"; p.state="walk"; p.bubble=false; p.target=[t[0],t[1]+1];
+  p.path=pathTo(p,p.target[0],p.target[1]); p.pi=0;
+}
+/* The Coffee Corner's queue: whoever is being served or waiting, or on their way over, in order of
+   arrival. One stands at the front, one more may wait behind; anyone else browses first and comes
+   over when there is room. */
+function cafeQueue(){
+  return S.customers.filter(c=>!c.dead&&(c.state==="queue"||c.state==="coffee"||(c.state==="walk"&&c.goal==="cafe"))).sort((a,b2)=>a.qAt-b2.qAt);
+}
+function cafeRoom(){ return cafeQueue().length<cafeQueueSpots().length; }
+function sendToCafe(p){
+  const spots=cafeQueueSpots(), i=Math.min(cafeQueue().length,spots.length-1);
+  if(i<0){ p.wantsCoffee=false; sendToShelf(p); return; }
+  const path=pathTo(p,spots[i][0],spots[i][1]);
+  if(!path){ p.wantsCoffee=false; sendToShelf(p); return; }
+  p.goal="cafe"; p.state="walk"; p.bubble=false; p.qAt=++QN; p.qSpot=spots[i]; p.target=spots[i];
+  p.path=path; p.pi=0;
+}
+function queueStep(p){
+  const q=cafeQueue(), i=q.indexOf(p), spots=cafeQueueSpots();
+  if(i<0||i>=spots.length){ p.wantsCoffee=false; sendToShelf(p); return; }   // the corner's gone, or no room after all
+  const want=spots[i];
+  if(!p.qSpot||p.qSpot[0]!==want[0]||p.qSpot[1]!==want[1]){                  // the queue moved up
+    p.qSpot=want; p.path=pathTo(p,want[0],want[1])||[]; p.pi=0; return;
+  }
+  if(p.moving) return;
+  p.dir="up";
+  if(i===0 && keeperServing()){ p.state="coffee"; p.t=0; }
+}
+function coffeeStep(p){
+  if(!keeperServing()){ p.state="queue"; return; }          // you got called away mid-cup
+  if(++p.t<COFFEE_TICKS) return;
+  S.cash=Math.round((S.cash+COFFEE_PRICE)*100)/100; S.stats.rev+=COFFEE_PRICE;
+  S.stats.coffees=(S.stats.coffees||0)+1; S.stats.coffeeRev=Math.round(((S.stats.coffeeRev||0)+COFFEE_PRICE)*100)/100;
+  S.rep=clamp(S.rep+0.3,0,100);
+  p.wantsCoffee=false; p.cup=true; p.patience=p.patMax;      // a good cup buys you their whole afternoon again
+  log(p.name+" bought a coffee, "+rm(COFFEE_PRICE));
+  const seat=freeSeat([SEAT_L,SEAT_R]);
+  if(seat && Math.random()<0.8) sendToSeat(p,seat,"seat"); else sendToShelf(p);
+}
+// seats: a chair is taken by whoever is sitting in it or walking over to it
+function seatedAt(x,y){ return S.customers.find(c=>!c.dead&&c.seat&&c.seat[0]===x&&c.seat[1]===y&&isSeated(c))||null; }
+function seatTaken(x,y){ return S.customers.some(c=>!c.dead&&c.seat&&c.seat[0]===x&&c.seat[1]===y&&c.state!=="leave"); }
+function freeSeat(types){ const o=shuffled(types.flatMap(t=>tilesOf(t))).filter(([x,y])=>!seatTaken(x,y)); return o.length?o[0]:null; }
+function isSeated(p){ return !!p.seat && !p.moving && p.state!=="walk" && p.state!=="leave" && p.gx===p.seat[0] && p.gy===p.seat[1]; }
+function standUp(p){ p.seat=null; }
+function sendToSeat(p,ch,goal){
+  const [x,y]=ch, path=pathTo(p,x,y);
+  if(!path){ sendToShelf(p); return; }
+  p.seat=[x,y, S.grid[y][x]===SEAT_L?"right":S.grid[y][x]===SEAT_R?"left":"down"];
+  p.goal=goal; p.state="walk"; p.bubble=false; p.target=[x,y]; p.path=path; p.pi=0;
+  if(goal==="read"){ p.sat=true; const best=bestMatchFor(p); p.reading=best?best.id:null; }
+}
+// settled in the armchair with the book that suits them best: when they get up, they often buy it
+function readStep(p){
+  if(--p.t>0) return;
+  standUp(p);
+  const id=p.reading; p.reading=null;
+  if(id!=null && inStock(id) && !ownsBook(p,id) && scoreMatch(p,id)>=SALE_SCORE && Math.random()<0.5){ completeSale(p,id,true); return; }
+  sendToShelf(p);
+}
+function leaveShop(p){ standUp(p); p.state="leave"; p.bubble=false; p.path=pathTo(p,doorX(),GH-1); p.pi=0; }
 function stepCustomer(p){
   if(p.state==="talking") return;
-  p.patience-=1;
+  if(p.state!=="read") p.patience-=1;                 // settled in the armchair, nobody minds the time
   if(S.tick>=S.dayLen && p.state!=="leave"){
-    p.state="leave"; p.bubble=false; p.path=pathTo(p,doorX(),GH-1); p.pi=0;
+    leaveShop(p);
     tip("Closing time. Seeing the last customers out.");
     return;
   }
   if(p.patience<=0 && p.state!=="leave"){
-    p.state="leave"; p.bubble=false;
-    p.path=pathTo(p,doorX(),GH-1); p.pi=0;
+    leaveShop(p);
     if(!p.served){ S.stats.walkouts++; S.rep=clamp(S.rep-0.4,0,100); }
   }
   if(p.path && p.pi<p.path.length){
@@ -2110,13 +2347,30 @@ function stepCustomer(p){
     else { p.px+=clamp(dx,-sp,sp); p.py+=clamp(dy,-sp,sp); }
   } else {
     p.moving=false;
-    if(p.state==="walk"){ p.state="browse"; p.bubble=true; }
+    if(p.state==="walk"){
+      if(p.goal==="cafe"){ p.state="queue"; p.dir="up"; }
+      else if(p.goal==="seat"){ p.state="sit"; p.t=70+((Math.random()*60)|0); p.dir=p.seat[2]; }
+      else if(p.goal==="read"){ p.state="read"; p.t=110+((Math.random()*80)|0); p.dir="down"; }
+      else { p.state="browse"; p.bubble=true; }
+    }
     else if(p.state==="leave"){ p.dead=true; }
   }
-  // passive self-serve: small chance if a shelved book fits them well
-  if(p.state==="browse" && !p.served && S.tick%30===0 && !GEO.p){
-    const best=bestMatchFor(p);
-    if(best && best.score>=70 && Math.random()<0.32) completeSale(p,best.id,true);
+  if(p.state==="queue") queueStep(p);
+  else if(p.state==="coffee") coffeeStep(p);
+  else if(p.state==="sit"){ if(--p.t<=0){ standUp(p); sendToShelf(p); } }
+  else if(p.state==="read") readStep(p);
+  else if(p.state==="browse"){
+    // passive self-serve: small chance if a shelved book fits them well
+    if(!p.served && S.tick%30===0 && !GEO.p){
+      const best=bestMatchFor(p);
+      if(best && best.score>=70 && Math.random()<0.32){ completeSale(p,best.id,true); return; }
+    }
+    // someone who came in for a coffee goes over for it once there's room at the corner
+    if(p.wantsCoffee && !p.moving && S.tick%15===0 && cafeRoom()){ sendToCafe(p); return; }
+    // and now and then a browser settles into a free armchair with a book
+    if(!p.served && !p.sat && !p.moving && S.tick%30===7 && Math.random()<0.25){
+      const ch=freeSeat([ARMCHAIR]); if(ch) sendToSeat(p,ch,"read");
+    }
   }
 }
 const SALE_SCORE=45;                                // score at or above this and they buy
@@ -2182,6 +2436,7 @@ function loop(ts){
     if(!GEO.p) S.tick++;      // while George is in, the clock stays at noon (customers carry on)
     while(S.spawnQueue.length && S.spawnQueue[0]<=S.tick){ S.spawnQueue.shift(); spawnCustomer(); }
     S.customers.forEach(stepCustomer);
+    keeperStep();
     S.customers=S.customers.filter(c=>!c.dead);
     if(S.tick>=S.dayLen && S.customers.length===0 && !GEO.p) endDay();
     else if(GEO.p ? ++GEO.f%10===0 : S.tick%10===0) drawOpenPanel();
@@ -2195,8 +2450,8 @@ function loop(ts){
 function startDay(){
   S.offers=[];                                       // the van leaves when the shop opens
   S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[]; S.seenToday=[]; S.dayCast=[]; S.sales=[];
-  georgeReset();
-  S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0};
+  georgeReset(); keeperHome();
+  S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0,coffees:0,coffeeRev:0};
   const n=rollFootfall();
   S.footfall=n;
   for(let i=0;i<n;i++) S.spawnQueue.push(Math.round(40 + (S.dayLen-260)*(i/n) + Math.random()*40));
@@ -2205,7 +2460,7 @@ function startDay(){
   paint();
 }
 function endDay(){
-  S.phase="evening";
+  S.phase="evening"; keeperHome();
   const r=rent();
   S.cash=Math.round((S.cash-r)*100)/100;
   paint(); autosave();
@@ -2292,6 +2547,10 @@ const PIX={
          ".XaaaaaaaaX.",".XaaXXXXaaX.",".XaaXaaXaaX.",".XaaXaaXaaX.",".XaaXaaXaaX.",".XXXXXXXXXX."],
   reset:["......X.....","...XXXXX....",".XXX..X.....",".XX.........","XX..........","XX..........",
          "XX........XX","XX........XX",".XX......XX.",".XXX....XXX.","..XXXXXXXX..","....XXXX...."],
+  seats:["X..........X","X..........X","X..XXXXXX..X","XXXXaaaaXXXX","XaXXXXXXXXaX","XXX..XX..XXX",
+         "X.X..XX..X.X","X.X..XX..X.X","X.X..XX..X.X","....XXXX....","....XaaX....","....XXXX...."],
+  chair:["..XXXXXXXX..",".XaaaaaaaaX.",".XaaaaaaaaX.",".XaaaaaaaaX.","XXXaaaaaaXXX","XaXXXXXXXXaX",
+         "XaXaaaaaaXaX","XaXaaaaaaXaX","XaXXXXXXXXaX","XaaaaaaaaaaX","XXXXXXXXXXXX",".XX......XX."],
   cafe: ["...X..X.....","..X..X......","...X..X.....","............","XXXXXXXXX...","XaaaaaaaXXX.",
          "XaaaaaaaX.X.","XaaaaaaaX.X.",".XaaaaaXXXX.","..XXXXX.....","XXXXXXXXXX..","............"],
   clip: ["....XXXX....",".XXXXaaXXXX.",".XaaXXXXaaX.",".XaaaaaaaaX.",".XaXXXXXXaX.",".XaaaaaaaaX.",
@@ -2472,15 +2731,18 @@ function drawMorning(){
       row(ICON.grow,"Upgrade to "+nt.name,"Bigger floor, more foot traffic · rent "+rm(nt.rent)+"/day"+(locked?" · needs rep "+nt.rep:""),
         locked?"Locked":rm(nt.cost),locked,locked||S.cash<nt.cost,()=>upgradeSpace());
     }
-    const icons={[SHELF]:ICON.shelf,[TABLE]:ICON.table,[PLANT]:ICON.plant,[CAFE]:ICON.cafe};
-    Object.keys(FURN).forEach(k=>{
-      const f=FURN[k], lv=f.lvl||1, locked=level()<lv;
-      row(icons[k],f.name,f.desc+(locked?" · needs level "+lv:""),locked?"Locked":rm(f.cost),locked,locked||S.cash<f.cost,
-        ()=>{ S.placing=+k; tip("Tap an empty floor tile to place the "+f.name+"."); });
+    const icons={[SHELF]:ICON.shelf,[TABLE]:ICON.table,[PLANT]:ICON.plant,[CAFE]:ICON.cafe,[SEAT_L]:ICON.seats,[ARMCHAIR]:ICON.chair};
+    FURN_ORDER.forEach(k=>{
+      const f=FURN[k], lv=f.lvl||1, have=!!f.one&&tilesOf(k).length>0, needs=f.needs!=null&&!tilesOf(f.needs).length;
+      const locked=level()<lv||needs;
+      const why=level()<lv?" · needs level "+lv:needs?" · needs the "+FURN[f.needs].name:"";
+      row(icons[k],f.name,f.desc+why,have?"Built":locked?"Locked":rm(f.cost),locked||have,locked||have||S.cash<f.cost,
+        ()=>{ if(k===CAFE) buyCafe();
+          else { S.placing=k; tip("Tap a highlighted tile to place the "+f.name+"."+(f.tiles?" It takes "+f.tiles.length+" tiles in a row, from the one you tap.":"")); } });
     });
     P.appendChild(L);
     if(!nt) P.appendChild(el("p",null,"This is the biggest space on the row. Nowhere further to expand."));
-    P.appendChild(el("p",null,"Coffee Corner is the cafe expansion. It does not sell drinks yet — it buys you time, which in this shop is the same thing."));
+    P.appendChild(el("p",null,"The Coffee Corner goes in beside the counter. About half your customers will come in for a cup at "+rm(COFFEE_PRICE)+", and you step across from the till to make it; a coffee also tops their patience right up. With a Cafe Table they sit a while before they browse. An Armchair tempts anyone to settle in with the book that suits them best — and some of them buy it."));
 
     P.appendChild(el("h3",null,"This shop"));
     P.appendChild(el("p",null,saveNote()+" There is nothing to press — the shop is written down each morning and each evening. Close the tab mid-day and you pick that morning up again. Start over is in the menu, top right."));
@@ -2630,8 +2892,10 @@ function drawOpenPanel(){
     inner.appendChild(avatarImg(Object.assign({key:p.key},figureOf(p))));
     const m=el("div","meta");
     m.appendChild(el("div","t",p.name));
-    const owns=ownedCount(p);
-    m.appendChild(el("div","a",p.arch.role+(owns?" · returning, owns "+owns:"")+(p.served?" · served":"")));
+    const owns=ownedCount(p), st=p.state==="talking"?p.before:p.state;
+    const doing = st==="queue"||(st==="walk"&&p.goal==="cafe") ? "waiting for a coffee" : st==="coffee" ? "being made a coffee"
+      : st==="sit" ? "sitting with a coffee" : st==="read" ? "reading in the armchair" : p.cup ? "browsing, coffee in hand" : "";
+    m.appendChild(el("div","a",p.arch.role+(owns?" · returning, owns "+owns:"")+(doing?" · "+doing:"")+(p.served?" · served":"")));
     inner.appendChild(m);
     const ring=el("div","ring",ringHTML(p.patience/p.patMax)); inner.appendChild(ring);
     c.appendChild(inner);
@@ -2650,7 +2914,7 @@ function drawOpenPanel(){
 
 /* ---------- conversation ---------- */
 function talk(p){
-  S.talking=p; p.state="talking"; p.moving=false;
+  S.talking=p; p.before=p.state; p.state="talking"; p.moving=false;
   renderTalk(p, [{who:"npc",text:p.arch.enter}]);
 }
 function speaker(p,sub){
@@ -2873,7 +3137,7 @@ function resolve(p,ids,convo){
     sh.appendChild(el("p",null,"They wanted: "+w.genres.map(g=>GENRE_LABEL[g]||g).join(", ")+
       " · "+w.moods.join(", ")+" · under "+rm(w.max)+
       (w.avoid.length?" · never "+w.avoid.join(", "):"")));
-    p.patience=Math.min(p.patience,60); p.state="browse"; S.rep=clamp(S.rep-0.3,0,100);
+    p.patience=Math.min(p.patience,60); afterTalk(p); S.rep=clamp(S.rep-0.3,0,100);
     S.stats.missed++;
   }
   p.shortlist=[];
@@ -2885,8 +3149,14 @@ function closeModal(){ $("#modal").classList.remove("on"); }
 // conversation already settled things, carries on out of the door).
 function endTalk(){
   const p=S.talking; closeModal(); S.talking=null;
-  if(p && p.state==="talking") p.state="browse";
+  if(p && p.state==="talking") afterTalk(p);
   drawOpenPanel();
+}
+// back to what they were doing: a seat, the coffee queue, the walk they were on — or browsing
+function afterTalk(p){
+  const was=p.before;
+  p.state = (was==="sit"||was==="read"||was==="queue"||was==="coffee"||was==="walk") ? was : "browse";
+  if(p.state==="browse") p.bubble=true;
 }
 
 /* ---------- information counter ----------
@@ -3082,14 +3352,15 @@ function orderPanel(bk,back){
 function drawEvening(){
   const P=$("#panel"); P.innerHTML="";
   P.appendChild(el("h2",null,"Day "+S.day+" · Closed"));
-  const st=S.stats, r=rent(), net=st.rev-st.spent-r;
+  const st=S.stats, r=rent(), net=st.rev-st.spent-r, cafe=!!cafeTile(), cRev=st.coffeeRev||0;
   const L=el("div","ledgerbox");
-  [["Takings",st.rev,"pos"],["Stock bought",-st.spent,"neg"],["Rent",-r,"neg"]]
+  [[cafe?"Book sales":"Takings",st.rev-cRev,"pos"]].concat(cafe?[["Coffee",cRev,"pos"]]:[]).concat([["Stock bought",-st.spent,"neg"],["Rent",-r,"neg"]])
     .forEach(([l,v,c])=>L.appendChild(el("div","ledger "+c,"<span>"+l+"</span><b>"+(v<0?"-":"")+rm(Math.abs(v))+"</b>")));
   P.appendChild(L);
   P.appendChild(el("div","total"+(net<0?" neg":""),"<span>Net</span><b>"+(net<0?"-":"")+rm(Math.abs(net))+"</b>"));
   const f=el("div","facts"); f.style.margin="0"; f.style.background="var(--card)";
-  [["Came in",S.footfall],["Served",st.served],["Delighted",st.delighted],["Walked out",st.walkouts]].forEach(([k,v])=>f.appendChild(el("div","stat","<span>"+k+"</span><b>"+v+"</b>")));
+  [["Came in",S.footfall],["Served",st.served],["Delighted",st.delighted],["Walked out",st.walkouts]].concat(cafe?[["Coffees",st.coffees||0]]:[])
+    .forEach(([k,v])=>f.appendChild(el("div","stat","<span>"+k+"</span><b>"+v+"</b>")));
   P.appendChild(f);
   if(st.walkouts>2) P.appendChild(el("p",null,"You are losing people to impatience. A Coffee Corner or more palms would buy you time."));
   P.appendChild(el("p",null,"Reputation "+Math.round(S.rep)+"/100 · level "+level()+
@@ -3133,13 +3404,14 @@ cv.addEventListener("click",e=>{
   const x=Math.floor((e.clientX-r.left)/r.width*GW);
   const y=Math.floor((e.clientY-r.top)/r.height*GH);
   if(S.placing!=null && S.phase==="morning"){
-    if(S.grid[y]&&S.grid[y][x]===EMPTY&&!isKeeperTile(x,y)){
-      const f=FURN[S.placing];
-      if(S.cash>=f.cost){ S.cash-=f.cost; S.stats.spent+=f.cost; S.grid[y][x]=S.placing;
-        if(f.slots) S.slots[key(x,y)]=[];
-        if(S.placing===SHELF||S.placing===TABLE) restockShelves(); }
-    }
-    S.placing=null; tip("Placed."); paint(); autosave(); return;
+    const f=FURN[S.placing], tiles=f.tiles||[S.placing];
+    if(placingFits(S.placing,x,y) && S.cash>=f.cost){
+      S.cash-=f.cost; S.stats.spent+=f.cost;
+      tiles.forEach((t,i)=>{ S.grid[y][x+i]=t; if(f.slots) S.slots[key(x+i,y)]=[]; });
+      if(S.placing===SHELF||S.placing===TABLE) restockShelves();
+      tip("Placed.");
+    } else tip("Nothing placed. The marked tiles are where the "+f.name+" fits.");
+    S.placing=null; paint(); autosave(); return;
   }
   if(CATW.state!=="home" && Math.hypot(CATW.px-(x*TS+8), CATW.py-4-(y*TS+8))<11){
     tip(rnd(CATW.state==="walk"?CAT_WALK_LINES:CAT_LINES)); return; }
@@ -3154,6 +3426,9 @@ cv.addEventListener("click",e=>{
   if(t===INFO||t===INFO_R){ infoDesk(); return; }
   if(t===RACK){ magazineRack(); return; }
   if(t===VINYL||t===VINYL_R){ recordCorner(); return; }
+  if(t===CAFE){ const n=S.stats.coffees||0; tip("The Coffee Corner. "+rm(COFFEE_PRICE)+" a cup"+(S.phase==="open"||S.phase==="evening"?", "+n+" "+(n===1?"cup":"cups")+" sold today":"")+". You step across from the till to make it."); return; }
+  if(t===SEAT_L||t===SEAT_T||t===SEAT_R){ const c=seatedAt(x,y); tip(c?c.name+" is sitting with a coffee, in no hurry.":"The cafe table. Coffee drinkers sit here a while before they browse."); return; }
+  if(t===ARMCHAIR){ const c=seatedAt(x,y); tip(c?c.name+" is deep in "+(c.reading!=null?"\""+BOOK(c.reading).title+"\"":"a book")+". Best not to interrupt — though you can.":"The armchair. Someone will settle into it with a book, and may well buy it."); return; }
   if(t===SHELF||t===TABLE){
     const ids=S.slots[key(x,y)]||[];
     if(ids.length){ const sh=$("#sheet"); sh.innerHTML=""; $("#modal").classList.add("on");
@@ -3479,6 +3754,8 @@ function applySnapshot(d){
   placeInfoDesk(false);                // saves from before the information counter get one
   placeRack(false);                    // and the magazine rack
   placeRecordCorner(false);            // and the record corner
+  placeCafe();                         // a Coffee Corner placed out on the floor comes in beside the counter
+  keeperHome();
   restockShelves();                    // and display tables saved empty get their two books
 }
 
@@ -3718,7 +3995,7 @@ function howToPlay(back){
   sh.appendChild(el("h3",null,"Magazine rack and record corner"));
   sh.appendChild(el("p",null,"The rack on the other side of the door puts up a new magazine every real-world week — a yellow dot over it means this week's title is waiting. Grandfather's turntable sits in the corner by the window: tap it to choose which record is playing, or lift the needle."));
   sh.appendChild(el("h3",null,"Money"));
-  sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to expand the floor. More floor means room for more shelves; the Coffee Corner unlocks as your reputation grows."));
+  sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to expand the floor. More floor means room for more shelves. The Coffee Corner unlocks as your reputation grows: it goes in beside the counter and sells coffee at "+rm(COFFEE_PRICE)+" a cup — you step across to make it, and a cup tops up the customer's patience. A Cafe Table gives coffee drinkers somewhere to sit, and an Armchair lets anyone settle in with a book they may then buy."));
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
   sh.appendChild(primary(back===closeModal?"Got it":"Back to menu",back));
 }
@@ -3782,7 +4059,7 @@ function introScreen(){
   const sh=$("#sheet"); sh.innerHTML=""; setLock(false);
   $("#modal").classList.add("on");
   sh.appendChild(el("h2",null,shopLabel())).style.marginBottom="10px";
-  sh.appendChild(el("div","say","Grandfather's shop, yours since this morning. Twelve shelves holding a hundred books, one copy each, a counter, a magazine rack, his record player, a palm and a cat — and $1,500 in the business account. Rent is $50 a day. Grow your reputation and cash and you can expand the floor, add shelves, and in time open a Coffee Corner."));
+  sh.appendChild(el("div","say","Grandfather's shop, yours since this morning. Twelve shelves holding a hundred books, one copy each, a counter, a magazine rack, his record player, a palm and a cat — and $1,500 in the business account. Rent is $50 a day. Grow your reputation and cash and you can expand the floor, add shelves, and in time open a Coffee Corner beside the counter and sell coffee."));
   sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
   sh.appendChild(phaseList());
   sh.appendChild(el("p",null,"Every book is real. The clipboard at the top opens the stock take — the whole inventory, with every description — any time you like."));

@@ -46,9 +46,17 @@ tracks, or lift it to stop the music.
 The title screen has Continue, New shop and How to play; the menu button (or Esc) pauses
 a trading day and offers Resume, How to play, Back to title and Start over.
 
-Grandfather's shop costs $50/day in rent. Reputation unlocks better furniture (the Coffee
-Corner at level 3); cash and reputation together let you expand the floor for more shelves —
-rent only rises when you choose to expand.
+Grandfather's shop costs $50/day in rent. Reputation unlocks better furniture; cash and
+reputation together let you expand the floor for more shelves — rent only rises when you
+choose to expand.
+
+The **Coffee Corner** (level 3) goes in beside the counter and sells coffee at $5 a cup.
+About half your customers come in wanting one: they queue in front of it, you step across
+from the till to make it, and a cup tops their patience right up before they browse. A
+**Cafe Table** (a table and two chairs, bought as a set once there is a corner) gives coffee
+drinkers somewhere to sit a while first. An **Armchair** (level 2) tempts any browser to
+settle in with the book that suits them best — and some of them buy it when they get up.
+Customers can be talked to wherever they are, seat or queue included.
 
 The skills the game tests are matching people to books, and choosing what to stock.
 Pricing is a real system but not the point. You cannot go bankrupt. Progress saves
