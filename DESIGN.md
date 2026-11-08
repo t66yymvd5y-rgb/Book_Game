@@ -3,6 +3,12 @@
 A mobile 16-bit bookshop simulator set on an old shopping street, in which every book
 is a real book and the player can order a physical copy.
 
+## Revision pass (smaller pile)
+
+| Area | What changed |
+|---|---|
+| Recommending | The player can now put up to **4** books on the counter for each customer (was 6), via `SHORTLIST_MAX`. The pull is unchanged: up to ten books, up to five that suit, two they'd actually buy. With four picks out of ten, landing one of the two keen books is harder, so the questions matter more. |
+
 ## Revision pass (George's visit)
 
 A one-off story moment on the first trading day.

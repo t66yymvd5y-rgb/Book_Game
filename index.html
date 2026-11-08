@@ -2692,9 +2692,9 @@ function renderTalk(p,convo){
 /* Recommending: up to PULL_MAX books come off the shelves for this customer — up to PULL_FITS
    that genuinely suit them, made up to ten with others from their genres (then any genre).
    Of the ones that suit them, PULL_KEEN are the ones they'd actually buy. The player puts up
-   to six on the counter; if either of those two is among them, they buy one (the better
+   to four on the counter; if either of those two is among them, they buy one (the better
    match). The pull is made once per visit, so asking more questions doesn't reshuffle it. */
-const SHORTLIST_MAX=6, PULL_MAX=10, PULL_FITS=5, PULL_KEEN=2;
+const SHORTLIST_MAX=4, PULL_MAX=10, PULL_FITS=5, PULL_KEEN=2;
 function makePull(p){
   const want=p.arch.want.genres;
   const pool=shuffled(shelvedIds().filter(id=>inStock(id) && !ownsBook(p,id)));
@@ -3695,7 +3695,7 @@ document.addEventListener("keydown",e=>{
 function phaseList(){
   const L=el("div","list"); L.style.marginBottom="10px";
   [[ICON.stock,"Morning","Order stock, set prices, fit out the shop."],
-   [ICON.shop,"Open","Customers come in. Tap one, ask up to three questions, then put up to six books from your shelves in front of them."],
+   [ICON.shop,"Open","Customers come in. Tap one, ask up to three questions, then put up to four books from your shelves in front of them."],
    [ICON.price,"Closed","Count the takings, pay the rent, and restock what sold."]].forEach(([ic,t,d])=>{
     const li=el("div","li"); li.appendChild(el("div","ic",ic));
     const m=el("div","meta"); m.appendChild(el("div","t",t)); m.appendChild(el("div","a",d)); li.appendChild(m); L.appendChild(li);
@@ -3709,7 +3709,7 @@ function howToPlay(back){
   sh.appendChild(el("p",null,"Two things decide whether you survive: what you choose to stock, and whether you can read the person standing in front of you."));
   sh.appendChild(phaseList());
   sh.appendChild(el("h3",null,"Making a sale"));
-  sh.appendChild(el("p",null,"Tap a customer to talk. Each question costs them a little patience and turns up a clue — a mood, a budget, something they won't read. Then pull books for them: up to ten come off your shelves, mostly in the genres they read, and you choose up to six to show them."));
+  sh.appendChild(el("p",null,"Tap a customer to talk. Each question costs them a little patience and turns up a clue — a mood, a budget, something they won't read. Then pull books for them: up to ten come off your shelves, mostly in the genres they read, and you choose up to four to show them."));
   sh.appendChild(el("p",null,"Of the ten, up to five genuinely suit them — right mood, within budget, nothing they refuse — and of those, just two are books they would actually buy. Put either of those two on the pile and they take one home. A pile that suits them but misses both, they'll admire and leave; a pile that doesn't suit them, they'll tell you what they were after. A perfect match grows your reputation fastest."));
   sh.appendChild(el("h3",null,"Stock take"));
   sh.appendChild(el("p",null,"The clipboard in the top bar opens the stock take at any time: every book you hold with its full description, filters by genre and era, and reorders of anything you carry. The clock stops while it's open. New titles come only on the distributor's van, which turns up every morning from day 2 with eight books you've never stocked. Every order — reorder, restock or van — arrives two days after you place it, before the shop opens. The stock take's Sold out tab, and the Sold out list on the morning Stock tab, restock any title with +1."));

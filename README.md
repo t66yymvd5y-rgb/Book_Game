@@ -20,7 +20,7 @@ real books, one copy each, and his cat asleep in the corner.
   the shop.
 - **OPEN** — customers arrive with patience running down. Tap one, ask up to three
   questions, then pull books for them: up to ten come off your shelves, mostly in the genres
-  they read, and you put up to six in front of them. Only some of the ten suit them, and only
+  they read, and you put up to four in front of them. Only some of the ten suit them, and only
   two are books they'd actually buy — get either onto the pile and they take one home.
 - **CLOSED** — count the takings, pay the rent, and restock what sold.
 
