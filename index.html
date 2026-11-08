@@ -1431,10 +1431,7 @@ function coffeeMenu(intro){
   const mid=el("div","row"); mid.style.gap="2px";
   mid.appendChild(m); mid.appendChild(el("b",null,rm(c.price))); mid.appendChild(p2);
   sp.appendChild(mid); sh.appendChild(sp);
-  const pct=Math.round(coffeeShare()*100), basePct=Math.round(COFFEE_SHARE*100);
-  sh.appendChild(el("p",null,"At "+rm(c.price)+" about <b>"+pct+"%</b> of customers come in for a cup"+
-    (c.price===COFFEE_PRICE?" — the going rate.":c.price>COFFEE_PRICE?" (down from "+basePct+"% at "+rm(COFFEE_PRICE)+").":" (up from "+basePct+"% at "+rm(COFFEE_PRICE)+").")));
-  sh.appendChild(el("div","count","Every $1 above "+rm(COFFEE_PRICE)+" loses a fifth of them; every $1 below brings a fifth more. Below "+rm(COFFEE_FLOOR)+" nobody extra comes."));
+  sh.appendChild(el("div","count",rm(COFFEE_PRICE)+" is the going rate on the street. Charge what you think the cup is worth; the customers will let you know."));
   if(S.phase==="open"||S.phase==="evening") sh.appendChild(el("div","count",n+" "+(n===1?"cup":"cups")+" sold today."));
   sh.appendChild(ghost("Back to the shop",()=>{ dismissSheet(); paused=wasPaused&&!titleOn(); }));
 }
@@ -2822,14 +2819,14 @@ function drawMorning(){
       const locked=level()<lv||needs;
       const why=level()<lv?" · needs level "+lv:needs?" · needs the "+FURN[f.needs].name:"";
       const menu=k===CAFE&&have;                       // the built corner's row opens its beans-and-price menu
-      row(icons[k],f.name,menu?"Beans for "+S.coffee.beans+" "+(S.coffee.beans===1?"cup":"cups")+" · "+rm(coffeePrice())+" a cup · about "+Math.round(coffeeShare()*100)+"% of customers want one":f.desc+why,
+      row(icons[k],f.name,menu?"Beans for "+S.coffee.beans+" "+(S.coffee.beans===1?"cup":"cups")+" · "+rm(coffeePrice())+" a cup":f.desc+why,
         menu?"Beans & price":have?"Built":locked?"Locked":rm(f.cost),locked||(have&&!menu),(locked||have||S.cash<f.cost)&&!menu,
         ()=>{ if(menu) coffeeMenu(); else if(k===CAFE) buyCafe();
           else { S.placing=k; tip("Tap a highlighted tile to place the "+f.name+"."+(f.tiles?" It takes "+f.tiles.length+" tiles in a row, from the one you tap.":"")); } });
     });
     P.appendChild(L);
     if(!nt) P.appendChild(el("p",null,"This is the biggest space on the row. Nowhere further to expand."));
-    P.appendChild(el("p",null,"The Coffee Corner goes in beside the counter. About half your customers will come in for a cup at "+rm(COFFEE_PRICE)+" — fewer if you charge more, more if you charge less — and you step across from the till to make it; a coffee also tops their patience right up. It runs on beans: "+rm(BEANS_COST)+" a bag, "+BEANS_CUPS+" cups. With a Cafe Table they sit a while before they browse. An Armchair tempts anyone to settle in with the book that suits them best — and some of them buy it."));
+    P.appendChild(el("p",null,"The Coffee Corner goes in beside the counter. About half your customers will come in for a cup at "+rm(COFFEE_PRICE)+", and you step across from the till to make it; a coffee also tops their patience right up. It runs on beans: "+rm(BEANS_COST)+" a bag, "+BEANS_CUPS+" cups. With a Cafe Table they sit a while before they browse. An Armchair tempts anyone to settle in with the book that suits them best — and some of them buy it."));
 
     P.appendChild(el("h3",null,"This shop"));
     P.appendChild(el("p",null,saveNote()+" There is nothing to press — the shop is written down each morning and each evening. Close the tab mid-day and you pick that morning up again. Start over is in the menu, top right."));
@@ -4268,7 +4265,7 @@ function howToPlay(back){
   sh.appendChild(el("h3",null,"Magazine rack and record corner"));
   sh.appendChild(el("p",null,"The rack on the other side of the door puts up a new magazine every real-world week — a yellow dot over it means this week's title is waiting. Grandfather's turntable sits in the corner by the window: tap it to choose which record is playing, or lift the needle."));
   sh.appendChild(el("h3",null,"Money"));
-  sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to expand the floor. More floor means room for more shelves. The Coffee Corner unlocks as your reputation grows: it goes in beside the counter and sells coffee — "+rm(COFFEE_PRICE)+" a cup to begin with, though the price is yours to set, and the dearer the cup the fewer come in for one. It runs on beans, "+rm(BEANS_COST)+" a bag for "+BEANS_CUPS+" cups; tap the corner to restock or change the price. You step across to make each cup, and a cup tops up the customer's patience. A Cafe Table gives coffee drinkers somewhere to sit, and an Armchair lets anyone settle in with a book they may then buy."));
+  sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to expand the floor. More floor means room for more shelves. The Coffee Corner unlocks as your reputation grows: it goes in beside the counter and sells coffee — "+rm(COFFEE_PRICE)+" a cup to begin with, though the price is yours to set. It runs on beans, "+rm(BEANS_COST)+" a bag for "+BEANS_CUPS+" cups; tap the corner to restock or change the price. You step across to make each cup, and a cup tops up the customer's patience. A Cafe Table gives coffee drinkers somewhere to sit, and an Armchair lets anyone settle in with a book they may then buy."));
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
   sh.appendChild(primary(back===closeModal?"Got it":"Back to menu",back));
 }
