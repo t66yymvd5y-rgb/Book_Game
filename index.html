@@ -635,7 +635,31 @@ const BOOKS=[
  b("The Intelligent Investor","Benjamin Graham",1949,"business",["contemplative"],"slow","heavy",37,
    "Benjamin Graham, the father of value investing and Warren Buffett's teacher, explains how to invest without losing your shirt: insist on a margin of safety, treat a share as part of a real business, and let the manic 'Mr Market' work for you rather than against you. Buffett has called it by far the best book about investing ever written.",["investing","discipline","value"])
 ];
-const BOOK = id => BOOKS[id];
+/* ---------- rare books and collections ----------
+   Multi-volume sets that collectors come in asking for (see "collectors" further down). They never
+   come on the ordinary van and are never in grandfather's stock: a set reaches the shop only after a
+   collector has asked for it. Ids start at RARE_BASE so a set can sit in S.stock, on a shelf and in an
+   order like any other title. `set` is the number of volumes; `offer` is what a collector pays. */
+const RARE_BASE=100000;
+const RARE_BOOKS=[];
+const rare=(title,author,year,genre,moods,pace,weight,cost,blurb,themes,set,offer)=>
+  RARE_BOOKS.push({id:RARE_BASE+RARE_BOOKS.length,title,author,year,genre,moods,pace,weight,cost,blurb,themes,set,offer,rare:true});
+rare("The Second World War","Winston S. Churchill",1948,"history",["thrilling","contemplative"],"steady","heavy",160,
+  "Churchill's own six-volume history of the war he led Britain through, from The Gathering Storm to Triumph and Tragedy, written between 1948 and 1953 and built out of his minutes, telegrams and speeches. It is part memoir, part history and all Churchill: sweeping, partisan and superbly readable, and it helped win him the Nobel Prize in Literature in 1953. Collectors want the complete set, all six volumes together.",["war","leadership","memoir"],6,420);
+rare("The History of the Decline and Fall of the Roman Empire","Edward Gibbon",1776,"history",["contemplative","melancholy"],"slow","heavy",140,
+  "Gibbon's six volumes, published between 1776 and 1788, carry Rome from the age of the Antonines to the fall of Constantinople in 1453: thirteen centuries of emperors, barbarians, bishops and Byzantine intrigue, in the most elegant and ironic English prose of the eighteenth century. The footnotes alone have kept readers up at night for two hundred years.",["empire","decline","history"],6,360);
+rare("In Search of Lost Time","Marcel Proust",1913,"literary",["contemplative","melancholy"],"slow","heavy",130,
+  "Seven volumes, published between 1913 and 1927, that open with a madeleine dipped in tea and unfold into the whole of a life: childhood at Combray, the Guermantes salons, jealousy, art, the Great War and the slow work of memory. Proust was still correcting it when he died; the last three volumes came out after his death. The longest novel ever written, and one of the greatest.",["memory","time","love"],7,300);
+rare("The Complete Sherlock Holmes","Arthur Conan Doyle",1887,"crime",["thrilling","funny"],"fast","heavy",90,
+  "All four novels and fifty-six short stories, from A Study in Scarlet in 1887 to the last cases of the 1920s: Baker Street, the Reichenbach Falls, the hound on the moor, and the most famous friendship in detective fiction. Conan Doyle tried to kill Holmes off and his readers would not let him. Two volumes, the whole canon.",["deduction","friendship","mystery"],2,220);
+rare("The Chronicles of Narnia","C. S. Lewis",1950,"children",["hopeful","thrilling"],"steady","medium",70,
+  "Seven books, published between 1950 and 1956, beginning with four evacuee children and a wardrobe that opens onto a snowbound country under a White Witch. Talking beasts, a lion called Aslan, sea voyages, a flying horse, and the end of the world. Lewis wrote them for children and they have never stayed there. Collectors want the complete matched set, in order.",["faith","courage","childhood"],7,180);
+rare("The Story of Civilization","Will and Ariel Durant",1935,"history",["contemplative","hopeful"],"slow","heavy",220,
+  "Eleven volumes written over forty years, from Our Oriental Heritage in 1935 to The Age of Napoleon in 1975: the whole of Western civilisation, with the East as its prelude, told by a husband and wife as a story about people rather than dates. Rousseau and Revolution won them the Pulitzer Prize in 1968. Ten thousand pages: the set that fills a whole shelf.",["civilisation","ideas","history"],11,520);
+rare("The Aubrey-Maturin Novels","Patrick O'Brian",1969,"literary",["thrilling","funny"],"steady","heavy",200,
+  "Twenty novels, from Master and Commander in 1969 to Blue at the Mizzen in 1999, following Captain Jack Aubrey of the Royal Navy and his friend Stephen Maturin, ship's surgeon, naturalist and spy, through the Napoleonic wars. Sea battles, weevils, cello duets and the best friendship in historical fiction. Often called the finest historical novels ever written.",["friendship","sea","war"],20,460);
+const BOOK = id => id>=RARE_BASE ? RARE_BOOKS[id-RARE_BASE] : BOOKS[id];
+const CATALOGUE = () => BOOKS.concat(RARE_BOOKS);     // everything a shop can hold, rare sets included
 
 const GENRE_LABEL={literary:"Literary",crime:"Crime",scifi:"Sci-Fi",fantasy:"Fantasy",horror:"Horror",
   romance:"Romance",history:"History",biography:"Biography",nonfiction:"Non-Fiction",philosophy:"Philosophy",
@@ -1099,6 +1123,9 @@ const RATINGS={
  "How to Win Friends and Influence People":[4.21,1000000],"The 7 Habits of Highly Effective People":[4.12,600000],"Atomic Habits":[4.36,1200000],
  "The Immortal Life of Henrietta Lacks":[4.10,800000],"In Cold Blood":[4.09,700000],"Long Walk to Freedom":[4.33,120000],
  "The Autobiography of Malcolm X":[4.34,230000],"I Know Why the Caged Bird Sings":[4.24,600000],"The Intelligent Investor":[4.26,90000],
+ "The Second World War":[4.33,6000],"The History of the Decline and Fall of the Roman Empire":[4.02,12000],"In Search of Lost Time":[4.30,14000],
+ "The Complete Sherlock Holmes":[4.48,110000],"The Chronicles of Narnia":[4.27,600000],"The Story of Civilization":[4.42,2500],
+ "The Aubrey-Maturin Novels":[4.45,9000],
 };
 // Ancient works carry an approximate year: negative = BC, so -725 reads "c. 8th century BC".
 function yearText(y){
@@ -1174,6 +1201,7 @@ const S={
   guestbook:[],               // [{day, name, text}] — oldest first; day 0 is grandfather's line
   mags:[],                    // magazines put up on the rack: [{id, week}] — week is the real-world Monday, "yyyy-mm-dd"
   events:{},                  // one-off story events already seen: {george:true, leo:true}
+  rare:{next:2,asked:[],list:[]},  // collectors' requests: the next day one may call, sets asked for, open requests (see "collectors")
 };
 const GRANDFATHER_ENTRY={day:0,name:"Grandfather",text:"Every book has its reader. Our job is to introduce them."};
 S.guestbook=[GRANDFATHER_ENTRY];
@@ -1399,7 +1427,50 @@ function restockBeans(){
   if(S.cash<BEANS_COST) return false;
   S.cash=Math.round((S.cash-BEANS_COST)*100)/100; S.stats.spent+=BEANS_COST;
   S.coffee.beans+=BEANS_CUPS;
+  S.beansOut=false; S.beansWarned=false; S.beansAlert=false;
   return true;
+}
+/* ---------- the beans alert ----------
+   The moment the hopper runs dry — the last cup sold, or someone asking for a coffee there are no
+   beans for — a pop-up says so, once, with a restock button; the trading clock waits while it is up.
+   If another pop-up is open it waits its turn (S.beansAlert). While the corner stays empty, a notice
+   with the same button sits on the morning, trading and evening panels. */
+function beansAlert(){
+  if(!cafeTile() || hasBeans() || S.beansWarned) return;
+  S.beansWarned=true; S.beansAlert=true;
+}
+function beansAlertStep(){
+  if(!S.beansAlert || modalOn() || S.talking || paused || GEO.p || LEOS.p || RQ.p) return;
+  S.beansAlert=false; beansSheet();
+}
+function beansSheet(){
+  const wasPaused=paused; paused=true;
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("h2",null,"Out of coffee beans")).style.marginBottom="10px";
+  sh.appendChild(el("div","say","That was the last of the beans. Nobody can be served a coffee at the Coffee Corner until you restock: "+rm(BEANS_COST)+" a bag, "+BEANS_CUPS+" cups."));
+  const buy=primary("Restock beans · "+rm(BEANS_COST)+" for "+BEANS_CUPS+" cups",()=>{
+    if(!restockBeans()){ tip("Not enough in the bank for a bag of beans."); return; }
+    hud(); autosave(); closeModal(); paused=wasPaused&&!titleOn();
+    tip("A bag of beans in the hopper: "+S.coffee.beans+" cups' worth."); paint();
+  });
+  buy.disabled=S.cash<BEANS_COST;
+  sh.appendChild(buy);
+  if(S.cash<BEANS_COST) sh.appendChild(el("div","count","You need "+rm(BEANS_COST)+" in the bank for a bag."));
+  sh.appendChild(ghost("Later",()=>{ closeModal(); paused=wasPaused&&!titleOn(); }));
+}
+// a standing notice for the panels while the corner has no beans; redraw is the panel to repaint after a restock
+function beansNotice(redraw){
+  if(!cafeTile() || hasBeans()) return null;
+  const c=el("div","card"); c.style.borderImageSource="var(--f-soft)"; c.style.alignItems="center";
+  const m=el("div","meta");
+  m.appendChild(el("div","t","Out of coffee beans"));
+  m.appendChild(el("div","a","The Coffee Corner can't serve a cup until you restock — "+rm(BEANS_COST)+" a bag, "+BEANS_CUPS+" cups."));
+  c.appendChild(m);
+  const b2=el("button","btn-sm btn-y","Restock · "+rm(BEANS_COST)); b2.disabled=S.cash<BEANS_COST;
+  b2.onclick=()=>{ if(!restockBeans()){ tip("Not enough in the bank for a bag of beans."); return; } hud(); autosave(); tip("A bag of beans in the hopper: "+S.coffee.beans+" cups' worth."); redraw(); };
+  c.appendChild(b2);
+  return c;
 }
 function coffeeMenu(intro){
   if(S.talking || titleOn() || !cafeTile()) return;
@@ -1511,7 +1582,15 @@ function orderCopy(id){
 const VAN_SIZE=8;
 function rollVan(){
   S.offers=shuffled(BOOKS.filter(bk=>!S.stock[bk.id] && !incomingOf(bk.id))).slice(0,VAN_SIZE).map(bk=>bk.id);
+  // a set a collector asked for: the supplier tracks one down within a few days and it rides in on the van,
+  // at the front. Not ordered that morning, it goes back to the supplier and turns up again a few days on.
+  S.rare.list.forEach(r=>{
+    if(S.day<r.vanDay || inStock(r.id) || incomingOf(r.id)) return;
+    if(!S.offers.includes(r.id)) S.offers.unshift(r.id);
+    r.vanDay=S.day+1+((Math.random()*RARE_VAN_DAYS)|0);
+  });
 }
+function vanRequests(){ return S.offers.filter(id=>id>=RARE_BASE); }
 function canVanBuy(id){
   return S.phase==="morning" && S.offers.includes(id) && S.cash>=BOOK(id).cost && hasSlotFor(id);
 }
@@ -2219,6 +2298,7 @@ function render(){
   const cat=catAway(); if(cat) actors.push(cat);
   const geo=georgeActor(); if(geo) actors.push(geo);
   const leo=leoActor(); if(leo) actors.push(leo);
+  const col=rareActor(); if(col) actors.push(col);
   actors.sort((a,b)=>a.y-b.y).forEach(a=>a.draw());
   drawPatHeart();
 }
@@ -2367,6 +2447,7 @@ function noBeans(p){
   if(hasBeans()) return false;
   p.wantsCoffee=false; sendToShelf(p);
   if(!S.beansOut){ S.beansOut=true; log("Out of coffee beans. Tap the Coffee Corner to restock."); tip("Out of coffee beans. Tap the Coffee Corner to restock — "+rm(BEANS_COST)+" a bag."); }
+  beansAlert();
   return true;
 }
 function coffeeStep(p){
@@ -2381,6 +2462,7 @@ function coffeeStep(p){
   p.wantsCoffee=false; p.cup=true; p.patience=p.patMax;      // a good cup buys you their whole afternoon again
   log(p.name+" bought a coffee, "+rm(price)+(S.coffee.beans?"":" — that was the last of the beans"));
   checkStamps(true);
+  if(!S.coffee.beans) beansAlert();
   const seat=freeSeat([SEAT_L,SEAT_R]);
   if(seat && Math.random()<0.8) sendToSeat(p,seat,"seat"); else sendToShelf(p);
 }
@@ -2514,16 +2596,16 @@ function loop(ts){
   requestAnimationFrame(loop);
   if(ts-last<66) { render(); return; }
   last=ts;
-  if(S.phase==="open" && !S.talking && !paused && !georgeHold() && !leoTalking()){
+  if(S.phase==="open" && !S.talking && !paused && !georgeHold() && !leoTalking() && !rareTalking()){
     if(!GEO.p) S.tick++;      // while George is in, the clock stays at noon (customers carry on)
     while(S.spawnQueue.length && S.spawnQueue[0]<=S.tick){ S.spawnQueue.shift(); spawnCustomer(); }
     S.customers.forEach(stepCustomer);
     keeperStep();
     S.customers=S.customers.filter(c=>!c.dead);
-    if(S.tick>=S.dayLen && S.customers.length===0 && !GEO.p && !leoPending()) endDay();
+    if(S.tick>=S.dayLen && S.customers.length===0 && !GEO.p && !leoPending() && !RQ.p) endDay();
     else if(GEO.p ? ++GEO.f%10===0 : S.tick%10===0) drawOpenPanel();
   }
-  if(S.phase==="open" && !S.talking && !paused){ georgeStep(); leoStep(); }
+  if(S.phase==="open" && !S.talking && !paused){ georgeStep(); leoStep(); rareStep(); beansAlertStep(); }
   if(!paused && !S.talking && !georgeHoldsCat()) catStep();
   render();
 }
@@ -2532,7 +2614,7 @@ function loop(ts){
 function startDay(){
   S.offers=[];                                       // the van leaves when the shop opens
   S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[]; S.seenToday=[]; S.dayCast=[]; S.sales=[];
-  georgeReset(); leoReset(); keeperHome(); S.beansOut=false;
+  georgeReset(); leoReset(); rareReset(true); keeperHome(); S.beansOut=false; S.beansWarned=false; S.beansAlert=false;
   S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0,coffees:0,coffeeRev:0};
   const n=rollFootfall();
   S.footfall=n;
@@ -2550,9 +2632,11 @@ function endDay(){
 function nextDay(){
   S.day++; S.phase="morning"; S.stats.spent=0; S.tab="stock"; S.sales=[];
   const got=deliverIncoming();
-  rollVan();
+  rareLapse(); rollVan();
   paint(); autosave();
+  const vr=vanRequests();
   tip((got.length?"Delivery in: "+got.length+" "+(got.length===1?"title":"titles")+" restocked. ":"")+
+    (vr.length?"The van has brought "+BOOK(vr[0]).title+", the set "+openRequest(requestFor(vr[0])).name+" asked for — order it on the Stock tab. ":"")+
     (S.offers.length?"The van is outside with "+S.offers.length+" new titles — see the Stock tab.":"No new titles on the van today."));
   if(got.length) deliveryNotice(got);
 }
@@ -2730,6 +2814,7 @@ function drawMorning(){
     tabs.appendChild(t);
   });
   P.appendChild(tabs);
+  const bn=beansNotice(drawMorning); if(bn) P.appendChild(bn);
 
   if(S.tab==="stock"){
     const cap=shelfCapacity(), used=shelvedIds().length;
@@ -2742,17 +2827,20 @@ function drawMorning(){
     const inc=incomingTotal();
     if(inc) P.appendChild(el("p",null,"On order: <b>"+inc+"</b> "+(inc===1?"copy":"copies")+", next delivery on day "+Math.min(...S.incoming.map(o=>o.due))+"."));
 
+    requestsPanel(P,drawMorning);
     P.appendChild(el("h3",null,"Distributor van · new titles"));
     if(S.day<2) P.appendChild(el("div","empty","No van today — grandfather's stock will see you through.<br>From tomorrow, a van brings new titles every morning."));
     else if(!S.offers.length) P.appendChild(el("div","empty","The van has nothing you haven't stocked before.<br>Reorder from the stock take instead."));
     else {
       P.appendChild(el("p",null,"8am. "+S.offers.length+" titles you've never carried, at trade cost. Order what you want before you open — it arrives on day "+(S.day+ORDER_DAYS)+". The rest leave with the van."));
       S.offers.forEach(id=>{
-        const bk=BOOK(id), coming=incomingOf(id);
+        const bk=BOOK(id), coming=incomingOf(id), req=requestFor(id)&&openRequest(requestFor(id));
         const btn=el("button","btn-sm btn-y",(coming?"Order 1 more":"Order 1")+" · "+rm(bk.cost));
         btn.disabled=!canVanBuy(id);
         btn.onclick=e=>{ e.stopPropagation(); if(vanBuy(id)) drawMorning(); };
-        const c=bookCard(bk,"<div class='cost' style='margin-top:4px'>"+(coming?coming+" on order, arriving day "+nextDueOf(id)+" · ":"")+"sells at "+rm(autoPrice(bk.cost))+"</div>",()=>openBook(id));
+        const c=bookCard(bk,"<div class='cost' style='margin-top:4px'>"+(coming?coming+" on order, arriving day "+nextDueOf(id)+" · ":"")+
+          (req?"<b>"+req.name+" will pay "+rm(req.offer)+"</b> · asked for on day "+req.day+" · not ordered today, the supplier keeps it and it comes round again":"sells at "+rm(autoPrice(bk.cost)))+"</div>",()=>openBook(id));
+        if(req) c.querySelector(".tagrow").prepend(el("span","tag r","Requested"));
         const cta=el("div","cta"); cta.appendChild(el("span","cost","cost "+rm(bk.cost)+" ea")); cta.appendChild(btn);
         c.querySelector(".meta").appendChild(cta);
         P.appendChild(c);
@@ -2901,8 +2989,8 @@ function stockTake(){
     return;
   }
   const pool = STK.tab==="inv"
-    ? BOOKS.filter(bk=>inStock(bk.id)||incomingOf(bk.id))
-    : BOOKS.filter(bk=>S.stock[bk.id]||incomingOf(bk.id));
+    ? CATALOGUE().filter(bk=>inStock(bk.id)||incomingOf(bk.id))
+    : CATALOGUE().filter(bk=>S.stock[bk.id]||incomingOf(bk.id));
   const ids=pool.filter(bk=>(STK.genre==="all"||bk.genre===STK.genre)&&(STK.era==="all"||eraOf(bk)===STK.era))
     .sort((a,b2)=>a.title.localeCompare(b2.title)).map(bk=>bk.id);
   sh.appendChild(el("div","count",ids.length+" "+(ids.length===1?"title":"titles")+
@@ -2987,6 +3075,8 @@ function drawOpenPanel(){
       btn.onclick=()=>talk(p); c.appendChild(btn); c.style.cursor="pointer"; c.onclick=()=>talk(p); }
     P.appendChild(c);
   });
+  const bn=beansNotice(drawOpenPanel); if(bn) P.appendChild(bn);
+  requestsPanel(P,drawOpenPanel);
   if(S.history.length){
     const l=el("div","feed");
     S.history.slice(0,4).forEach(h=>l.appendChild(el("div","cost","· "+h)));
@@ -3452,6 +3542,8 @@ function openBook(id,back){
   const sh=$("#sheet"); sh.innerHTML="";
   $("#modal").classList.add("on");
   sh.appendChild(bookHead(bk,autoPrice(bk.cost),true));
+  if(bk.rare){ const r=requestFor(id); sh.appendChild(el("div","count",setLabel(bk)+" · a rare set, found through the supplier only when a collector asks"+
+    (r?" · "+openRequest(r).name+" will pay "+rm(r.offer)+" for it":""))); }
   bookBody(sh,bk);
   const buy=el("button","buy","Order a physical copy");
   buy.onclick=()=>orderPanel(bk,back);
@@ -3494,6 +3586,8 @@ function drawEvening(){
   P.appendChild(el("p",null,"Reputation "+Math.round(S.rep)+"/100 · level "+level()+
     (level()<3?" · next unlock at "+(level()===1?18:45):" · everything unlocked")));
   if(S.cash<0) P.appendChild(el("p",null,"You are in the red. Mr Rossi next door is carrying you on credit — you won't close, but you cannot restock until you're positive."));
+  const bn=beansNotice(drawEvening); if(bn) P.appendChild(bn);
+  requestsPanel(P,drawEvening);
   P.appendChild(el("h3",null,"Sales"));
   if(!S.sales.length) P.appendChild(el("div","empty","Nobody bought anything today."));
   else {
@@ -3579,6 +3673,7 @@ function dismissSheet(){
   if(lockModal) return;
   if(georgeTalking()){ georgeNext(); return; }
   if(leoTalking()){ if(LEOS.state!=="ask") leoNext(); return; }   // his question needs an answer
+  if(rareTalking()){ rareDismiss(); return; }
   if(S.talking){ endTalk(); return; }
   if(STK.open){ closeStockTake(); return; }
   closeModal();
@@ -3945,6 +4040,257 @@ function leoActor(){
   const step=p.moving?Math.sin(p.t*0.9):0, bob=p.moving&&Math.abs(step)>0.5;
   return {y:p.py+13, draw:()=>drawFigure(ctx,Math.round(p.px),Math.round(p.py),Object.assign({},LEO,{dir:p.dir,step,bob}))};
 }
+/* ---------- collectors: requests for rare sets ----------
+   From the second trading day, a collector may come in after noon — at most one a day, and then not
+   for another two or three days (S.rare.next) — walk to the counter and ask for one rare set from
+   RARE_BOOKS, naming the price they will pay. The first is always Churchill's Second World War.
+   The pop-up shows the set (cover, title, "Find out more" for the full page). Have it on the shelf
+   and you can sell it on the spot at their price. Otherwise you promise to look out for it: the
+   request is kept (S.rare.list), and the supplier finds the set within the next RARE_VAN_DAYS
+   days — it rides in on the morning van, marked "Requested", and you order it like any other van
+   title (ORDER_DAYS to arrive). Once it is on the shelf, "Call" brings the collector back to buy
+   it: an hour later on the shop clock, or first thing next morning if it is too late in the day.
+   A request nobody acts on lapses quietly after RARE_LAPSE days. The clock holds while any of
+   the collector's pop-ups is open; the day can't close while one is on the floor. The visit is part
+   of the trading day and isn't restored mid-way, like George's and Leo's. */
+const RARE_FIRST_DAY=2;                // the first day a collector may call
+const RARE_TICK=200;                   // noon on the shop clock
+const RARE_GAP=[2,3];                  // days between one collector's visit and the next
+const RARE_VAN_DAYS=3;                 // the supplier has the set on the van within this many days
+const RARE_CALL_TICKS=100;             // an hour on the shop clock from the phone call to the door
+const RARE_LAPSE=10;                   // an open request nobody has acted on is forgotten after this many days
+const RARE_REP=6, RARE_LETDOWN=3;      // reputation for a set sold to its collector; lost for calling them in for nothing
+const COLLECTORS=[
+ {key:"okafor",name:"Mr Okafor",role:"Collector of first editions",skin:"#6b3e24",hair:"#1d1a1a",shirt:"#7a3b2e",style:"short",pants:"#3d3540"},
+ {key:"lindqvist",name:"Dr Lindqvist",role:"Historian at the university",skin:"#f1cfae",hair:"#c9b48a",shirt:"#4c6a54",style:"bun",pants:"#40503f"},
+ {key:"tanaka",name:"Mrs Tanaka",role:"Retired librarian",skin:"#e9c3a0",hair:"#5a5a66",shirt:"#8a5e9a",style:"bob",pants:"#4a4458"},
+ {key:"brennan",name:"Mr Brennan",role:"Dealer in old books",skin:"#f3d2b6",hair:"#8c4a2a",shirt:"#55606e",style:"crop",pants:"#3b3f52"},
+];
+function COLLECTOR(k){ return COLLECTORS.find(c=>c.key===k)||null; }
+// state: null → "in" (walking to the counter) → "ask" | "buy" (the pop-up) → "promised" | "sold" | "gone" | "declined" → "leave"
+const RQ={state:null,p:null,who:null,id:null,req:null,at:-1,view:null};
+function rareReset(newDay){
+  RQ.state=null; RQ.p=null; RQ.who=null; RQ.id=null; RQ.req=null; RQ.view=null; RQ.at=-1;
+  if(!newDay) return;
+  // a collector called in late yesterday comes first thing today
+  S.rare.list.forEach(r=>{ if(r.called && r.comeDay<S.day){ r.comeDay=S.day; r.comeAt=20; } });
+  if(S.day>=RARE_FIRST_DAY && S.day>=S.rare.next && rarePick())
+    RQ.at=RARE_TICK+Math.floor(Math.random()*Math.max(1,S.dayLen-RARE_TICK-220));   // noon to mid-afternoon
+}
+function rareTalking(){ return ["ask","buy","promised","sold","gone","declined"].includes(RQ.state); }
+function requestFor(id){ return S.rare.list.find(r=>r.id===id)||null; }
+function openRequest(r){ return Object.assign({name:(COLLECTOR(r.who)||{}).name||"a collector"},r); }
+// which set the next collector asks for: Churchill first, then sets nobody has asked for yet, then any
+function rarePick(){
+  const open=new Set(S.rare.list.map(r=>r.id));
+  const free=RARE_BOOKS.filter(bk=>!open.has(bk.id));
+  if(!free.length) return null;
+  if(!S.rare.asked.length && !open.has(RARE_BOOKS[0].id)) return RARE_BOOKS[0].id;
+  const fresh=free.filter(bk=>!S.rare.asked.includes(bk.id));
+  return rnd(fresh.length?fresh:free).id;
+}
+function rareLapse(){
+  const before=S.rare.list.length;
+  S.rare.list=S.rare.list.filter(r=>S.day-r.day<=RARE_LAPSE || inStock(r.id) || incomingOf(r.id) || r.called);
+  if(S.rare.list.length<before) log("An old request for a rare set has lapsed.");
+}
+function rareEnter(who,id,req,mode){
+  RQ.who=who; RQ.id=id; RQ.req=req||null; RQ.view=null;
+  RQ.p=leoAtCounter(); RQ.state="in"; RQ.mode=mode;
+  tip(mode==="ask" ? who.name+" comes in and heads straight for the counter."
+                   : who.name+" is back for the "+BOOK(id).title+".");
+}
+function rareStep(){
+  if(RQ.state===null){
+    if(modalOn() || GEO.p || LEOS.p) return;
+    const back=S.rare.list.find(r=>r.called && r.comeDay===S.day && S.tick>=r.comeAt);
+    if(back){
+      if(S.tick>=S.dayLen-40){ back.comeDay=S.day+1; back.comeAt=20; return; }   // too late: first thing tomorrow
+      rareEnter(COLLECTOR(back.who),back.id,back,"back"); return;
+    }
+    if(RQ.at>=0 && S.tick>=RQ.at){
+      RQ.at=-1;
+      if(S.tick>=S.dayLen-120) return;
+      const id=rarePick(); if(id==null) return;
+      rareEnter(rnd(COLLECTORS),id,null,"ask");
+    }
+    return;
+  }
+  if(rareTalking()){ if(!modalOn()) rareTalk(); return; }    // something else replaced the pop-up: bring it back
+  if(modalOn()) return;
+  const p=RQ.p;
+  if(RQ.state==="in"){ if(georgeWalk(p)){ p.dir="up"; RQ.state=RQ.mode==="ask"?"ask":"buy"; rareTalk(); } }
+  else if(RQ.state==="leave"){ if(georgeWalk(p)){ RQ.p=null; RQ.state=null; RQ.who=null; RQ.id=null; RQ.req=null; drawOpenPanel(); } }
+}
+function rareSpeaker(){
+  const d=el("div","speaker");
+  d.appendChild(avatarImg(RQ.who));
+  d.appendChild(el("div",null,RQ.who.name+"<small>"+RQ.who.role+"</small>"));
+  return d;
+}
+function setLabel(bk){ return bk.set?bk.set+" volumes":"one volume"; }
+// the set, as a card with its cover and a Find out more button
+function rareCard(bk){
+  const c=el("div","card lift");
+  c.appendChild(coverCanvas(bk,58,87));
+  const m=el("div","meta");
+  m.appendChild(el("div","t",bk.title));
+  m.appendChild(el("div","a",bk.author+" · "+setLabel(bk)+" · first published "+yearText(bk.year)));
+  m.appendChild(el("div",null,starRow(bk)));
+  const cta=el("div","cta");
+  cta.appendChild(el("span","price",rm(bk.offer)));
+  const more=el("button","btn-sm btn-y","Find out more"); more.onclick=()=>{ RQ.view="detail"; rareTalk(); };
+  cta.appendChild(more); m.appendChild(cta);
+  c.appendChild(m);
+  return c;
+}
+function rareDetail(bk){
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(bookHead(bk,bk.offer,true));
+  sh.appendChild(el("div","count",setLabel(bk)+" · "+RQ.who.name+" will pay "+rm(bk.offer)+" · trade cost "+rm(bk.cost)+" from the supplier"));
+  bookBody(sh,bk);
+  sh.appendChild(ghost("← Back to "+RQ.who.name,()=>{ RQ.view=null; rareTalk(); }));
+  sh.scrollTop=0;
+}
+function rareTalk(){
+  const bk=BOOK(RQ.id), s=RQ.state;
+  if(RQ.view==="detail"){ rareDetail(bk); return; }
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(rareSpeaker());
+  const say=t=>sh.appendChild(el("div","say",t));
+  const have=inStock(RQ.id);
+  if(s==="ask"){
+    say("Good afternoon. I'm after something in particular, and I was told this was the shop to ask.");
+    say("Do you have "+bk.title+", by "+bk.author+" — the complete set, "+setLabel(bk)+"? I'd pay "+rm(bk.offer)+" for it.");
+    sh.appendChild(rareCard(bk));
+    if(have){
+      sh.appendChild(el("div","verdict good","On the shelf · "+rm(bk.offer)+" offered, "+rm(priceOf(RQ.id))+" on the ticket"));
+      sh.appendChild(primary("Yes — I have it here. Sold, for "+rm(bk.offer)+".",rareSell));
+    } else {
+      sh.appendChild(el("div","count","Not in stock. Promise to look out for it and the supplier should have it on the van within "+RARE_VAN_DAYS+" days; once it's on the shelf, call "+RQ.who.name+" back to buy it."));
+      sh.appendChild(primary("I'll look out for it and call you when it's in.",rarePromise));
+    }
+    sh.appendChild(ghost("Sorry — I can't help with that one.",rareDecline));
+  } else if(s==="buy"){
+    say("You rang about "+bk.title+"? I came as soon as I could.");
+    sh.appendChild(rareCard(bk));
+    if(have){
+      sh.appendChild(el("div","verdict good","On the shelf · "+rm(bk.offer)+" as agreed"));
+      sh.appendChild(primary("Here it is. "+rm(bk.offer)+", as agreed.",rareSell));
+    } else {
+      sh.appendChild(el("div","verdict bad","It isn't on the shelf any more"));
+      sh.appendChild(primary("I'm sorry — it's gone.",rareGone));
+    }
+  } else if(s==="promised"){
+    say("Thank you. Here's my card — do call the moment it comes in, and I'll come straight over.");
+    sh.appendChild(primary("I will.",rareLeave));
+  } else if(s==="sold"){
+    say("Wonderful. I've been looking for this for years. Your grandfather would have been proud of you.");
+    sh.appendChild(el("div","verdict good","+"+rm(bk.offer)+" · +"+RARE_REP+" Reputation"));
+    sh.appendChild(primary("Enjoy it.",rareLeave));
+  } else if(s==="gone"){
+    say("Oh. I did come across town for it. Well — never mind.");
+    sh.appendChild(el("div","verdict bad","−"+RARE_LETDOWN+" Reputation"));
+    sh.appendChild(primary("I'm sorry.",rareLeave));
+  } else if(s==="declined"){
+    say("I see. Thank you anyway — I'll try the auction houses.");
+    sh.appendChild(primary("Good luck.",rareLeave));
+  }
+}
+function rarePromise(){
+  const vanDay=S.day+1+((Math.random()*RARE_VAN_DAYS)|0);
+  S.rare.list.push({id:RQ.id,who:RQ.who.key,offer:BOOK(RQ.id).offer,day:S.day,vanDay,called:false,comeDay:0,comeAt:0});
+  rareAsked();
+  log(RQ.who.name+" asked for "+BOOK(RQ.id).title+" and will pay "+rm(BOOK(RQ.id).offer));
+  RQ.state="promised"; rareTalk();
+}
+function rareDecline(){ rareAsked(); RQ.state="declined"; rareTalk(); }
+// one collector a day, and then a gap: the next may call two or three days on
+function rareAsked(){
+  if(!S.rare.asked.includes(RQ.id)) S.rare.asked.push(RQ.id);
+  S.rare.next=S.day+RARE_GAP[0]+((Math.random()*(RARE_GAP[1]-RARE_GAP[0]+1))|0);
+}
+function rareSell(){
+  const id=RQ.id, st=S.stock[id];
+  if(!st||st.copies<=0){ RQ.state=RQ.mode==="back"?"buy":"ask"; rareTalk(); return; }
+  const bk=BOOK(id), price=bk.offer;
+  st.copies--; S.cash=Math.round((S.cash+price)*100)/100; S.stats.rev+=price; S.stats.served++; S.stats.delighted++;
+  S.totalRev=Math.round((S.totalRev+price)*100)/100;
+  S.soldEver[id]=(S.soldEver[id]||0)+1;
+  S.rep=clamp(S.rep+RARE_REP,0,100);
+  if(st.copies===0) Object.keys(S.slots).forEach(k=>{ S.slots[k]=S.slots[k].filter(x=>x!==id); });
+  S.sales.push({name:RQ.who.name,id,price,restocked:false});
+  S.guestbook.push({day:S.day,name:RQ.who.name,text:"Found "+bk.title+" here at last. A proper bookshop."});
+  if(S.guestbook.length>80) S.guestbook.splice(1,1);
+  log(RQ.who.name+" paid "+rm(price)+" for "+bk.title+" (+"+RARE_REP+" rep)");
+  S.rare.list=S.rare.list.filter(r=>r.id!==id);
+  if(RQ.mode==="ask") rareAsked();
+  hud(); checkStamps(true);
+  RQ.state="sold"; rareTalk();
+}
+function rareGone(){
+  S.rep=clamp(S.rep-RARE_LETDOWN,0,100); hud();
+  S.rare.list=S.rare.list.filter(r=>r.id!==RQ.id);
+  log("Called "+RQ.who.name+" in for "+BOOK(RQ.id).title+" and it was gone (−"+RARE_LETDOWN+" rep)");
+  RQ.state="gone"; rareTalk();
+}
+function rareLeave(){
+  closeModal();
+  const p=RQ.p; RQ.state="leave"; p.path=pathTo(p,doorX(),GH-1)||[]; p.pi=0;
+  tip(RQ.who.name+" heads back out of the door.");
+  drawOpenPanel();
+}
+// the X in the corner: the question itself needs an answer; the full page goes back to it
+function rareDismiss(){
+  if(RQ.view==="detail"){ RQ.view=null; rareTalk(); return; }
+  if(RQ.state==="ask"||RQ.state==="buy") return;
+  rareLeave();
+}
+// the phone call: the collector comes in an hour later, or first thing tomorrow if the shop is about to close
+function rareCall(r){
+  if(r.called || !inStock(r.id)) return;
+  r.called=true;
+  const who=COLLECTOR(r.who), name=who?who.name:"the collector";
+  if(S.phase==="open" && S.tick+RARE_CALL_TICKS<S.dayLen-40){ r.comeDay=S.day; r.comeAt=S.tick+RARE_CALL_TICKS; tip("You ring "+name+". \"I'll be there within the hour.\""); }
+  else { r.comeDay=S.phase==="open"?S.day+1:S.day; r.comeAt=20; tip("You ring "+name+". \"First thing "+(S.phase==="open"?"tomorrow":"when you open")+", then.\""); }
+  log("Called "+name+" about "+BOOK(r.id).title);
+  autosave();
+}
+// the open requests, for the morning, trading and evening panels; redraw repaints the panel after a call
+function requestsPanel(P,redraw){
+  if(!S.rare.list.length) return;
+  P.appendChild(el("h3",null,"Requests · rare sets"));
+  const L=el("div","list");
+  S.rare.list.forEach(r=>{
+    const bk=BOOK(r.id), who=COLLECTOR(r.who), name=who?who.name:"A collector", li=el("div","li");
+    li.appendChild(coverCanvas(bk,30,45)).classList.add("mini");
+    const m=el("div","meta");
+    m.appendChild(el("div","t",bk.title+" · "+setLabel(bk)));
+    const have=inStock(r.id), coming=incomingOf(r.id), onVan=S.phase==="morning"&&S.offers.includes(r.id);
+    const status = r.called ? (r.comeDay===S.day&&S.phase==="open" ? "called · on their way" : "called · coming first thing "+(S.phase==="open"?"tomorrow":"when you open"))
+      : have ? "on the shelf · call "+name+" to come and buy it"
+      : coming ? "on order · arrives day "+nextDueOf(r.id)
+      : onVan ? "on the van this morning · order it above"
+      : "not in stock · the supplier is looking; watch the van";
+    m.appendChild(el("div","a",name+" will pay "+rm(r.offer)+" · "+status));
+    li.appendChild(m);
+    li.style.cursor="pointer"; li.onclick=()=>openBook(r.id);
+    const btn=el("button","btn-sm"+(have&&!r.called?" btn-y":""),r.called?"Called ✓":"Call "+name);
+    btn.disabled=r.called||!have;
+    btn.onclick=e=>{ e.stopPropagation(); rareCall(r); redraw(); };
+    li.appendChild(btn);
+    L.appendChild(li);
+  });
+  P.appendChild(L);
+}
+function rareActor(){
+  const p=RQ.p; if(!p) return null;
+  const step=p.moving?Math.sin(p.t*0.9):0, bob=p.moving&&Math.abs(step)>0.5;
+  return {y:p.py+13, draw:()=>drawFigure(ctx,Math.round(p.px),Math.round(p.py),Object.assign({},RQ.who,{dir:p.dir,step,bob}))};
+}
+
 // a small brown wallet lying on the floor, with a glint now and then so it catches the eye
 function drawWallet(){
   if(LEOS.state!=="gone" || !LEOS.wallet) return;
@@ -3978,7 +4324,7 @@ function takeSnapshot(){
     stats:S.stats, history:S.history, soldEver:S.soldEver, featured:S.featured,
     seen:S.seen, tutorial:S.tutorial, shopName:S.shopName, library:S.library,
     footfall:S.footfall, stamps:S.stamps, guestbook:S.guestbook, mags:S.mags, events:S.events,
-    coffee:S.coffee, totalRev:S.totalRev,
+    coffee:S.coffee, totalRev:S.totalRev, rare:S.rare,
   };
 }
 function validSave(d){
@@ -4013,7 +4359,11 @@ function applySnapshot(d){
   S.guestbook=Array.isArray(d.guestbook)&&d.guestbook.length?d.guestbook:[GRANDFATHER_ENTRY];
   S.mags=Array.isArray(d.mags)?d.mags.filter(m=>m&&MAG(m.id)):[];
   S.events=(d.events&&typeof d.events==="object")?d.events:{};
-  georgeReset(); leoReset();
+  const rq=(d.rare&&typeof d.rare==="object")?d.rare:{};
+  S.rare={next:Number.isFinite(rq.next)?rq.next:Math.max(RARE_FIRST_DAY,d.day),
+    asked:Array.isArray(rq.asked)?rq.asked.filter(id=>!!BOOK(id)):[],
+    list:Array.isArray(rq.list)?rq.list.filter(r=>r&&BOOK(r.id)&&COLLECTOR(r.who)):[]};
+  georgeReset(); leoReset(); rareReset();
   S.phase=(d.phase==="evening")?"evening":"morning";
   // anything that only exists inside a trading day is rebuilt, never restored
   S.customers=[]; S.spawnQueue=[]; S.talking=null; S.placing=null;
@@ -4265,6 +4615,7 @@ function howToPlay(back){
   sh.appendChild(el("h3",null,"Magazine rack and record corner"));
   sh.appendChild(el("p",null,"The rack on the other side of the door puts up a new magazine every real-world week — a yellow dot over it means this week's title is waiting. Grandfather's turntable sits in the corner by the window: tap it to choose which record is playing, or lift the needle."));
   sh.appendChild(el("h3",null,"Money"));
+  sh.appendChild(el("p",null,"Now and then, from day 2, a collector comes in after noon asking for a rare set — Churchill's Second World War, say — and names a price. Sell it if it's on the shelf; if not, promise to look out for it: the supplier puts it on the van within three days, marked Requested, and once it's on your shelf you call the collector back from the Requests list to come and buy it."));
   sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to expand the floor. More floor means room for more shelves. The Coffee Corner unlocks as your reputation grows: it goes in beside the counter and sells coffee — "+rm(COFFEE_PRICE)+" a cup to begin with, though the price is yours to set. It runs on beans, "+rm(BEANS_COST)+" a bag for "+BEANS_CUPS+" cups; tap the corner to restock or change the price. You step across to make each cup, and a cup tops up the customer's patience. A Cafe Table gives coffee drinkers somewhere to sit, and an Armchair lets anyone settle in with a book they may then buy."));
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
   sh.appendChild(primary(back===closeModal?"Got it":"Back to menu",back));

@@ -27,6 +27,18 @@ real books, one copy each, and his cat asleep in the corner.
 Every order — a reorder, a restock or a title off the van — arrives two mornings after you
 place it, before the shop opens.
 
+From day 2, a **collector** may come in after noon — at most one a day, and then not for another
+two or three days — and ask for a rare multi-volume set, naming the price they will pay (the
+first is always Churchill's *The Second World War*). The pop-up shows the set, with *Find out
+more* for its full page. If it is on your shelf you sell it on the spot at their price. If not,
+promise to look out for it: the supplier finds it within three days and it comes in on the
+morning van marked *Requested*, to order like any other title. Once it is on the shelf, the
+**Requests** list on the morning, trading and evening panels has a *Call* button that brings the
+collector back within the hour (or first thing next morning) to buy it.
+
+When the Coffee Corner's last bag of beans runs out, a pop-up says so and offers a restock on
+the spot; until you restock, the same notice sits on the morning, trading and evening panels.
+
 The clipboard button in the top bar opens the **stock take** at any time (the trading clock
 stops while it's open): the whole inventory with full descriptions, filters by genre and by
 era (pre-AD, AD 0–1500, 1501–1900, 1901–1950, 1951–2000, 2001–now), reorders of any title

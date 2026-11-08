@@ -103,7 +103,21 @@
     clearStamps(){ if(!ready()) return; S.stamps=[]; commit("Stamps cleared. Any milestone already reached is stamped again at the next check (a sale, an expansion, or opening the counter)."); },
     beans(n){ if(!ready()) return; if(!cafeTile()){ say("No Coffee Corner built.",true); return; } S.coffee.beans=Math.max(0,Math.round(n)); commit("Beans for "+S.coffee.beans+" cups."); },
     takings(v){ if(!ready()) return; S.totalRev=Math.max(0,Math.round(v*100)/100); commit("Lifetime takings set to "+rm(S.totalRev)+"."); },
-    resetEvents(){ if(!ready()) return; S.events={}; georgeReset(); S.mags=[]; S.stamps=[]; commit("All one-off events, magazines and stamps reset."); },
+    resetEvents(){ if(!ready()) return; S.events={}; georgeReset(); S.mags=[]; S.stamps=[]; S.rare={next:2,asked:[],list:[]}; rareReset(); commit("All one-off events, magazines, stamps and collectors' requests reset."); },
+    collectorNow(){
+      if(!ready()) return;
+      if(S.phase!=="open"){ say("Open the shop first.",true); return; }
+      if(RQ.p){ say("A collector is already in.",true); return; }
+      if(!rarePick()){ say("Every rare set already has an open request.",true); return; }
+      closeModal(); RQ.at=S.tick; say("A collector is on the way to the counter.");
+    },
+    resetRequests(){ if(!ready()) return; S.rare={next:2,asked:[],list:[]}; rareReset(); commit("Collectors' requests reset: the next visit is Churchill's set, after noon on the next trading day from day 2."); },
+    rareInStock(){
+      if(!ready()) return;
+      const r=S.rare.list[0]; const id=r?r.id:RARE_BOOKS[0].id;
+      if(!hasSlotFor(id)){ say("No shelf space for it.",true); return; }
+      addCopies(id,1); restockShelves(); commit(BOOK(id).title+" put on the shelf"+(r?" — call "+COLLECTOR(r.who).name+" from the Requests list.":"."));
+    },
     fillStock(n){
       if(!ready()) return;
       Object.keys(S.stock).forEach(id=>addCopies(+id,n)); restockShelves();
@@ -178,6 +192,9 @@
     P.appendChild(h("h3",{textContent:"Events"}));
     P.appendChild(h("div",{className:"row"},[B("Reset George",A.replayGeorge),B("George now",A.georgeNow),
       B("Reset magazine rack",A.resetMags),B("Clear stamps",A.clearStamps),B("Reset all",A.resetEvents)]));
+    P.appendChild(h("h3",{textContent:"Collectors' requests"}));
+    P.appendChild(h("div",{className:"row"},[B("Collector now",A.collectorNow),B("Requested set on shelf",A.rareInStock),B("Reset requests",A.resetRequests)]));
+    P.appendChild(h("div",{className:"hint",textContent:"From day 2, after noon, every 2–3 days: a collector asks for a rare set and names a price. Churchill's Second World War first. Promise it and the van brings it within 3 days; once shelved, Call brings them back to buy."}));
     P.appendChild(h("h3",{textContent:"Coffee Corner & stamps"}));
     P.appendChild(h("div",{className:"row"},[B("Beans: 0",()=>A.beans(0)),B("Beans: 20",()=>A.beans(20)),B("Beans: 200",()=>A.beans(200)),
       B("Takings $9,990",()=>A.takings(9990)),B("Takings $0",()=>A.takings(0))]));

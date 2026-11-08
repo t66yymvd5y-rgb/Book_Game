@@ -17,6 +17,19 @@ is a real book and the player can order a physical copy.
 |---|---|
 | Recommending | The player can now put up to **4** books on the counter for each customer (was 6), via `SHORTLIST_MAX`. The pull is unchanged: up to ten books, up to five that suit, two they'd actually buy. With four picks out of ten, landing one of the two keen books is harder, so the questions matter more. |
 
+## Revision pass (collectors' requests, and the beans alert)
+
+| | |
+|---|---|
+| Trigger | From day 2 (`RARE_FIRST_DAY`), on any day on or after `S.rare.next`, a visit is scheduled at a random tick from noon (`RARE_TICK`, 200) to mid-afternoon. At most one new request a day; after a visit `S.rare.next` moves on by 2 or 3 days (`RARE_GAP`). The visit waits while another pop-up, George or Leo is up, and is dropped for the day if it can't start two hours before closing. |
+| Cast | Four collectors (`COLLECTORS`: Mr Okafor, Dr Lindqvist, Mrs Tanaka, Mr Brennan), one picked at random per visit, drawn with the same pixel figures as George and Leo. |
+| The sets | `RARE_BOOKS`, ids from `RARE_BASE` (100000): Churchill's *The Second World War* (always first), Gibbon, Proust, the complete Sherlock Holmes, Narnia, the Durants' *Story of Civilization*, O'Brian's Aubrey-Maturin novels. Each has a trade cost, a volume count and the collector's `offer` (roughly 2.3× cost). They never appear on the ordinary van or in grandfather's stock; `BOOK(id)` and `CATALOGUE()` resolve them, so once bought a set sits in `S.stock`, on a shelf and in the stock take like any title. |
+| The ask | The collector walks to the counter; the clock holds while the pop-up is up. It names the set, the volumes and the price, with a card (cover, rating, *Find out more* opens the full book page and comes back). In stock: sell on the spot at the offer (+`RARE_REP` 6 reputation, counted as a delighted sale, a guest-book line). Not in stock: *I'll look out for it* records the request in `S.rare.list` with a `vanDay` 1–3 days ahead; *Sorry* sends them away with no penalty. |
+| Supply | `rollVan()` puts a requested set at the front of the van on `vanDay`, tagged *Requested* with the collector's price; not ordered that morning, it comes round again 1–3 days later. Ordered, it arrives `ORDER_DAYS` later like any order. |
+| The call | The *Requests* list (morning, trading and evening panels) shows every open request and its state; once the set is on the shelf, *Call* brings the collector back an hour later on the shop clock (`RARE_CALL_TICKS`), or first thing next morning if the day is nearly over. If the set has gone by the time they arrive: −`RARE_LETDOWN` 3 reputation and the request is dropped. A request nobody acts on lapses after `RARE_LAPSE` 10 days. |
+| Saves | `S.rare` ({next, asked, list}) is saved with the evening. A collector mid-visit is part of the trading day and is not restored. Older saves get `next` = the day they are on. |
+| Beans alert | The moment the hopper empties — the last cup sold, or a customer wanting a coffee there are no beans for — a pop-up (once per empty hopper) offers *Restock beans* on the spot, with the clock paused; while the corner stays empty a notice with the same button sits on the morning, trading and evening panels. |
+
 ## Revision pass (Leo and the wallet)
 
 A one-off story moment on the second trading day, with a choice. First added on the published
