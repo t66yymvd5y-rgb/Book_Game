@@ -100,7 +100,9 @@
       closeModal(); georgeEnter(); say("George is coming in.");
     },
     resetMags(){ if(!ready()) return; S.mags=[]; commit("Magazine rack reset: this week's title goes up next time you open the rack."); },
-    clearStamps(){ if(!ready()) return; S.stamps=[]; commit("Stamp card cleared."); },
+    clearStamps(){ if(!ready()) return; S.stamps=[]; commit("Stamps cleared. Any milestone already reached is stamped again at the next check (a sale, an expansion, or opening the counter)."); },
+    beans(n){ if(!ready()) return; if(!cafeTile()){ say("No Coffee Corner built.",true); return; } S.coffee.beans=Math.max(0,Math.round(n)); commit("Beans for "+S.coffee.beans+" cups."); },
+    takings(v){ if(!ready()) return; S.totalRev=Math.max(0,Math.round(v*100)/100); commit("Lifetime takings set to "+rm(S.totalRev)+"."); },
     resetEvents(){ if(!ready()) return; S.events={}; georgeReset(); S.mags=[]; S.stamps=[]; commit("All one-off events, magazines and stamps reset."); },
     fillStock(n){
       if(!ready()) return;
@@ -143,7 +145,7 @@
       "Day "+S.day+" · "+S.phase+(S.phase==="open"?" · tick "+S.tick+"/"+S.dayLen:"")+"\n"+
       "Cash "+rm(S.cash)+" · Rep "+S.rep.toFixed(1)+" (lvl "+level()+")\n"+
       "Floor "+SIZE_TIERS[S.tier].name+(nt?" · next needs rep "+nt.rep+" + "+rm(nt.cost):"")+"\n"+
-      "Events "+JSON.stringify(S.events)+" · mags "+S.mags.length+" · stamps "+S.stamps.length;
+      "Events "+JSON.stringify(S.events)+" · mags "+S.mags.length+" · stamps "+(S.stamps||[]).join(",")+" · beans "+(S.coffee?S.coffee.beans:"-")+" · cup "+(S.coffee?rm(S.coffee.price):"-")+" · taken "+rm(S.totalRev||0);
   }
 
   function build(){
@@ -175,7 +177,11 @@
 
     P.appendChild(h("h3",{textContent:"Events"}));
     P.appendChild(h("div",{className:"row"},[B("Reset George",A.replayGeorge),B("George now",A.georgeNow),
-      B("Reset magazine rack",A.resetMags),B("Clear stamp card",A.clearStamps),B("Reset all",A.resetEvents)]));
+      B("Reset magazine rack",A.resetMags),B("Clear stamps",A.clearStamps),B("Reset all",A.resetEvents)]));
+    P.appendChild(h("h3",{textContent:"Coffee Corner & stamps"}));
+    P.appendChild(h("div",{className:"row"},[B("Beans: 0",()=>A.beans(0)),B("Beans: 20",()=>A.beans(20)),B("Beans: 200",()=>A.beans(200)),
+      B("Takings $9,990",()=>A.takings(9990)),B("Takings $0",()=>A.takings(0))]));
+    P.appendChild(h("div",{className:"hint",textContent:"Stamps: Extended Shop, Double Shopfront, Coffee Corner, $10,000 taken. Beans run the corner; set takings just under $10,000 and sell one book to see that stamp land."}));
 
     P.appendChild(h("h3",{textContent:"Trading day"}));
     P.appendChild(h("div",{className:"row"},[B("Customer now",A.customer),B("Skip to closing",A.skipToClose),B("Close instantly",A.closeNow)]));

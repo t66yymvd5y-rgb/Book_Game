@@ -32,8 +32,9 @@ stops while it's open): the whole inventory with full descriptions, filters by g
 era (pre-AD, AD 0–1500, 1501–1900, 1901–1950, 1951–2000, 2001–now), reorders of any title
 you carry, and a Sold out tab that restocks with one tap. New titles only come on the van.
 
-The blue information counter by the door holds grandfather's shop stamp, for checking in each
-day, and a guest book that customers sign when they buy. His cat wanders off its cushion now
+The blue information counter by the door holds grandfather's shop stamps — one for each
+milestone (each floor expansion, the Coffee Corner, $10,000 taken over the till), each its own
+design, stamped the moment you reach it — and a guest book that customers sign when they buy. His cat wanders off its cushion now
 and then for a nap somewhere else on the floor.
 
 On the other side of the door, the **magazine rack** introduces one new real magazine every

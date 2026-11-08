@@ -297,11 +297,14 @@
   .sl.off{opacity:.5;}
   .li .mini{flex:none;border:2px solid var(--ink);}
   /* information counter: stamp card and guest book */
-  .stampcard{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;border-width:6px;border-image:var(--f-paper) 3 fill/6px stretch;
+  .stampcard{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;border-width:6px;border-image:var(--f-paper) 3 fill/6px stretch;
     padding:6px;margin-bottom:6px;}
-  .stampcell{aspect-ratio:1;border:2px dashed #c9ad78;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--muted);}
-  .stampcell.today{border-color:var(--orange);color:var(--orange);}
+  .stampslot{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;}
+  .stampcell{width:100%;aspect-ratio:1;border:2px dashed #c9ad78;border-radius:50%;display:grid;place-items:center;font-size:15px;font-weight:600;color:var(--muted);}
+  .stampcell.got{border-color:transparent;}
   .stampcell svg{width:108%;height:108%;}
+  .stampname{font-size:10px;line-height:1.25;text-align:center;color:var(--ink-dim);font-weight:600;}
+  .stampname.todo{font-weight:500;color:var(--muted);}
   .records{display:flex;flex-direction:column;gap:6px;}
   .choice.record{justify-content:flex-start;gap:12px;margin:0;}
   .choice.record::after{content:"▶";font-size:12px;margin-left:auto;}
@@ -1125,8 +1128,11 @@ const RACK=11;                       // the magazine rack by the door: a new mag
 const VINYL=12, VINYL_R=13;          // grandfather's record corner: turntable and records, two tiles, drawn from the left one
 const SEAT_L=14, SEAT_T=15, SEAT_R=16; // a cafe table and its two chairs: three tiles, bought as a set
 const ARMCHAIR=17;                   // an armchair: someone settles in to read, and may buy the book
-const COFFEE_PRICE=5;                // a cup, over the Coffee Corner
-const COFFEE_SHARE=0.5;              // the share of customers who come in for a coffee, once there is one
+const COFFEE_PRICE=5;                // a cup, over the Coffee Corner: the base price, before the keeper sets their own
+const COFFEE_SHARE=0.5;              // the share of customers who come in for a coffee at the base price, once there is one
+const BEANS_COST=50, BEANS_CUPS=20;  // a bag of beans: what it costs, and how many cups it makes
+const COFFEE_FLOOR=3;                // below this a cheaper cup brings nobody extra in
+const COFFEE_MAX=15;                 // the dearest cup the menu allows
 const COFFEE_TICKS=32;               // how long a cup takes to make
 const SHELF_SLOTS=10;                // titles per shelf
 const START_TITLES=100;              // grandfather's stock: this many random titles, one copy each
@@ -1135,7 +1141,7 @@ const FURN={
   [TABLE]:{name:"Display Table",cost:200,slots:2,desc:"Two featured titles on display",lvl:2},
   [PLANT]:{name:"Potted Palm",cost:60,slots:0,desc:"+ambience, slower exits"},
   [ARMCHAIR]:{name:"Armchair",cost:180,slots:0,desc:"Someone settles in to read a while, and may buy the book",lvl:2},
-  [CAFE]:{name:"Coffee Corner",cost:900,slots:0,desc:"Beside the counter. Sells coffee at "+rm(COFFEE_PRICE)+" a cup · +50% patience, all customers",lvl:3,one:true},
+  [CAFE]:{name:"Coffee Corner",cost:900,slots:0,desc:"Beside the counter. Sells coffee, "+rm(COFFEE_PRICE)+" a cup to start; beans "+rm(BEANS_COST)+" a bag · +50% patience, all customers",lvl:3,one:true},
   [SEAT_L]:{name:"Cafe Table",cost:260,slots:0,desc:"A table and two chairs: coffee drinkers sit a while before they browse",lvl:3,tiles:[SEAT_L,SEAT_T,SEAT_R],needs:CAFE},
 };
 const FURN_ORDER=[SHELF,TABLE,PLANT,ARMCHAIR,CAFE,SEAT_L];
@@ -1162,7 +1168,9 @@ const S={
   seen:{}, tutorial:true, shopName:"", keeper:null, seenToday:[], dayCast:[],
   footfall:0,
   library:{},                 // archetypeKey -> {bookId: dayBought} — what each reader already owns
-  stamps:[],                  // days the keeper stamped the check-in card at the information counter
+  stamps:[],                  // stamp keys collected at the information counter, one per milestone (see STAMPS)
+  coffee:{beans:0,price:COFFEE_PRICE},   // the Coffee Corner: cups left in the hopper, and the price of a cup
+  totalRev:0,                 // every dollar taken over the till since day 1, books and coffee: the $10,000 stamp
   guestbook:[],               // [{day, name, text}] — oldest first; day 0 is grandfather's line
   mags:[],                    // magazines put up on the rack: [{id, week}] — week is the real-world Monday, "yyyy-mm-dd"
   events:{},                  // one-off story events already seen: {george:true, leo:true}
@@ -1247,7 +1255,7 @@ function upgradeSpace(){
   placeInfoDesk(true);                 // the information counter stays by the (moved) door
   placeRack(true);                     // and so does the magazine rack
   placeRecordCorner(true);             // the record corner follows the corner, like the cat
-  drawMorning(); hud(); autosave();
+  drawMorning(); hud(); autosave(); checkStamps(true);
 }
 
 /* The information counter sits just inside the door, to its left. Older saves and expanded floors
@@ -1366,8 +1374,69 @@ function buyCafe(){
   if(!spots.length){ S.placing=CAFE; tip("No clear floor beside the counter, so tap a highlighted tile for the Coffee Corner. You'll walk over to make each cup."); return; }
   const [x,y]=spots[0];
   S.cash-=f.cost; S.stats.spent+=f.cost; S.grid[y][x]=CAFE;
-  tip("The Coffee Corner goes in beside the counter. Coffee is "+rm(COFFEE_PRICE)+" a cup; you step across to make it.");
-  paint(); autosave();
+  cafeBuilt();
+}
+// Just built: the corner opens its menu for beans and a price, and earns its stamp.
+function cafeBuilt(){
+  S.coffee.price=COFFEE_PRICE;
+  paint(); autosave(); checkStamps(true);
+  coffeeMenu("The Coffee Corner goes in beside the counter; you step across from the till to make each cup. It needs beans before it can sell anything, and the price of a cup is yours to set.");
+}
+
+/* ---------- coffee: beans, price and demand ----------
+   A bag of beans costs BEANS_COST and makes BEANS_CUPS cups. The price of a cup starts at
+   COFFEE_PRICE; every dollar above it loses a fifth of the customers who would have come in for
+   one, every dollar below it brings a fifth more, and below COFFEE_FLOOR a cheaper cup brings
+   nobody extra. */
+function coffeePrice(){ return S.coffee.price; }
+function coffeeDemand(price){
+  const p=Math.max(price===undefined?coffeePrice():price, COFFEE_FLOOR);
+  return p>=COFFEE_PRICE ? Math.pow(0.8,p-COFFEE_PRICE) : Math.pow(1.2,COFFEE_PRICE-p);
+}
+function coffeeShare(price){ return Math.min(1, COFFEE_SHARE*coffeeDemand(price)); }
+function hasBeans(){ return S.coffee.beans>0; }
+function restockBeans(){
+  if(S.cash<BEANS_COST) return false;
+  S.cash=Math.round((S.cash-BEANS_COST)*100)/100; S.stats.spent+=BEANS_COST;
+  S.coffee.beans+=BEANS_CUPS;
+  return true;
+}
+function coffeeMenu(intro){
+  if(S.talking || titleOn() || !cafeTile()) return;
+  const wasPaused=paused; paused=true;
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  sh.appendChild(el("h2",null,"Coffee Corner")).style.marginBottom="6px";
+  if(intro) sh.appendChild(el("div","say",intro));
+  const c=S.coffee, n=S.stats.coffees||0;
+
+  sh.appendChild(el("h3",null,"Beans"));
+  sh.appendChild(el("p",null,c.beans?"Enough beans for <b>"+c.beans+"</b> more "+(c.beans===1?"cup":"cups")+"."
+    :"<b>No beans.</b> Nobody can be served until you restock."));
+  const buy=primary("Restock beans · "+rm(BEANS_COST)+" for "+BEANS_CUPS+" cups",()=>{
+    if(!restockBeans()){ tip("Not enough in the bank for a bag of beans."); return; }
+    hud(); autosave(); tip("A bag of beans in the hopper: "+S.coffee.beans+" cups' worth.");
+    coffeeMenu();
+  });
+  buy.disabled=S.cash<BEANS_COST;
+  sh.appendChild(buy);
+  if(S.cash<BEANS_COST) sh.appendChild(el("div","count","You need "+rm(BEANS_COST)+" in the bank for a bag."));
+
+  sh.appendChild(el("h3",null,"Price per cup"));
+  const sp=el("div","stepper"); sp.style.justifyContent="center";
+  const m=el("button","btn-sm","− $1"), p2=el("button","btn-sm","+ $1");
+  m.disabled=c.price<=1; p2.disabled=c.price>=COFFEE_MAX;
+  m.onclick=()=>{ c.price=Math.max(1,c.price-1); autosave(); coffeeMenu(); };
+  p2.onclick=()=>{ c.price=Math.min(COFFEE_MAX,c.price+1); autosave(); coffeeMenu(); };
+  const mid=el("div","row"); mid.style.gap="2px";
+  mid.appendChild(m); mid.appendChild(el("b",null,rm(c.price))); mid.appendChild(p2);
+  sp.appendChild(mid); sh.appendChild(sp);
+  const pct=Math.round(coffeeShare()*100), basePct=Math.round(COFFEE_SHARE*100);
+  sh.appendChild(el("p",null,"At "+rm(c.price)+" about <b>"+pct+"%</b> of customers come in for a cup"+
+    (c.price===COFFEE_PRICE?" — the going rate.":c.price>COFFEE_PRICE?" (down from "+basePct+"% at "+rm(COFFEE_PRICE)+").":" (up from "+basePct+"% at "+rm(COFFEE_PRICE)+").")));
+  sh.appendChild(el("div","count","Every $1 above "+rm(COFFEE_PRICE)+" loses a fifth of them; every $1 below brings a fifth more. Below "+rm(COFFEE_FLOOR)+" nobody extra comes."));
+  if(S.phase==="open"||S.phase==="evening") sh.appendChild(el("div","count",n+" "+(n===1?"cup":"cups")+" sold today."));
+  sh.appendChild(ghost("Back to the shop",()=>{ dismissSheet(); paused=wasPaused&&!titleOn(); }));
 }
 
 /* ---------- stock helpers ---------- */
@@ -2256,7 +2325,7 @@ function spawnCustomer(){
     state:"walk", goal:"shelf", path:null, pi:0, moving:true, bubble:false, dir:"up",
     patMax: Math.round((430+Math.random()*220) * (tilesOf(CAFE).length?1.5:1) * (1+tilesOf(PLANT).length*0.06)),
     clues:[], probesLeft:3, done:false,
-    wantsCoffee: !!cafeTile() && Math.random()<COFFEE_SHARE, cup:false, seat:null, reading:null, t:0,
+    wantsCoffee: !!cafeTile() && hasBeans() && Math.random()<coffeeShare(), cup:false, seat:null, reading:null, t:0,
   };
   p.patience=p.patMax;
   if(p.wantsCoffee && cafeRoom()) sendToCafe(p); else sendToShelf(p);
@@ -2285,6 +2354,7 @@ function sendToCafe(p){
   p.path=path; p.pi=0;
 }
 function queueStep(p){
+  if(noBeans(p)) return;
   const q=cafeQueue(), i=q.indexOf(p), spots=cafeQueueSpots();
   if(i<0||i>=spots.length){ p.wantsCoffee=false; sendToShelf(p); return; }   // the corner's gone, or no room after all
   const want=spots[i];
@@ -2295,14 +2365,25 @@ function queueStep(p){
   p.dir="up";
   if(i===0 && keeperServing()){ p.state="coffee"; p.t=0; }
 }
+// The hopper is empty: whoever was waiting goes and browses instead, and you hear about it once.
+function noBeans(p){
+  if(hasBeans()) return false;
+  p.wantsCoffee=false; sendToShelf(p);
+  if(!S.beansOut){ S.beansOut=true; log("Out of coffee beans. Tap the Coffee Corner to restock."); tip("Out of coffee beans. Tap the Coffee Corner to restock — "+rm(BEANS_COST)+" a bag."); }
+  return true;
+}
 function coffeeStep(p){
+  if(noBeans(p)) return;                                     // the hopper ran dry under them
   if(!keeperServing()){ p.state="queue"; return; }          // you got called away mid-cup
   if(++p.t<COFFEE_TICKS) return;
-  S.cash=Math.round((S.cash+COFFEE_PRICE)*100)/100; S.stats.rev+=COFFEE_PRICE;
-  S.stats.coffees=(S.stats.coffees||0)+1; S.stats.coffeeRev=Math.round(((S.stats.coffeeRev||0)+COFFEE_PRICE)*100)/100;
+  const price=coffeePrice();
+  S.coffee.beans--; S.beansOut=false;
+  S.cash=Math.round((S.cash+price)*100)/100; S.stats.rev+=price; S.totalRev=Math.round((S.totalRev+price)*100)/100;
+  S.stats.coffees=(S.stats.coffees||0)+1; S.stats.coffeeRev=Math.round(((S.stats.coffeeRev||0)+price)*100)/100;
   S.rep=clamp(S.rep+0.3,0,100);
   p.wantsCoffee=false; p.cup=true; p.patience=p.patMax;      // a good cup buys you their whole afternoon again
-  log(p.name+" bought a coffee, "+rm(COFFEE_PRICE));
+  log(p.name+" bought a coffee, "+rm(price)+(S.coffee.beans?"":" — that was the last of the beans"));
+  checkStamps(true);
   const seat=freeSeat([SEAT_L,SEAT_R]);
   if(seat && Math.random()<0.8) sendToSeat(p,seat,"seat"); else sendToShelf(p);
 }
@@ -2369,7 +2450,7 @@ function stepCustomer(p){
       if(best && best.score>=70 && Math.random()<0.32){ completeSale(p,best.id,true); return; }
     }
     // someone who came in for a coffee goes over for it once there's room at the corner
-    if(p.wantsCoffee && !p.moving && S.tick%15===0 && cafeRoom()){ sendToCafe(p); return; }
+    if(p.wantsCoffee && !p.moving && S.tick%15===0 && hasBeans() && cafeRoom()){ sendToCafe(p); return; }
     // and now and then a browser settles into a free armchair with a book
     if(!p.served && !p.sat && !p.moving && S.tick%30===7 && Math.random()<0.25){
       const ch=freeSeat([ARMCHAIR]); if(ch) sendToSeat(p,ch,"read");
@@ -2410,6 +2491,7 @@ function completeSale(p,id,passive){
   if(ownsBook(p,id)) return false;                // they already own this one
   const price=priceOf(id);
   st.copies--; S.cash=Math.round((S.cash+price)*100)/100; S.stats.rev+=price; S.stats.served++;
+  S.totalRev=Math.round((S.totalRev+price)*100)/100; checkStamps(true);
   recordPurchase(p,id);
   signGuestbook(p,id);
   p.paid=price;
@@ -2453,7 +2535,7 @@ function loop(ts){
 function startDay(){
   S.offers=[];                                       // the van leaves when the shop opens
   S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[]; S.seenToday=[]; S.dayCast=[]; S.sales=[];
-  georgeReset(); leoReset(); keeperHome();
+  georgeReset(); leoReset(); keeperHome(); S.beansOut=false;
   S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0,coffees:0,coffeeRev:0};
   const n=rollFootfall();
   S.footfall=n;
@@ -2739,13 +2821,15 @@ function drawMorning(){
       const f=FURN[k], lv=f.lvl||1, have=!!f.one&&tilesOf(k).length>0, needs=f.needs!=null&&!tilesOf(f.needs).length;
       const locked=level()<lv||needs;
       const why=level()<lv?" · needs level "+lv:needs?" · needs the "+FURN[f.needs].name:"";
-      row(icons[k],f.name,f.desc+why,have?"Built":locked?"Locked":rm(f.cost),locked||have,locked||have||S.cash<f.cost,
-        ()=>{ if(k===CAFE) buyCafe();
+      const menu=k===CAFE&&have;                       // the built corner's row opens its beans-and-price menu
+      row(icons[k],f.name,menu?"Beans for "+S.coffee.beans+" "+(S.coffee.beans===1?"cup":"cups")+" · "+rm(coffeePrice())+" a cup · about "+Math.round(coffeeShare()*100)+"% of customers want one":f.desc+why,
+        menu?"Beans & price":have?"Built":locked?"Locked":rm(f.cost),locked||(have&&!menu),(locked||have||S.cash<f.cost)&&!menu,
+        ()=>{ if(menu) coffeeMenu(); else if(k===CAFE) buyCafe();
           else { S.placing=k; tip("Tap a highlighted tile to place the "+f.name+"."+(f.tiles?" It takes "+f.tiles.length+" tiles in a row, from the one you tap.":"")); } });
     });
     P.appendChild(L);
     if(!nt) P.appendChild(el("p",null,"This is the biggest space on the row. Nowhere further to expand."));
-    P.appendChild(el("p",null,"The Coffee Corner goes in beside the counter. About half your customers will come in for a cup at "+rm(COFFEE_PRICE)+", and you step across from the till to make it; a coffee also tops their patience right up. With a Cafe Table they sit a while before they browse. An Armchair tempts anyone to settle in with the book that suits them best — and some of them buy it."));
+    P.appendChild(el("p",null,"The Coffee Corner goes in beside the counter. About half your customers will come in for a cup at "+rm(COFFEE_PRICE)+" — fewer if you charge more, more if you charge less — and you step across from the till to make it; a coffee also tops their patience right up. It runs on beans: "+rm(BEANS_COST)+" a bag, "+BEANS_CUPS+" cups. With a Cafe Table they sit a while before they browse. An Armchair tempts anyone to settle in with the book that suits them best — and some of them buy it."));
 
     P.appendChild(el("h3",null,"This shop"));
     P.appendChild(el("p",null,saveNote()+" There is nothing to press — the shop is written down each morning and each evening. Close the tab mid-day and you pick that morning up again. Start over is in the menu, top right."));
@@ -3183,40 +3267,84 @@ function signGuestbook(p,id){
   S.guestbook.push({day:S.day,name:p.name,text:rnd(delighted?GUEST_DELIGHT:GUEST_LINES)(t)});
   if(S.guestbook.length>80) S.guestbook.splice(1,1);  // grandfather's first line always stays
 }
-function stampSVG(day,rot){
-  const red="#d6453d";
-  return '<svg viewBox="0 0 40 40" aria-hidden="true" style="transform:rotate('+rot+'deg)">'+
-    '<circle cx="20" cy="20" r="17" fill="none" stroke="'+red+'" stroke-width="2.4"/>'+
-    '<circle cx="20" cy="20" r="13.2" fill="none" stroke="'+red+'" stroke-width="0.8"/>'+
-    '<path d="M12.5 13.5q3.75-2 7.5 0q3.75-2 7.5 0v6q-3.75-2-7.5 0q-3.75-2-7.5 0zM20 13.5v6" fill="none" stroke="'+red+'" stroke-width="1.4" stroke-linejoin="round"/>'+
-    '<text x="20" y="28.6" text-anchor="middle" font-size="5.4" letter-spacing=".2" font-weight="700" fill="'+red+'" font-family="Pixel Digits,Pixelify Sans,sans-serif">DAY '+day+'</text></svg>';
+/* The stamps: one for each milestone, each its own design, the way every station on a Japanese
+   railway line has its own. Earned once and kept; checkStamps() awards any the shop has reached. */
+const STAMPS=[
+  {key:"extend", name:"Extended Shop",    hint:"Expand the floor once",            test:()=>S.tier>=1, rot:-6},
+  {key:"double", name:"Double Shopfront", hint:"Expand the floor again",           test:()=>S.tier>=2, rot:5},
+  {key:"cafe",   name:"Coffee Corner",    hint:"Build the Coffee Corner",          test:()=>!!cafeTile(), rot:-4},
+  {key:"10k",    name:"$10,000 Taken",    hint:"Take $10,000 over the till in all", test:()=>S.totalRev>=10000, rot:7},
+];
+function STAMP(key){ return STAMPS.find(st=>st.key===key); }
+function stampSVG(key,rot){
+  const st=STAMP(key); if(!st) return "";
+  const open='<svg viewBox="0 0 40 40" aria-hidden="true" style="transform:rotate('+(rot===undefined?st.rot:rot)+'deg)">';
+  const label=(t,c,y,fs)=>'<text x="20" y="'+(y||29.4)+'" text-anchor="middle" font-size="'+(fs||4.6)+'" letter-spacing=".2" font-weight="700" fill="'+c+'" font-family="Pixel Digits,Pixelify Sans,sans-serif">'+t+'</text>';
+  if(key==="extend"){                                     // red, round: one shopfront with its door, grown by a step on the right
+    const c="#d6453d";
+    return open+'<circle cx="20" cy="20" r="17" fill="none" stroke="'+c+'" stroke-width="2.4"/><circle cx="20" cy="20" r="13.2" fill="none" stroke="'+c+'" stroke-width=".8"/>'+
+      '<path d="M11 21h12v-7h-12zM23 21h6v-4h-6zM15 21v-4h3v4" fill="none" stroke="'+c+'" stroke-width="1.4" stroke-linejoin="round"/>'+
+      '<path d="M10 14l7-4 7 4" fill="none" stroke="'+c+'" stroke-width="1.4" stroke-linejoin="round"/>'+label("EXTENDED",c)+'</svg>';
+  }
+  if(key==="double"){                                     // blue, square: two shopfronts side by side under one roof
+    const c="#2f6db5";
+    return open+'<rect x="4" y="4" width="32" height="32" rx="3" fill="none" stroke="'+c+'" stroke-width="2.4"/><rect x="7.5" y="7.5" width="25" height="25" rx="1.5" fill="none" stroke="'+c+'" stroke-width=".8"/>'+
+      '<path d="M10 22h20v-8h-20zM20 14v8M13 22v-4h3v4M24 22v-4h3v4" fill="none" stroke="'+c+'" stroke-width="1.4" stroke-linejoin="round"/>'+
+      '<path d="M9 14l5.5-3.5 5.5 3.5 5.5-3.5 5.5 3.5" fill="none" stroke="'+c+'" stroke-width="1.4" stroke-linejoin="round"/>'+label("DOUBLE",c,29.6)+'</svg>';
+  }
+  if(key==="cafe"){                                       // brown, round with a scalloped inner ring: a cup and its steam
+    const c="#7a4a25";
+    return open+'<circle cx="20" cy="20" r="17" fill="none" stroke="'+c+'" stroke-width="2.4"/><circle cx="20" cy="20" r="13.2" fill="none" stroke="'+c+'" stroke-width=".8" stroke-dasharray="1.6 1.2"/>'+
+      '<path d="M13 16h12v5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5zM25 17.5h2a2.5 2.5 0 0 1 0 5h-2M12 27h14" fill="none" stroke="'+c+'" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/>'+
+      '<path d="M16.5 13.5q1-1.5 0-3M20 13.5q1-1.5 0-3" fill="none" stroke="'+c+'" stroke-width="1.1" stroke-linecap="round"/>'+label("COFFEE",c,32.4,4.2)+'</svg>';
+  }
+  if(key==="10k"){                                        // green, a rosette: the number with a laurel either side
+    const c="#2e7d4f";
+    const pts=[]; for(let i=0;i<24;i++){ const a=i/24*Math.PI*2, r=i%2?15.6:17.4; pts.push((20+Math.cos(a)*r).toFixed(1)+","+(20+Math.sin(a)*r).toFixed(1)); }
+    return open+'<polygon points="'+pts.join(" ")+'" fill="none" stroke="'+c+'" stroke-width="2"/><circle cx="20" cy="20" r="12.6" fill="none" stroke="'+c+'" stroke-width=".8"/>'+
+      '<path d="M8.2 24.5q-1.2-5.5 2-10M9.2 23.4l-2 .5M8.9 20.2l-2-.2M9.6 17.2l-1.6-1M31.8 24.5q1.2-5.5-2-10M30.8 23.4l2 .5M31.1 20.2l2-.2M30.4 17.2l1.6-1" fill="none" stroke="'+c+'" stroke-width="1" stroke-linecap="round"/>'+
+      label("$10K",c,22.2,6.2)+label("TAKEN",c,27.6,3.4)+'</svg>';
+  }
+  return "";
+}
+// Award any stamp the shop has earned since the last look. With announce, say so in the tip line.
+function checkStamps(announce){
+  const got=[];
+  STAMPS.forEach(st=>{ if(!S.stamps.includes(st.key) && st.test()){ S.stamps.push(st.key); got.push(st); } });
+  if(!got.length) return;
+  if(announce){
+    const names=got.map(st=>st.name).join(" and ");
+    tip("Thunk. A new stamp at the information counter: "+names+".");
+    if(S.phase==="open") log("New stamp at the information counter: "+names);
+  }
+  autosave();
 }
 function infoDesk(){
   if(S.talking || titleOn()) return;
+  checkStamps(false);
   paused=true;
   const sh=$("#sheet"); sh.innerHTML="";
   $("#modal").classList.add("on");
   sh.appendChild(el("h2",null,"Information counter")).style.marginBottom="6px";
-  sh.appendChild(el("p",null,"Grandfather kept a shop stamp here, the way bookshops in Japan do, and a guest book for anyone who wants to leave a line."));
+  sh.appendChild(el("p",null,"Grandfather kept a set of shop stamps here, the way bookshops in Japan do, and a guest book for anyone who wants to leave a line."));
 
-  sh.appendChild(el("h3",null,"Check-in stamp"));
-  const stamped=S.stamps.includes(S.day), card=Math.floor((S.day-1)/10);
+  sh.appendChild(el("h3",null,"Shop stamps"));
+  sh.appendChild(el("p",null,"One stamp for each milestone the shop reaches, each its own design."));
   const grid=el("div","stampcard");
-  for(let d=card*10+1; d<=card*10+10; d++){
-    const cell=el("div","stampcell"+(d===S.day?" today":""));
-    if(S.stamps.includes(d)) cell.innerHTML=stampSVG(d,((d*37)%15)-7);
-    else cell.appendChild(el("span",null,d));
-    grid.appendChild(cell);
-  }
-  sh.appendChild(grid);
-  sh.appendChild(el("div","count","Card "+(card+1)+" · days "+(card*10+1)+"–"+(card*10+10)+" · "+S.stamps.length+" "+(S.stamps.length===1?"day":"days")+" stamped in all"));
-  const go=primary(stamped?"Stamped for today ✓":"Stamp in for day "+S.day,()=>{
-    if(S.stamps.includes(S.day)) return;
-    S.stamps.push(S.day); autosave(); infoDesk();
-    tip("Thunk. Day "+S.day+", stamped in.");
+  STAMPS.forEach(st=>{
+    const have=S.stamps.includes(st.key);
+    const wrap=el("div","stampslot");
+    const cell=el("div","stampcell"+(have?" got":""));
+    if(have) cell.innerHTML=stampSVG(st.key);
+    else cell.appendChild(el("span",null,"?"));
+    wrap.appendChild(cell);
+    wrap.appendChild(el("div","stampname"+(have?"":" todo"),have?st.name:st.hint));
+    grid.appendChild(wrap);
   });
-  go.disabled=stamped;
-  sh.appendChild(go);
+  sh.appendChild(grid);
+  const left=STAMPS.filter(st=>!S.stamps.includes(st.key));
+  sh.appendChild(el("div","count",S.stamps.length+" of "+STAMPS.length+" collected"+
+    (left.length?" · taken over the till so far: "+rm(S.totalRev):" · the full set")));
 
   sh.appendChild(el("h3",null,"Guest book"));
   const book=el("div","guestbook");
@@ -3413,8 +3541,9 @@ cv.addEventListener("click",e=>{
       tiles.forEach((t,i)=>{ S.grid[y][x+i]=t; if(f.slots) S.slots[key(x+i,y)]=[]; });
       if(S.placing===SHELF||S.placing===TABLE) restockShelves();
       tip("Placed.");
+      if(S.placing===CAFE){ S.placing=null; cafeBuilt(); return; }
     } else tip("Nothing placed. The marked tiles are where the "+f.name+" fits.");
-    S.placing=null; paint(); autosave(); return;
+    S.placing=null; paint(); autosave(); checkStamps(true); return;
   }
   if(CATW.state!=="home" && Math.hypot(CATW.px-(x*TS+8), CATW.py-4-(y*TS+8))<11){
     tip(rnd(CATW.state==="walk"?CAT_WALK_LINES:CAT_LINES)); return; }
@@ -3430,7 +3559,7 @@ cv.addEventListener("click",e=>{
   if(t===INFO||t===INFO_R){ infoDesk(); return; }
   if(t===RACK){ magazineRack(); return; }
   if(t===VINYL||t===VINYL_R){ recordCorner(); return; }
-  if(t===CAFE){ const n=S.stats.coffees||0; tip("The Coffee Corner. "+rm(COFFEE_PRICE)+" a cup"+(S.phase==="open"||S.phase==="evening"?", "+n+" "+(n===1?"cup":"cups")+" sold today":"")+". You step across from the till to make it."); return; }
+  if(t===CAFE){ coffeeMenu(); return; }
   if(t===SEAT_L||t===SEAT_T||t===SEAT_R){ const c=seatedAt(x,y); tip(c?c.name+" is sitting with a coffee, in no hurry.":"The cafe table. Coffee drinkers sit here a while before they browse."); return; }
   if(t===ARMCHAIR){ const c=seatedAt(x,y); tip(c?c.name+" is deep in "+(c.reading!=null?"\""+BOOK(c.reading).title+"\"":"a book")+". Best not to interrupt — though you can.":"The armchair. Someone will settle into it with a book, and may well buy it."); return; }
   if(t===SHELF||t===TABLE){
@@ -3852,6 +3981,7 @@ function takeSnapshot(){
     stats:S.stats, history:S.history, soldEver:S.soldEver, featured:S.featured,
     seen:S.seen, tutorial:S.tutorial, shopName:S.shopName, library:S.library,
     footfall:S.footfall, stamps:S.stamps, guestbook:S.guestbook, mags:S.mags, events:S.events,
+    coffee:S.coffee, totalRev:S.totalRev,
   };
 }
 function validSave(d){
@@ -3876,7 +4006,13 @@ function applySnapshot(d){
   S.soldEver=d.soldEver||{}; S.featured=d.featured; S.seen=d.seen||{};
   S.tutorial=!!d.tutorial; S.shopName=d.shopName||""; S.library=d.library||{};
   S.footfall=d.footfall||0;
-  S.stamps=Array.isArray(d.stamps)?d.stamps:[];
+  S.stamps=Array.isArray(d.stamps)?d.stamps.filter(k=>typeof k==="string"&&STAMPS.some(st=>st.key===k)):[];  // the old card kept day numbers
+  S.coffee=(d.coffee&&typeof d.coffee==="object")?{beans:Math.max(0,d.coffee.beans|0),price:clamp(Math.round(d.coffee.price)||COFFEE_PRICE,1,COFFEE_MAX)}:null;
+  // a shop from before beans and prices: a corner already built opens with a bag in the hopper
+  if(!S.coffee) S.coffee={beans:tilesOf(CAFE).length?BEANS_CUPS:0,price:COFFEE_PRICE};
+  // lifetime takings from before they were counted: every copy ever sold, at today's price for it
+  S.totalRev=Number.isFinite(d.totalRev)?d.totalRev
+    :Math.round(Object.keys(d.soldEver||{}).reduce((n,id)=>n+(d.stock[id]?(d.stock[id].auto?autoPrice(d.stock[id].cost):d.stock[id].price)*d.soldEver[id]:0),0)*100)/100;
   S.guestbook=Array.isArray(d.guestbook)&&d.guestbook.length?d.guestbook:[GRANDFATHER_ENTRY];
   S.mags=Array.isArray(d.mags)?d.mags.filter(m=>m&&MAG(m.id)):[];
   S.events=(d.events&&typeof d.events==="object")?d.events:{};
@@ -3893,6 +4029,7 @@ function applySnapshot(d){
   placeCafe();                         // a Coffee Corner placed out on the floor comes in beside the counter
   keeperHome();
   restockShelves();                    // and display tables saved empty get their two books
+  checkStamps(false);                  // milestones reached before the stamps existed are stamped quietly
 }
 
 /* ---------- browser copy ---------- */
@@ -4127,11 +4264,11 @@ function howToPlay(back){
   sh.appendChild(el("h3",null,"Stock take"));
   sh.appendChild(el("p",null,"The clipboard in the top bar opens the stock take at any time: every book you hold with its full description, filters by genre and era, and reorders of anything you carry. The clock stops while it's open. New titles come only on the distributor's van, which turns up every morning from day 2 with eight books you've never stocked. Every order — reorder, restock or van — arrives two days after you place it, before the shop opens. The stock take's Sold out tab, and the Sold out list on the morning Stock tab, restock any title with +1."));
   sh.appendChild(el("h3",null,"Information counter"));
-  sh.appendChild(el("p",null,"The blue counter by the door holds grandfather's shop stamp and the guest book. Tap it to stamp in for the day, and to read what your customers have written."));
+  sh.appendChild(el("p",null,"The blue counter by the door holds grandfather's shop stamps and the guest book. There is a stamp for each milestone — each floor expansion, the Coffee Corner, and $10,000 taken over the till — stamped the moment you reach it. Tap the counter to see the set, and to read what your customers have written."));
   sh.appendChild(el("h3",null,"Magazine rack and record corner"));
   sh.appendChild(el("p",null,"The rack on the other side of the door puts up a new magazine every real-world week — a yellow dot over it means this week's title is waiting. Grandfather's turntable sits in the corner by the window: tap it to choose which record is playing, or lift the needle."));
   sh.appendChild(el("h3",null,"Money"));
-  sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to expand the floor. More floor means room for more shelves. The Coffee Corner unlocks as your reputation grows: it goes in beside the counter and sells coffee at "+rm(COFFEE_PRICE)+" a cup — you step across to make it, and a cup tops up the customer's patience. A Cafe Table gives coffee drinkers somewhere to sit, and an Armchair lets anyone settle in with a book they may then buy."));
+  sh.appendChild(el("p",null,"Rent is paid at close. You cannot go bankrupt, and rent only rises when you choose to expand the floor. More floor means room for more shelves. The Coffee Corner unlocks as your reputation grows: it goes in beside the counter and sells coffee — "+rm(COFFEE_PRICE)+" a cup to begin with, though the price is yours to set, and the dearer the cup the fewer come in for one. It runs on beans, "+rm(BEANS_COST)+" a bag for "+BEANS_CUPS+" cups; tap the corner to restock or change the price. You step across to make each cup, and a cup tops up the customer's patience. A Cafe Table gives coffee drinkers somewhere to sit, and an Armchair lets anyone settle in with a book they may then buy."));
   sh.appendChild(el("p",null,"Every book is real. Tap any cover to read it up properly."));
   sh.appendChild(primary(back===closeModal?"Got it":"Back to menu",back));
 }

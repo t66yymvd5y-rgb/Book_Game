@@ -3,6 +3,14 @@
 A mobile 16-bit bookshop simulator set on an old shopping street, in which every book
 is a real book and the player can order a physical copy.
 
+## Revision pass (beans, a price, and milestone stamps)
+
+| Area | What changed |
+|---|---|
+| Coffee Corner | Buying it now opens its menu, which also opens from the corner itself and from its row on the morning Shop tab. The corner runs on beans: a bag costs $50 and makes 20 cups (`BEANS_COST`, `BEANS_CUPS`); with none in the hopper nobody comes in for a coffee, and if it runs dry under a customer they go and browse instead, with a one-line notice. Restock from the menu at any time, booked under Stock bought. |
+| Price per cup | Set in $1 steps from the menu, from $5 to begin with (`COFFEE_PRICE`). Each $1 above $5 loses a fifth of the customers who would have come in for a cup (×0.8, compounding); each $1 below brings a fifth more (×1.2). Below $3 (`COFFEE_FLOOR`) a cheaper cup brings nobody extra. The menu shows the share of customers expected at the current price. Saved as `S.coffee`. |
+| Information counter | The daily check-in card is gone. In its place, a set of four shop stamps, each its own design and colour: Extended Shop (red, the first expansion), Double Shopfront (blue, the second), Coffee Corner (brown) and $10,000 Taken (green rosette, lifetime takings over the till, books and coffee, tracked as `S.totalRev`). `checkStamps()` awards any newly reached stamp after a sale, an expansion or a build, with a line in the tip; older saves have their stamps worked out quietly on load, and their takings estimated from every copy ever sold. |
+
 ## Revision pass (smaller pile)
 
 | Area | What changed |
@@ -82,7 +90,7 @@ grandfather's-shop pass below.
 | Recommending | "Pull books" brings out **up to 10** books: up to 5 that genuinely suit the customer (their genre, and a score ≥ 45 before the clue bonus), made up to 10 with genuine misses, in-genre first. The pull is made once per visit, so asking more questions doesn't reshuffle it. The player shows them **up to 6**. |
 | Buying | Of the books that suit them, 2 are ones the customer would actually buy. If either is on the pile they buy one (the better match) — no coin flip. A pile that suits them but misses both, they admire and leave with no reputation lost; a pile with no fit, they say what they wanted, as before. ≥ 85 still counts as delighted. |
 | Display table | Holds **2 titles**, one lying flat and one standing open, filled automatically from stock that isn't on another table. The titles stay on their shelves as well. Tapping a table shows what's on display. |
-| Information counter | A blue two-tile counter just inside the door, to its left; older saves get one on load, and it moves with the door when the floor expands. Tapping it stops the clock and opens a daily check-in stamp card (ten days to a card) and a guest book. Customers sign it on most purchases, delighted ones with warmer lines; grandfather's line is always the first entry. |
+| Information counter | A blue two-tile counter just inside the door, to its left; older saves get one on load, and it moves with the door when the floor expands. Tapping it stops the clock and opens the shop's milestone stamps (see the beans-and-stamps pass above; originally a daily check-in card) and a guest book. Customers sign it on most purchases, delighted ones with warmer lines; grandfather's line is always the first entry. |
 | Cat | Now and then the cat gets up, walks to a nearby patch of open floor, naps there and wanders back. It is not saved: a loaded shop always has it on its cushion. |
 | Pop-ups | Every pop-up has a close button in its top-right corner, outside the scrolling area so it stays put. It is hidden on the prelude, which still can't be dismissed. Closing a conversation sends the customer back to browsing. |
 | Saves | Same key (`cornerbooks.save.v2`). Older saves load: pending orders are converted to arrive the next morning, and the shop gets its information counter. |
@@ -409,8 +417,8 @@ window, and charges nothing. In the live build it opens checkout.
    not before.
 2. **How does stock actually arrive?** Right now the distributor offer is random. It should
    probably reflect the neighbourhood, so curation has information to work with.
-3. **How far does the cafe go?** It now sells one coffee at one price with no stock of its
-   own, and seats people. Whether it wants a menu, beans to order, or a second member of
+3. **How far does the cafe go?** It now sells coffee at a price the keeper sets, runs on
+   bags of beans, and seats people. Whether it wants a wider menu or a second member of
    staff so the keeper isn't pulled off the till is a question for after it has been played.
 4. **Where does the storefront live?** The buy path is designed but not wired. The commerce
    integration is a separate piece of work with its own requirements.
