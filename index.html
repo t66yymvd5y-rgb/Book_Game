@@ -3423,7 +3423,7 @@ function drawPatHeart(){
 
 /* ---------- Leo and the wallet: a one-off story on day 2 ----------
    Just after opening on the second trading day a young man comes in: Leo, who works round the
-   corner. He says hello at the counter and goes. Once he is out of the door there is a wallet on
+   corner. He has a quick look at the counter without a word and goes. Once he is out of the door there is a wallet on
    the floor where he stood; tap it to pick it up. Two hours (on the shop clock) after the keeper
    picks it up, Leo comes back and asks whether anyone found a wallet. Give it back: +10
    reputation and his thanks. Say no: keep the $200 inside, and lose 10 reputation as word gets
@@ -3435,11 +3435,11 @@ const LEO_BACK=200;                    // two hours on the shop clock (900 ticks
 const LEO_REP=10, LEO_CASH=200;
 const LEO={key:"leo",name:"Leo",role:"Works round the corner",
   skin:"#d8a27a",hair:"#3a2618",shirt:"#3f7fb0",style:"crop",pants:"#3b3f52"};
-// state: null → "in" → "hello" → "out" → "gone" (wallet on the floor) → "found" (its pop-up)
+// state: null → "in" → "look" (a silent glance round) → "out" → "gone" (wallet on the floor) → "found" (its pop-up)
 //        → "held" → "back" → "ask" → "returned" | "kept" → "leave" → "done"
-const LEOS={state:null,p:null,wallet:null,foundAt:0,backAt:0};
-function leoReset(){ LEOS.state=null; LEOS.p=null; LEOS.wallet=null; LEOS.foundAt=0; LEOS.backAt=0; }
-function leoTalking(){ return ["hello","found","ask","returned","kept"].includes(LEOS.state); }
+const LEOS={state:null,p:null,wallet:null,foundAt:0,backAt:0,t:0};
+function leoReset(){ LEOS.state=null; LEOS.p=null; LEOS.wallet=null; LEOS.foundAt=0; LEOS.backAt=0; LEOS.t=0; }
+function leoTalking(){ return ["found","ask","returned","kept"].includes(LEOS.state); }
 // the day can't close while the wallet story is half-told
 function leoPending(){ return !!LEOS.p || ["gone","found","held"].includes(LEOS.state); }
 function leoSheet(who,lines,buttons,note,bad){
@@ -3457,16 +3457,12 @@ function leoSheet(who,lines,buttons,note,bad){
 }
 function leoTalk(){
   const s=LEOS.state;
-  if(s==="hello") leoSheet(true,[
-    "Morning! Didn't know this place had opened again. I'm Leo — I work at the bank round the corner.",
-    "Can't stop today, I'm already late. I'll come back for a proper look when I've got more time.",
-  ],[["See you, Leo.",leoNext]]);
-  else if(s==="found") leoSheet(false,[
+  if(s==="found") leoSheet(false,[
     "Someone left a wallet on the floor by the counter.",
     "You pick it up and put it away safely behind the counter.",
   ],[["Keep the wallet",leoNext]]);
   else if(s==="ask") leoSheet(true,[
-    "Hi, sorry — it's Leo, from this morning. I can't find my wallet anywhere.",
+    "Hi, sorry — I was in here first thing this morning. I'm Leo. I can't find my wallet anywhere.",
     "I think I might have dropped it in here. You didn't find a wallet, did you?",
   ],[["Yes — here it is.",()=>leoChoose(true)],["No, sorry. I haven't seen one.",()=>leoChoose(false),true]]);
   else if(s==="returned") leoSheet(true,[
@@ -3486,12 +3482,7 @@ function leoChoose(give){
 }
 function leoNext(){
   const s=LEOS.state, p=LEOS.p;
-  if(s==="hello"){
-    closeModal(); LEOS.state="out";
-    LEOS.wallet=[p.gx,p.gy];                                       // it slips out of his pocket here
-    p.path=pathTo(p,doorX(),GH-1)||[]; p.pi=0;
-    tip("Leo hurries back out of the door.");
-  } else if(s==="found"){
+  if(s==="found"){
     closeModal(); LEOS.state="held"; LEOS.wallet=null; LEOS.foundAt=S.tick;
     LEOS.backAt=Math.min(S.tick+LEO_BACK, S.dayLen-30);
     if(LEOS.backAt<=S.tick) LEOS.backAt=S.tick+15;                // found at closing: he's back at once
@@ -3524,10 +3515,18 @@ function leoStep(){
   if(leoTalking()){ if(!modalOn()) leoTalk(); return; }
   if(modalOn()) return;
   const p=LEOS.p;
-  if(s==="in"){ if(georgeWalk(p)){ p.dir="up"; LEOS.state="hello"; leoTalk(); } }
+  if(s==="in"){ if(georgeWalk(p)){ p.dir="up"; LEOS.state="look"; LEOS.t=0; } }
+  else if(s==="look"){                                           // a quick glance at the counter, then off
+    if(++LEOS.t===24) p.dir="left"; else if(LEOS.t===36) p.dir="right";
+    else if(LEOS.t>=50){
+      LEOS.state="out"; LEOS.wallet=[p.gx,p.gy];                 // it slips out of his pocket here
+      p.path=pathTo(p,doorX(),GH-1)||[]; p.pi=0;
+      tip("He checks his watch again and hurries back out of the door.");
+    }
+  }
   else if(s==="out"){
     if(georgeWalk(p)){ LEOS.p=null; LEOS.state="gone";
-      tip("Leo's gone. Is that something on the floor by the counter?"); }
+      tip("He's gone. Is that something on the floor by the counter?"); }
   } else if(s==="gone"){
     if(S.tick>=S.dayLen) tip("Before you lock up — there's something on the floor by the counter.");
   } else if(s==="held"){
