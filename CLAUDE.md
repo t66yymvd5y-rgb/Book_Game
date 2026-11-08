@@ -26,10 +26,7 @@ https://claude.ai/artifact/7jY4JNXd6htPKa264WhgjK ("Corner Books Dev").
 
 - The panel lives in `dev/devtools.js`. `bash dev/build.sh` builds `dev.html` (git-ignored) from
   `index.html` + the panel, with its own title and save key and a speed hook in the game loop.
-  `index.html` itself never loads the panel. Until the branch `claude/youthful-euler-ann7ym` is
-  merged, the `dev/` folder is only on that branch: take `dev/build.sh` and `dev/devtools.js` from
-  it (`git show origin/claude/youthful-euler-ann7ym:dev/build.sh`) and run the build against this
-  branch's `index.html`.
+  `index.html` itself never loads the panel.
 - Whenever you republish the main artifact, also rebuild and republish the dev copy: run
   `bash dev/build.sh`, then publish `dev.html` with the Artifact tool, passing the URL above as `url`.
   If `build.sh` stops with "expected exactly one …", a line it patches in `index.html` changed —
