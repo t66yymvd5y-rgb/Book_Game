@@ -20,20 +20,33 @@ real books, one copy each, and his cat asleep in the corner.
   the shop.
 - **OPEN** — customers arrive with patience running down. Tap one, ask up to three
   questions, then pull books for them: up to ten come off your shelves, mostly in the genres
-  they read, and you put up to six in front of them. Only some of the ten suit them, and only
+  they read, and you put up to four in front of them. Only some of the ten suit them, and only
   two are books they'd actually buy — get either onto the pile and they take one home.
 - **CLOSED** — count the takings, pay the rent, and restock what sold.
 
 Every order — a reorder, a restock or a title off the van — arrives two mornings after you
 place it, before the shop opens.
 
+From day 2, a **collector** may come in after noon — at most one a day, and then not for another
+two or three days — and ask for a rare multi-volume set, naming the price they will pay (the
+first is always Churchill's *The Second World War*). The pop-up shows the set, with *Find out
+more* for its full page. If it is on your shelf you sell it on the spot at their price. If not,
+promise to look out for it: the supplier finds it within three days and it comes in on the
+morning van marked *Requested*, to order like any other title. Once it is on the shelf, the
+**Requests** list on the morning, trading and evening panels has a *Call* button that brings the
+collector back within the hour (or first thing next morning) to buy it.
+
+When the Coffee Corner's last bag of beans runs out, a pop-up says so and offers a restock on
+the spot; until you restock, the same notice sits on the morning, trading and evening panels.
+
 The clipboard button in the top bar opens the **stock take** at any time (the trading clock
 stops while it's open): the whole inventory with full descriptions, filters by genre and by
 era (pre-AD, AD 0–1500, 1501–1900, 1901–1950, 1951–2000, 2001–now), reorders of any title
 you carry, and a Sold out tab that restocks with one tap. New titles only come on the van.
 
-The blue information counter by the door holds grandfather's shop stamp, for checking in each
-day, and a guest book that customers sign when they buy. His cat wanders off its cushion now
+The blue information counter by the door holds grandfather's shop stamps — one for each
+milestone (each floor expansion, the Coffee Corner, $10,000 taken over the till), each its own
+design, stamped the moment you reach it — and a guest book that customers sign when they buy. His cat wanders off its cushion now
 and then for a nap somewhere else on the floor.
 
 On the other side of the door, the **magazine rack** introduces one new real magazine every
@@ -46,9 +59,17 @@ tracks, or lift it to stop the music.
 The title screen has Continue, New shop and How to play; the menu button (or Esc) pauses
 a trading day and offers Resume, How to play, Back to title and Start over.
 
-Grandfather's shop costs $50/day in rent. Reputation unlocks better furniture (the Coffee
-Corner at level 3); cash and reputation together let you expand the floor for more shelves —
-rent only rises when you choose to expand.
+Grandfather's shop costs $50/day in rent. Reputation unlocks better furniture; cash and
+reputation together let you expand the floor for more shelves — rent only rises when you
+choose to expand.
+
+The **Coffee Corner** (level 3) goes in beside the counter and sells coffee at $5 a cup.
+About half your customers come in wanting one: they queue in front of it, you step across
+from the till to make it, and a cup tops their patience right up before they browse. A
+**Cafe Table** (a table and two chairs, bought as a set once there is a corner) gives coffee
+drinkers somewhere to sit a while first. An **Armchair** (level 2) tempts any browser to
+settle in with the book that suits them best — and some of them buy it when they get up.
+Customers can be talked to wherever they are, seat or queue included.
 
 The skills the game tests are matching people to books, and choosing what to stock.
 Pricing is a real system but not the point. You cannot go bankrupt. Progress saves
