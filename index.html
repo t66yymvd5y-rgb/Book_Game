@@ -1156,7 +1156,7 @@ const S={
   stamps:[],                  // days the keeper stamped the check-in card at the information counter
   guestbook:[],               // [{day, name, text}] — oldest first; day 0 is grandfather's line
   mags:[],                    // magazines put up on the rack: [{id, week}] — week is the real-world Monday, "yyyy-mm-dd"
-  events:{},                  // one-off story events already seen: {george:true}
+  events:{},                  // one-off story events already seen: {george:true, leo:true}
 };
 const GRANDFATHER_ENTRY={day:0,name:"Grandfather",text:"Every book has its reader. Our job is to introduce them."};
 S.guestbook=[GRANDFATHER_ENTRY];
@@ -1973,10 +1973,12 @@ function render(){
         R(g,X+1,Y,2,4,OL); R(g,X,Y+1,4,2,OL); R(g,X+1,Y+1,2,2,C.amber);
       }
   }
+  drawWallet();
   // customers and a wandering cat, back to front by where their feet are
   const actors=S.customers.map(p=>({y:p.py+13, draw:()=>drawPerson(p)}));
   const cat=catAway(); if(cat) actors.push(cat);
   const geo=georgeActor(); if(geo) actors.push(geo);
+  const leo=leoActor(); if(leo) actors.push(leo);
   actors.sort((a,b)=>a.y-b.y).forEach(a=>a.draw());
   drawPatHeart();
 }
@@ -2178,15 +2180,15 @@ function loop(ts){
   requestAnimationFrame(loop);
   if(ts-last<66) { render(); return; }
   last=ts;
-  if(S.phase==="open" && !S.talking && !paused && !georgeHold()){
+  if(S.phase==="open" && !S.talking && !paused && !georgeHold() && !leoTalking()){
     if(!GEO.p) S.tick++;      // while George is in, the clock stays at noon (customers carry on)
     while(S.spawnQueue.length && S.spawnQueue[0]<=S.tick){ S.spawnQueue.shift(); spawnCustomer(); }
     S.customers.forEach(stepCustomer);
     S.customers=S.customers.filter(c=>!c.dead);
-    if(S.tick>=S.dayLen && S.customers.length===0 && !GEO.p) endDay();
+    if(S.tick>=S.dayLen && S.customers.length===0 && !GEO.p && !leoPending()) endDay();
     else if(GEO.p ? ++GEO.f%10===0 : S.tick%10===0) drawOpenPanel();
   }
-  if(S.phase==="open" && !S.talking && !paused) georgeStep();
+  if(S.phase==="open" && !S.talking && !paused){ georgeStep(); leoStep(); }
   if(!paused && !S.talking && !georgeHoldsCat()) catStep();
   render();
 }
@@ -2195,7 +2197,7 @@ function loop(ts){
 function startDay(){
   S.offers=[];                                       // the van leaves when the shop opens
   S.phase="open"; S.tick=0; S.customers=[]; S.spawnQueue=[]; S.seenToday=[]; S.dayCast=[]; S.sales=[];
-  georgeReset();
+  georgeReset(); leoReset();
   S.stats={rev:0,spent:S.stats.spent,served:0,delighted:0,missed:0,walkouts:0};
   const n=rollFootfall();
   S.footfall=n;
@@ -3144,6 +3146,7 @@ cv.addEventListener("click",e=>{
   if(CATW.state!=="home" && Math.hypot(CATW.px-(x*TS+8), CATW.py-4-(y*TS+8))<11){
     tip(rnd(CATW.state==="walk"?CAT_WALK_LINES:CAT_LINES)); return; }
   if(S.grid[y]&&S.grid[y][x]===CAT){ tip(rnd(CATW.state==="home"?CAT_LINES:CUSHION_LINES)); return; }
+  if(S.phase==="open" && leoWalletAt(x,y)){ leoFindWallet(); return; }
   if(S.phase==="open"){
     let hit=null,bd=99;
     S.customers.forEach(p=>{ if(p.served||p.state==="leave")return;
@@ -3173,6 +3176,7 @@ $("#modal").addEventListener("click",e=>{
 function dismissSheet(){
   if(lockModal) return;
   if(georgeTalking()){ georgeNext(); return; }
+  if(leoTalking()){ if(LEOS.state!=="ask") leoNext(); return; }   // his question needs an answer
   if(S.talking){ endTalk(); return; }
   if(STK.open){ closeStockTake(); return; }
   closeModal();
@@ -3417,6 +3421,138 @@ function drawPatHeart(){
     R(ctx,X+x,Y+y,1,1,k==="O"?INK:"#e8566a"); } });
 }
 
+/* ---------- Leo and the wallet: a one-off story on day 2 ----------
+   Just after opening on the second trading day a young man comes in: Leo, who works round the
+   corner. He says hello at the counter and goes. Once he is out of the door there is a wallet on
+   the floor where he stood; tap it to pick it up. Two hours (on the shop clock) after the keeper
+   picks it up, Leo comes back and asks whether anyone found a wallet. Give it back: +10
+   reputation and his thanks. Say no: keep the $200 inside, and lose 10 reputation as word gets
+   round. The clock holds while any of his pop-ups is up. If the wallet is still on the floor at
+   closing time the shop waits for the keeper to find it, and Leo comes back straight away.
+   Seen once per shop (S.events.leo), saved with the evening like George's visit. */
+const LEO_TICK=10;                     // a few minutes after 10am on day 2
+const LEO_BACK=200;                    // two hours on the shop clock (900 ticks = 9 hours)
+const LEO_REP=10, LEO_CASH=200;
+const LEO={key:"leo",name:"Leo",role:"Works round the corner",
+  skin:"#d8a27a",hair:"#3a2618",shirt:"#3f7fb0",style:"crop",pants:"#3b3f52"};
+// state: null → "in" → "hello" → "out" → "gone" (wallet on the floor) → "found" (its pop-up)
+//        → "held" → "back" → "ask" → "returned" | "kept" → "leave" → "done"
+const LEOS={state:null,p:null,wallet:null,foundAt:0,backAt:0};
+function leoReset(){ LEOS.state=null; LEOS.p=null; LEOS.wallet=null; LEOS.foundAt=0; LEOS.backAt=0; }
+function leoTalking(){ return ["hello","found","ask","returned","kept"].includes(LEOS.state); }
+// the day can't close while the wallet story is half-told
+function leoPending(){ return !!LEOS.p || ["gone","found","held"].includes(LEOS.state); }
+function leoSheet(who,lines,buttons,note,bad){
+  const sh=$("#sheet"); sh.innerHTML="";
+  $("#modal").classList.add("on");
+  if(who){
+    const d=el("div","speaker");
+    d.appendChild(avatarImg(LEO));
+    d.appendChild(el("div",null,LEO.name+"<small>"+LEO.role+"</small>"));
+    sh.appendChild(d);
+  } else sh.appendChild(el("h2",null,"Something on the floor")).style.marginBottom="10px";
+  lines.forEach(t=>sh.appendChild(el("div","say",t)));
+  if(note) sh.appendChild(el("div","verdict "+(bad?"bad":"good"),note));
+  buttons.forEach(([label,fn,plain])=>sh.appendChild((plain?ghost:primary)(label,fn)));
+}
+function leoTalk(){
+  const s=LEOS.state;
+  if(s==="hello") leoSheet(true,[
+    "Morning! Didn't know this place had opened again. I'm Leo — I work at the bank round the corner.",
+    "Can't stop today, I'm already late. I'll come back for a proper look when I've got more time.",
+  ],[["See you, Leo.",leoNext]]);
+  else if(s==="found") leoSheet(false,[
+    "Someone left a wallet on the floor by the counter.",
+    "You pick it up and put it away safely behind the counter.",
+  ],[["Keep the wallet",leoNext]]);
+  else if(s==="ask") leoSheet(true,[
+    "Hi, sorry — it's Leo, from this morning. I can't find my wallet anywhere.",
+    "I think I might have dropped it in here. You didn't find a wallet, did you?",
+  ],[["Yes — here it is.",()=>leoChoose(true)],["No, sorry. I haven't seen one.",()=>leoChoose(false),true]]);
+  else if(s==="returned") leoSheet(true,[
+    "Oh, thank goodness! Everything's still in it.",
+    "Thank you — really. Most people wouldn't have bothered. I'll be telling everyone at work about this shop.",
+  ],[["Glad it turned up.",leoNext]],"+"+LEO_REP+" Reputation");
+  else if(s==="kept") leoSheet(true,[
+    "Oh… right. Must have been on the bus, then.",
+    "Thanks anyway.",
+  ],[["Continue",leoNext]],"+$"+LEO_CASH+" · −"+LEO_REP+" Reputation",true);
+}
+function leoChoose(give){
+  if(give){ S.rep=clamp(S.rep+LEO_REP,0,100); LEOS.state="returned"; log("Gave Leo his wallet back (+"+LEO_REP+" rep)"); }
+  else { S.rep=clamp(S.rep-LEO_REP,0,100); S.cash=Math.round((S.cash+LEO_CASH)*100)/100;
+    LEOS.state="kept"; log("Kept Leo's wallet: +$"+LEO_CASH+", −"+LEO_REP+" rep"); }
+  S.events.leo=true; hud(); leoTalk();
+}
+function leoNext(){
+  const s=LEOS.state, p=LEOS.p;
+  if(s==="hello"){
+    closeModal(); LEOS.state="out";
+    LEOS.wallet=[p.gx,p.gy];                                       // it slips out of his pocket here
+    p.path=pathTo(p,doorX(),GH-1)||[]; p.pi=0;
+    tip("Leo hurries back out of the door.");
+  } else if(s==="found"){
+    closeModal(); LEOS.state="held"; LEOS.wallet=null; LEOS.foundAt=S.tick;
+    LEOS.backAt=Math.min(S.tick+LEO_BACK, S.dayLen-30);
+    if(LEOS.backAt<=S.tick) LEOS.backAt=S.tick+15;                // found at closing: he's back at once
+    tip("You put the wallet away behind the counter.");
+  } else if(s==="returned"||s==="kept"){
+    closeModal();
+    tip(s==="returned"?"Leo tucks his wallet away and waves on his way out."
+                      :"Leo leaves empty-handed. There's $"+LEO_CASH+" in the wallet.");
+    LEOS.state="leave"; p.path=pathTo(p,doorX(),GH-1)||[]; p.pi=0;
+  }
+  drawOpenPanel();
+}
+function leoAtCounter(){
+  const dx=doorX();
+  const p={gx:dx, gy:GH-1, px:dx*TS+8, py:(GH-1)*TS+2, dir:"up", moving:true, path:null, pi:0, t:0};
+  const c=tilesOf(COUNTER)[0]||[dx,2];
+  p.path=georgeRoute(p,[[c[0],c[1]+1],[c[0]-1,c[1]+1],[c[0]+1,c[1]+1],[c[0],c[1]+2],[dx,GH-2]])||[];
+  p.pi=0;
+  return p;
+}
+function leoStep(){
+  const s=LEOS.state;
+  if(s==="done") return;
+  if(s===null){
+    if(S.day!==2 || S.events.leo || S.tick<LEO_TICK || S.tick>=S.dayLen-60 || modalOn()) return;
+    LEOS.p=leoAtCounter(); LEOS.state="in";
+    tip("A young man in a blue shirt comes in, looking at his watch.");
+    return;
+  }
+  if(leoTalking()){ if(!modalOn()) leoTalk(); return; }
+  if(modalOn()) return;
+  const p=LEOS.p;
+  if(s==="in"){ if(georgeWalk(p)){ p.dir="up"; LEOS.state="hello"; leoTalk(); } }
+  else if(s==="out"){
+    if(georgeWalk(p)){ LEOS.p=null; LEOS.state="gone";
+      tip("Leo's gone. Is that something on the floor by the counter?"); }
+  } else if(s==="gone"){
+    if(S.tick>=S.dayLen) tip("Before you lock up — there's something on the floor by the counter.");
+  } else if(s==="held"){
+    if(S.tick>=LEOS.backAt){ LEOS.p=leoAtCounter(); LEOS.state="back";
+      tip("Leo is back, and he looks worried."); }
+  } else if(s==="back"){ if(georgeWalk(p)){ p.dir="up"; LEOS.state="ask"; leoTalk(); } }
+  else if(s==="leave"){ if(georgeWalk(p)){ LEOS.p=null; LEOS.state="done"; } }
+}
+// tapping the shop floor: is it the wallet?
+function leoWalletAt(x,y){ const w=LEOS.wallet; return LEOS.state==="gone" && !!w && w[0]===x && w[1]===y; }
+function leoFindWallet(){ LEOS.state="found"; leoTalk(); }
+function leoActor(){
+  const p=LEOS.p; if(!p) return null;
+  const step=p.moving?Math.sin(p.t*0.9):0, bob=p.moving&&Math.abs(step)>0.5;
+  return {y:p.py+13, draw:()=>drawFigure(ctx,Math.round(p.px),Math.round(p.py),Object.assign({},LEO,{dir:p.dir,step,bob}))};
+}
+// a small brown wallet lying on the floor, with a glint now and then so it catches the eye
+function drawWallet(){
+  if(LEOS.state!=="gone" || !LEOS.wallet) return;
+  const [x,y]=LEOS.wallet, X=x*TS+4, Y=y*TS+9;
+  R(ctx,X,Y,9,6,INK); R(ctx,X+1,Y+1,7,4,"#7a4a26"); R(ctx,X+1,Y+1,7,1,"#9a6236");
+  R(ctx,X+5,Y+2,3,2,"#5c361b"); R(ctx,X+6,Y+2,1,1,"#e3c27a");
+  if(((ANIM>>3)&7)===0){ R(ctx,X+2,Y-2,1,1,"#fffaf0"); R(ctx,X+1,Y-1,3,1,"#fffaf0"); R(ctx,X+2,Y,1,1,"#fffaf0"); }
+}
+
 /* ============================================================
    SAVE
    The whole shop is one plain object, so a save is a snapshot of S taken at a
@@ -3469,7 +3605,7 @@ function applySnapshot(d){
   S.guestbook=Array.isArray(d.guestbook)&&d.guestbook.length?d.guestbook:[GRANDFATHER_ENTRY];
   S.mags=Array.isArray(d.mags)?d.mags.filter(m=>m&&MAG(m.id)):[];
   S.events=(d.events&&typeof d.events==="object")?d.events:{};
-  georgeReset();
+  georgeReset(); leoReset();
   S.phase=(d.phase==="evening")?"evening":"morning";
   // anything that only exists inside a trading day is rebuilt, never restored
   S.customers=[]; S.spawnQueue=[]; S.talking=null; S.placing=null;
