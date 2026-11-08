@@ -55,6 +55,7 @@
   function clearTradingDay(){
     S.customers=[]; S.spawnQueue=[]; S.talking=null; S.placing=null; S.tick=0;
     georgeReset(); closeModal(); paused=false;
+    if(typeof keeperHome==="function") keeperHome();   // back behind the till, if this build has the Coffee Corner walk
     if(typeof STK!=="undefined" && STK.open) closeStockTake();
   }
 
