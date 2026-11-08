@@ -9,6 +9,20 @@ is a real book and the player can order a physical copy.
 |---|---|
 | Recommending | The player can now put up to **4** books on the counter for each customer (was 6), via `SHORTLIST_MAX`. The pull is unchanged: up to ten books, up to five that suit, two they'd actually buy. With four picks out of ten, landing one of the two keen books is harder, so the questions matter more. |
 
+## Revision pass (Leo and the wallet)
+
+A one-off story moment on the second trading day, with a choice. First added on the published
+artifact and folded into this repo afterwards.
+
+| Area | What changed |
+|---|---|
+| Trigger | Day 2, a few minutes after opening (tick 10, about 10:06), as soon as no pop-up is open, and not in the last hour of trading. Once per shop. |
+| Sequence | A young man in a blue shirt, **Leo**, who works round the corner, walks from the door to the counter, glances left and right without a word, and hurries out. Once he is through the door, a small brown wallet (with an occasional glint) lies on the floor where he stood. Tapping it opens a pop-up: the keeper picks it up and puts it away behind the counter. |
+| Return | Two hours on the shop clock (200 ticks) after the wallet is picked up — never later than half an hour before closing — Leo comes back to the counter, worried, and asks whether anyone found a wallet. If it was picked up at closing time, he comes back almost at once. |
+| Choice | **"Yes — here it is."** gives it back: **+10 reputation** and his thanks ("I'll be telling everyone at work about this shop"). **"No, sorry. I haven't seen one."** keeps it: **+$200 cash, −10 reputation**, and he leaves empty-handed. Either way the outcome goes in the log and he walks out of the door. His question can't be dismissed by tapping outside it. |
+| Clock | The trading clock and customers stop while any of his pop-ups is open. The day can't close while the story is half-told: if the wallet is still on the floor at closing time, the shop waits for the keeper to find it (with a nudge: "there's something on the floor by the counter"). |
+| Saves | Same key (`cornerbooks.save.v2`). `S.events.leo` is set once the choice is made, and is saved with the evening like George's visit. Anything mid-story is part of the trading day and is not restored. |
+
 ## Revision pass (George's visit)
 
 A one-off story moment on the first trading day.
