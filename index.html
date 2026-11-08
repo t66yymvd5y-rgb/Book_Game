@@ -3336,26 +3336,29 @@ function georgeSpeaker(){
   d.appendChild(el("div",null,GEORGE.name+"<small>"+GEORGE.role+"</small>"));
   return d;
 }
-function georgeSheet(lines,label){
+function georgeSheet(lines,label,note){
   const sh=$("#sheet"); sh.innerHTML="";
   $("#modal").classList.add("on");
   sh.appendChild(georgeSpeaker());
   lines.forEach(t=>sh.appendChild(el("div","say",t)));
+  if(note) sh.appendChild(el("div","verdict good",note));
   sh.appendChild(primary(label,georgeNext));
 }
+const GEORGE_REP=5;                    // his blessing: word gets round that the shop is open again
 function georgeTalk(){
   if(GEO.state==="talk1") georgeSheet([
     "Well, well. The shutters are up! You must be the grandchild. I'm George.",
     "I was a regular here for years, back when your grandfather was still alive. Every Saturday, without fail. He always had something put aside for me.",
     "I can't tell you how happy I am to see this place open again. I walked past it every day while it was closed.",
     "You work hard, now, and keep the shop running. He'd have liked that very much.",
-  ],"Thank you, George. I will.");
+  ],"Thank you, George. I will.","+"+GEORGE_REP+" Reputation");
   else if(GEO.state==="talk2") georgeSheet(["Hey, Mimi! Long time no see!"],"Continue");
 }
 // closing either of his pop-ups moves the visit on
 function georgeNext(){
   if(GEO.state==="talk1"){
     closeModal(); GEO.state="waitcat";
+    S.rep=clamp(S.rep+GEORGE_REP,0,100); hud();
     musicHold=false; playMusic();
     tip("George looks round the shop, then spots the cushion in the corner.");
   } else if(GEO.state==="talk2"){
