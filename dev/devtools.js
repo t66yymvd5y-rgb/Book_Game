@@ -3,7 +3,7 @@
    Built into dev.html by dev/build.sh; never loaded by index.html.
    It runs after the game's own script, so it reaches the game's globals
    (S, GEO, paint, hud, autosave, …) directly and changes nothing about how
-   the game itself plays.
+   the game itself plays. It also holds the map editor (see below).
    ============================================================ */
 (function(){
   window.DEV_SPEED=1;                       // read by the game loop in the dev build only
@@ -151,6 +151,233 @@
     },
   };
 
+  /* ---------- map editor ----------
+     Lay the floor out directly: add any piece free of charge and level, pick pieces up and put them
+     down, remove them, and copy or paste the whole layout as JSON. The floor is S.grid (one tile
+     type per cell); shelves and tables carry their books in S.slots keyed by tile; the information
+     counter, the record corner and the cafe table span several tiles in a row from a left-hand
+     anchor; the keeper's spot is S.keeper. Walls and the door are the border and stay as they are. */
+  const PIECES=[
+    {t:SHELF,   name:"Shelf",          tiles:[SHELF], slots:true},
+    {t:TABLE,   name:"Display Table",  tiles:[TABLE], slots:true},
+    {t:PLANT,   name:"Potted Palm",    tiles:[PLANT]},
+    {t:ARMCHAIR,name:"Armchair",       tiles:[ARMCHAIR]},
+    {t:CAFE,    name:"Coffee Corner",  tiles:[CAFE], one:true},
+    {t:SEAT_L,  name:"Cafe Table",     tiles:[SEAT_L,SEAT_T,SEAT_R]},
+    {t:COUNTER, name:"Counter",        tiles:[COUNTER], one:true, keep:true},
+    {t:INFO,    name:"Info Counter",   tiles:[INFO,INFO_R], one:true, auto:true},
+    {t:RACK,    name:"Magazine Rack",  tiles:[RACK], one:true, auto:true},
+    {t:VINYL,   name:"Record Corner",  tiles:[VINYL,VINYL_R], one:true, auto:true},
+    {t:CAT,     name:"Cat Cushion",    tiles:[CAT], one:true, keep:true},
+  ];
+  const PIECE_BY_TILE={}; PIECES.forEach(p=>p.tiles.forEach((t,i)=>PIECE_BY_TILE[t]={p,i}));
+  const KNOWN_TILES=new Set([EMPTY,WALL,DOOR].concat(PIECES.flatMap(p=>p.tiles)));
+  const ED={on:false, tool:"move", sel:null};      // tool: "move" | "erase" | "keeper" | a piece; sel: {p,x,y} | {keeper:true}
+
+  const edCss=`
+  #devEd{position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#1e1f24;color:#eee;border-top:2px solid #c0392b;
+    padding:6px 10px 8px;font:13px/1.35 system-ui,sans-serif;box-shadow:0 -4px 18px rgba(0,0,0,.5);display:none}
+  #devEd.on{display:block}
+  #devEd .hdr{font:700 10px/1 system-ui,sans-serif;letter-spacing:.08em;color:#f5a99f;margin-bottom:5px}
+  #devEd .strip{display:flex;gap:6px;align-items:center;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+  #devEd .hint{color:#aaa;font-size:11px;margin-top:2px}
+  #devEd button{flex:none;padding:5px 8px;border-radius:4px;border:1px solid #666;background:#3a3d45;color:#fff;font:inherit;cursor:pointer}
+  #devEd button:hover{background:#4a4e58}
+  #devEd button.on{background:#c0392b;border-color:#e67e73}
+  #devEd button.done{background:#2e7d4f;border-color:#5cb882}
+  #devEd .sep{flex:none;width:1px;background:#555;margin:0 2px}
+  #devEd textarea{width:100%;height:72px;box-sizing:border-box;margin-top:4px;padding:5px 6px;border-radius:4px;border:1px solid #555;
+    background:#2b2d33;color:#fff;font:11px/1.3 ui-monospace,monospace;display:none;resize:vertical}
+  #devEd textarea.on{display:block}
+  #devEd .msg{min-height:1.2em;color:#9fe0a8;font-size:12px;margin-top:4px}
+  #devEd .msg.bad{color:#f5a99f}`;
+  const edStyle=document.createElement("style"); edStyle.textContent=edCss; document.head.appendChild(edStyle);
+  const E=document.createElement("div"); E.id="devEd"; document.body.appendChild(E);
+  ["keydown","keyup","keypress","pointerdown","click"].forEach(t=>E.addEventListener(t,e=>e.stopPropagation()));
+  let edMsg=null, edTA=null;
+  function edSay(t,bad){ if(edMsg){ edMsg.textContent=t; edMsg.className="msg"+(bad?" bad":""); } }
+
+  const inside=(x,y)=>x>=1&&x<=GW-2&&y>=1&&y<=GH-2;
+  const entrance=(x,y)=>x===doorX()&&y===GH-2;             // the tile inside the door: customers come in here
+  function pieceAt(x,y){ const m=PIECE_BY_TILE[S.grid[y]&&S.grid[y][x]]; return m?{p:m.p,x:x-m.i,y}:null; }
+  function partOf(s,x,y){ return !!s&&!s.keeper&&s.y===y&&x>=s.x&&x<s.x+s.p.tiles.length; }
+  // a piece laid left to right from (x,y): every tile inside the walls, clear (or part of the piece being moved),
+  // not the keeper's spot and not the doorway
+  function fits(p,x,y,self){
+    return p.tiles.every((t,i)=>{ const tx=x+i;
+      return inside(tx,y)&&!entrance(tx,y)&&!isKeeperTile(tx,y)&&(S.grid[y][tx]===EMPTY||partOf(self,tx,y)); });
+  }
+  function keeperFits(x,y){ return inside(x,y)&&!entrance(x,y)&&S.grid[y][x]===EMPTY; }
+  function clearPiece(s){ s.p.tiles.forEach((t,i)=>{ S.grid[s.y][s.x+i]=EMPTY; delete S.slots[key(s.x+i,s.y)]; }); }
+  function putPiece(p,x,y,books){ p.tiles.forEach((t,i)=>{ S.grid[y][x+i]=t; if(p.slots) S.slots[key(x+i,y)]=books||[]; }); }
+  function movePiece(s,x,y){ const books=s.p.slots?(S.slots[key(s.x,s.y)]||[]):null; clearPiece(s); putPiece(s.p,x,y,books); }
+  // after every change: books back on shelves, the cat and the keeper on their spots, redraw, save
+  function afterEdit(t){
+    t+=gameRules();
+    restockShelves(); catGoHome(); keeperHome();
+    hud(); paint(); autosave();
+    const shelved=new Set(shelvedIds()), un=stockedIds().filter(id=>!shelved.has(id)).length;
+    edSay(t+(un?" "+un+" title"+(un>1?"s":"")+" in stock with no shelf space.":""));
+  }
+  // The game applies these when a save loads: a shop always has an information counter, a magazine
+  // rack and a record corner (put by the door if missing), and a Coffee Corner moves in beside the
+  // counter when there is room. Doing the same here shows the layout as the save will keep it.
+  function gameRules(){
+    const at=t=>JSON.stringify(tilesOf(t)), was={[INFO]:at(INFO),[RACK]:at(RACK),[VINYL]:at(VINYL),[CAFE]:at(CAFE)};
+    placeInfoDesk(false); placeRack(false); placeRecordCorner(false); placeCafe();
+    const notes=[];
+    [[INFO,"Info Counter"],[RACK,"Magazine Rack"],[VINYL,"Record Corner"]].forEach(([t,n])=>{ if(was[t]!==at(t)) notes.push(was[t]==="[]"?"the game put a "+n+" back by the door":"the game moved the "+n); });
+    if(was[CAFE]!==at(CAFE)) notes.push("the game moved the Coffee Corner in beside the counter");
+    return notes.length?" ("+notes.join("; ")+", as it does whenever the save loads.)":"";
+  }
+  function hintFor(tool){
+    if(tool==="move") return "Tap a piece to pick it up, then tap where it goes. Shelves and tables keep their books.";
+    if(tool==="erase") return "Tap a piece to remove it. The counter and the cat's cushion can only be moved; the game insists on an info counter, a rack and a record corner.";
+    if(tool==="keeper") return "Tap a clear floor tile: that is where you stand (the blue dot).";
+    return "Tap a marked tile to place a "+tool.name+"."+(tool.tiles.length>1?" It takes "+tool.tiles.length+" tiles in a row, from the one you tap.":"")
+      +(tool.one?" There is only one, so this moves it if the shop already has one.":"");
+  }
+  function edTap(x,y){
+    if(!S.grid[y]||S.grid[y][x]==null) return;
+    const here=pieceAt(x,y), tool=ED.tool;
+    if(tool==="erase"){
+      if(!here){ edSay(isKeeperTile(x,y)?"The keeper's spot can be moved, not removed.":"Nothing there to remove.",true); return; }
+      if(here.p.keep){ edSay("The game needs its "+here.p.name+". Move it instead.",true); return; }
+      clearPiece(here); ED.sel=null;
+      afterEdit(here.p.name+" removed.");
+      return;
+    }
+    if(tool==="keeper"){
+      if(!keeperFits(x,y)){ edSay("The keeper needs a clear floor tile.",true); return; }
+      S.keeper=[x,y]; afterEdit("Keeper's spot moved."); return;
+    }
+    if(tool==="move"){
+      const s=ED.sel;
+      if(s&&s.keeper&&keeperFits(x,y)){ S.keeper=[x,y]; ED.sel=null; afterEdit("Keeper's spot moved."); return; }
+      if(s&&partOf(s,x,y)){ ED.sel=null; edSay("Put back down."); return; }
+      if(s&&!s.keeper&&fits(s.p,x,y,s)){ movePiece(s,x,y); ED.sel=null; afterEdit(s.p.name+" moved."); return; }
+      if(here){ ED.sel=here; edSay(here.p.name+" picked up: tap where it goes"+(here.p.tiles.length>1?" (its left tile)":"")+"."); return; }
+      if(isKeeperTile(x,y)){ ED.sel={keeper:true}; edSay("Keeper's spot picked up: tap a clear tile."); return; }
+      edSay(s?"Doesn't fit there.":"Nothing there. Tap a piece to pick it up.",true);
+      return;
+    }
+    const p=tool;                                           // a piece from the palette
+    if(p.one){
+      const ex=tilesOf(p.t)[0];
+      if(ex){ const s={p,x:ex[0],y:ex[1]};
+        if(fits(p,x,y,s)){ movePiece(s,x,y); afterEdit("There is only one "+p.name+", so it moved."); } else edSay("Doesn't fit there.",true);
+        return; }
+    }
+    if(!fits(p,x,y,null)){ edSay(p.name+" doesn't fit there"+(p.tiles.length>1?": it needs "+p.tiles.length+" clear tiles in a row from the one you tap":"")+".",true); return; }
+    putPiece(p,x,y,[]); afterEdit(p.name+" placed.");
+  }
+
+  // drawn over the game's own frame while the editor is open
+  function edOverlay(){
+    const g=ctx; g.save();
+    g.fillStyle="rgba(255,255,255,.28)";
+    for(let x=1;x<GW;x++) g.fillRect(x*TS,0,1,GH*TS);
+    for(let y=1;y<GH;y++) g.fillRect(0,y*TS,GW*TS,1);
+    const on=(ANIM>>3)&1, tool=ED.tool, s=ED.sel;
+    let p=null, self=null;
+    if(tool==="move"&&s&&!s.keeper){ p=s.p; self=s; } else if(tool!=="move"&&tool!=="erase"&&tool!=="keeper") p=tool;
+    const kp=tool==="keeper"||(tool==="move"&&s&&s.keeper);
+    if(p||kp){
+      g.fillStyle=on?"rgba(255,200,60,.9)":"rgba(255,200,60,.5)";
+      for(let y=1;y<GH-1;y++) for(let x=1;x<GW-1;x++) if(kp?keeperFits(x,y):fits(p,x,y,self)) g.fillRect(x*TS+6,y*TS+6,4,4);
+    }
+    if(s){
+      let x,y,w; if(s.keeper){ [x,y]=S.keeper; w=1; } else { x=s.x; y=s.y; w=s.p.tiles.length; }
+      g.strokeStyle=on?"#ff5a3c":"#ffd36b"; g.lineWidth=1; g.strokeRect(x*TS+.5,y*TS+.5,w*TS-1,TS-1);
+    }
+    if(S.keeper){ g.fillStyle="rgba(70,150,255,.95)"; g.fillRect(S.keeper[0]*TS+1,S.keeper[1]*TS+1,3,3); }
+    g.fillStyle="rgba(255,80,80,.22)"; g.fillRect(doorX()*TS,(GH-2)*TS,TS,TS);   // the doorway stays clear
+    g.restore();
+  }
+  const gameRender=render;
+  window.render=function(){ gameRender(); if(ED.on){ try{ edOverlay(); }catch(e){} } };
+  // taps on the floor go to the editor, not the game, while it is open (capture on the stage, above the canvas)
+  cv.parentElement.addEventListener("click",e=>{
+    if(!ED.on) return;
+    e.stopPropagation(); e.preventDefault();
+    const r=cv.getBoundingClientRect();
+    edTap(Math.floor((e.clientX-r.left)/r.width*GW), Math.floor((e.clientY-r.top)/r.height*GH));
+  },true);
+
+  // the layout as text: size, tier, keeper's spot and the grid, one row per line of tile numbers
+  function layoutJSON(){
+    return JSON.stringify({gw:GW,gh:GH,tier:S.tier,keeper:S.keeper,grid:S.grid.map(r=>r.join(" "))},null,1).replace(/\n\s*/g," ");
+  }
+  function applyLayout(d){
+    if(!d||!Array.isArray(d.grid)||!d.grid.length) return "No grid in that layout.";
+    const rows=d.grid.map(r=>typeof r==="string"?r.trim().split(/[\s,]+/).map(Number):Array.isArray(r)?r.map(Number):[]);
+    const gh=rows.length, gw=rows[0].length;
+    const ti=SIZE_TIERS.findIndex(t=>t.gw===gw&&t.gh===gh);
+    if(ti<0) return "That grid is "+gw+"×"+gh+"; the floors are "+SIZE_TIERS.map(t=>t.gw+"×"+t.gh).join(", ")+".";
+    if(rows.some(r=>r.length!==gw||r.some(v=>!KNOWN_TILES.has(v)))) return "The grid has a ragged row or an unknown tile number.";
+    GW=gw; GH=gh; S.tier=ti;
+    const dx=doorX();
+    S.grid=rows.map((r,y)=>r.map((v,x)=>{
+      if(y===0||x===0||x===GW-1||y===GH-1) return (y===GH-1&&x===dx)?DOOR:WALL;   // the border is always wall and door
+      return (v===WALL||v===DOOR||(x===dx&&y===GH-2))?EMPTY:v; }));
+    // a piece that spans several tiles must be whole; a stray part becomes floor
+    const src=S.grid.map(r=>r.slice());
+    for(let y=1;y<GH-1;y++) for(let x=1;x<GW-1;x++){ const m=PIECE_BY_TILE[src[y][x]]; if(!m) continue;
+      const ax=x-m.i; if(!m.p.tiles.every((t,j)=>src[y][ax+j]===t)) S.grid[y][x]=EMPTY; }
+    // one of each where the game expects one: keep the first, the rest become floor
+    PIECES.filter(p=>p.one).forEach(p=>tilesOf(p.t).slice(1).forEach(([x,y])=>clearPiece({p,x,y})));
+    S.keeper=null;
+    const k=Array.isArray(d.keeper)?[d.keeper[0]|0,d.keeper[1]|0]:null;
+    if(k&&keeperFits(k[0],k[1])) S.keeper=k;
+    else {                                                  // behind the counter if clear, else beside it, else anywhere
+      const c=tilesOf(COUNTER)[0], cand=c?[[c[0],c[1]-1],[c[0]-1,c[1]],[c[0]+1,c[1]]]:[];
+      let spot=cand.find(([x,y])=>keeperFits(x,y));
+      if(!spot) for(let y=1;y<GH-1&&!spot;y++) for(let x=1;x<GW-1&&!spot;x++) if(keeperFits(x,y)) spot=[x,y];
+      S.keeper=spot||[dx,1];
+    }
+    Object.keys(S.slots).forEach(k2=>{ const [x,y]=k2.split(",").map(Number); const t=S.grid[y]&&S.grid[y][x]; if(t!==SHELF&&t!==TABLE) delete S.slots[k2]; });
+    resizeStage(); return null;
+  }
+  function edCopy(){
+    const j=layoutJSON(); edTA.value=j; edTA.classList.add("on");
+    if(navigator.clipboard&&navigator.clipboard.writeText)
+      navigator.clipboard.writeText(j).then(()=>edSay("Layout copied to the clipboard, and shown below."),()=>edSay("The clipboard is blocked here: copy the text below."));
+    else edSay("Copy the text below.");
+  }
+  function edLoad(){
+    edTA.classList.add("on");
+    let d; try{ d=JSON.parse(edTA.value); }catch(e){ edSay("That isn't valid JSON. Paste a layout into the box, then tap Load.",true); return; }
+    const err=applyLayout(d); if(err){ edSay(err,true); return; }
+    ED.sel=null; afterEdit("Layout loaded: "+SIZE_TIERS[S.tier].name+".");
+  }
+  function edReset(){ initGrid(false); ED.sel=null; afterEdit("Grandfather's layout restored; the books are reshelved."); }
+
+  function edBuild(){
+    E.innerHTML="";
+    const B=(label,fn,cls)=>{ const b=h("button",{textContent:label}); if(cls) b.className=cls; b.onclick=fn; return b; };
+    const pick=t=>{ ED.tool=t; ED.sel=null; edBuild(); edSay(hintFor(t)); };
+    const s1=h("div",{className:"strip"},[
+      B("Done",edOff,"done"), h("span",{className:"sep"}),
+      B("Move",()=>pick("move"),ED.tool==="move"?"on":""), B("Erase",()=>pick("erase"),ED.tool==="erase"?"on":""),
+      B("Keeper spot",()=>pick("keeper"),ED.tool==="keeper"?"on":""), h("span",{className:"sep"})]);
+    PIECES.forEach(p=>s1.appendChild(B("+ "+p.name,()=>pick(p),ED.tool===p?"on":"")));
+    const s2=h("div",{className:"strip"},[B("Grandfather's layout",edReset),B("Copy layout",edCopy),B("Load layout",edLoad)]);
+    const hint=h("div",{className:"hint",textContent:"Free, any level; pieces stay inside the walls and never overlap. Saved to the dev save only."});
+    edTA=h("textarea",{spellcheck:false,placeholder:"Copy layout puts the JSON here. Paste a layout here and tap Load layout to use it."});
+    edMsg=h("div",{className:"msg"});
+    [h("div",{className:"hdr",textContent:"MAP EDITOR"}),s1,s2,hint,edTA,edMsg].forEach(n=>E.appendChild(n));
+  }
+  function edOn(){
+    if(!ready()) return;
+    if(S.phase==="open"){ say("Close the shop first ('Close instantly'), then open the map editor.",true); return; }
+    S.placing=null; closeModal();
+    ED.on=true; ED.tool="move"; ED.sel=null;
+    P.classList.remove("on"); btn.style.display="none"; E.classList.add("on");
+    edBuild(); edSay(hintFor("move")); paint();
+  }
+  function edOff(){ if(!ED.on) return; ED.on=false; ED.sel=null; E.classList.remove("on"); btn.style.display=""; try{ paint(); }catch(e){} }
+  A.editor=edOn; A.editorOff=edOff; A.layout=layoutJSON; A.loadLayout=d=>{ const err=applyLayout(typeof d==="string"?JSON.parse(d):d); if(err) throw new Error(err); afterEdit("Layout loaded."); };
+
   function status(){
     if(!statEl) return;
     if(titleOn()){ statEl.textContent="Title screen"; return; }
@@ -188,6 +415,8 @@
 
     P.appendChild(h("h3",{textContent:"Floor"}));
     P.appendChild(h("div",{className:"row"},[B("Expand floor (free)",A.expand),B("+3 copies of everything",()=>A.fillStock(3))]));
+    P.appendChild(h("div",{className:"row"},[B("Map editor…",edOn)]));
+    P.appendChild(h("div",{className:"hint",textContent:"Add, move and remove shelves, tables and every other piece free; copy or paste a layout as JSON. Morning or evening only."}));
 
     P.appendChild(h("h3",{textContent:"Events"}));
     P.appendChild(h("div",{className:"row"},[B("Reset George",A.replayGeorge),B("George now",A.georgeNow),
@@ -213,6 +442,6 @@
   }
 
   btn.onclick=e=>{ e.stopPropagation(); P.classList.toggle("on"); if(P.classList.contains("on")) build(); };
-  setInterval(()=>{ if(P.classList.contains("on")) status(); },400);
+  setInterval(()=>{ if(P.classList.contains("on")) status(); if(ED.on&&(titleOn()||S.phase==="open")) edOff(); },400);
   window.DEV=A;                              // handy from the console too
 })();

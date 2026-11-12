@@ -21,7 +21,8 @@ artifact automatically after the change is made — do not wait to be asked.
 
 A developer copy with a test panel (jump to day X, set bank balance / reputation, free floor
 expansion, replay George, reset magazines and stamps, spawn customers, skip to close, 1×/2×/4×
-speed) is published as a separate artifact with its own save:
+speed, and a map editor that adds, moves and removes any fixture free and copies or loads a
+layout as JSON) is published as a separate artifact with its own save:
 https://claude.ai/artifact/7jY4JNXd6htPKa264WhgjK ("Corner Books Dev").
 
 - The panel lives in `dev/devtools.js`. `bash dev/build.sh` builds `dev.html` (git-ignored) from
