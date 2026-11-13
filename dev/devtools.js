@@ -159,6 +159,7 @@
      anchor; the keeper's spot is S.keeper. Walls and the door are the border and stay as they are. */
   const PIECES=[
     {t:SHELF,   name:"Shelf",          tiles:[SHELF], slots:true},
+    {t:SHELF_B, name:"Shelf (faces back)", tiles:[SHELF_B], slots:true},
     {t:TABLE,   name:"Display Table",  tiles:[TABLE], slots:true},
     {t:PLANT,   name:"Potted Palm",    tiles:[PLANT]},
     {t:ARMCHAIR,name:"Armchair",       tiles:[ARMCHAIR]},
@@ -172,7 +173,7 @@
   ];
   const PIECE_BY_TILE={}; PIECES.forEach(p=>p.tiles.forEach((t,i)=>PIECE_BY_TILE[t]={p,i}));
   const KNOWN_TILES=new Set([EMPTY,WALL,DOOR].concat(PIECES.flatMap(p=>p.tiles)));
-  const ED={on:false, tool:"move", sel:null};      // tool: "move" | "erase" | "keeper" | a piece; sel: {p,x,y} | {keeper:true}
+  const ED={on:false, tool:"move", sel:null};      // tool: "move" | "erase" | "flip" | "keeper" | a piece; sel: {p,x,y} | {keeper:true}
 
   const edCss=`
   #devEd{position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#1e1f24;color:#eee;border-top:2px solid #c0392b;
@@ -234,6 +235,7 @@
     if(tool==="move") return "Tap a piece to pick it up, then tap where it goes. Shelves and tables keep their books.";
     if(tool==="erase") return "Tap a piece to remove it. The counter and the cat's cushion can only be moved; the game insists on an info counter, a rack and a record corner.";
     if(tool==="keeper") return "Tap a clear floor tile: that is where you stand (the blue dot).";
+    if(tool==="flip") return "Tap a shelf to turn it round. A shelf facing the back is browsed from the tile above; the books stay on it.";
     return "Tap a marked tile to place a "+tool.name+"."+(tool.tiles.length>1?" It takes "+tool.tiles.length+" tiles in a row, from the one you tap.":"")
       +(tool.one?" There is only one, so this moves it if the shop already has one.":"");
   }
@@ -246,6 +248,11 @@
       clearPiece(here); ED.sel=null;
       afterEdit(here.p.name+" removed.");
       return;
+    }
+    if(tool==="flip"){
+      if(!here||!isShelf(here.p.t)){ edSay("Only shelves turn round.",true); return; }
+      const nt=here.p.t===SHELF?SHELF_B:SHELF; S.grid[y][x]=nt; ED.sel=null;
+      afterEdit(nt===SHELF_B?"Shelf turned to face the back: browsed from above.":"Shelf turned to face the front: browsed from below."); return;
     }
     if(tool==="keeper"){
       if(!keeperFits(x,y)){ edSay("The keeper needs a clear floor tile.",true); return; }
@@ -280,7 +287,7 @@
     for(let y=1;y<GH;y++) g.fillRect(0,y*TS,GW*TS,1);
     const on=(ANIM>>3)&1, tool=ED.tool, s=ED.sel;
     let p=null, self=null;
-    if(tool==="move"&&s&&!s.keeper){ p=s.p; self=s; } else if(tool!=="move"&&tool!=="erase"&&tool!=="keeper") p=tool;
+    if(tool==="move"&&s&&!s.keeper){ p=s.p; self=s; } else if(typeof tool==="object") p=tool;
     const kp=tool==="keeper"||(tool==="move"&&s&&s.keeper);
     if(p||kp){
       g.fillStyle=on?"rgba(255,200,60,.9)":"rgba(255,200,60,.5)";
@@ -335,7 +342,7 @@
       if(!spot) for(let y=1;y<GH-1&&!spot;y++) for(let x=1;x<GW-1&&!spot;x++) if(keeperFits(x,y)) spot=[x,y];
       S.keeper=spot||[dx,1];
     }
-    Object.keys(S.slots).forEach(k2=>{ const [x,y]=k2.split(",").map(Number); const t=S.grid[y]&&S.grid[y][x]; if(t!==SHELF&&t!==TABLE) delete S.slots[k2]; });
+    Object.keys(S.slots).forEach(k2=>{ const [x,y]=k2.split(",").map(Number); const t=S.grid[y]&&S.grid[y][x]; if(!holdsBooks(t)) delete S.slots[k2]; });
     resizeStage(); return null;
   }
   function edCopy(){
@@ -359,6 +366,7 @@
     const s1=h("div",{className:"strip"},[
       B("Done",edOff,"done"), h("span",{className:"sep"}),
       B("Move",()=>pick("move"),ED.tool==="move"?"on":""), B("Erase",()=>pick("erase"),ED.tool==="erase"?"on":""),
+      B("Flip shelf",()=>pick("flip"),ED.tool==="flip"?"on":""),
       B("Keeper spot",()=>pick("keeper"),ED.tool==="keeper"?"on":""), h("span",{className:"sep"})]);
     PIECES.forEach(p=>s1.appendChild(B("+ "+p.name,()=>pick(p),ED.tool===p?"on":"")));
     const s2=h("div",{className:"strip"},[B("Grandfather's layout",edReset),B("Copy layout",edCopy),B("Load layout",edLoad)]);

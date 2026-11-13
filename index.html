@@ -1155,6 +1155,7 @@ const RACK=11;                       // the magazine rack by the door: a new mag
 const VINYL=12, VINYL_R=13;          // grandfather's record corner: turntable and records, two tiles, drawn from the left one
 const SEAT_L=14, SEAT_T=15, SEAT_R=16; // a cafe table and its two chairs: three tiles, bought as a set
 const ARMCHAIR=17;                   // an armchair: someone settles in to read, and may buy the book
+const SHELF_B=18;                    // a shelf turned to face the back wall: browsed from the tile above, so it can stand back to back with a shelf
 const COFFEE_PRICE=5;                // a cup, over the Coffee Corner: the base price, before the keeper sets their own
 const COFFEE_SHARE=0.5;              // the share of customers who come in for a coffee at the base price, once there is one
 const BEANS_COST=50, BEANS_CUPS=20;  // a bag of beans: what it costs, and how many cups it makes
@@ -1165,13 +1166,19 @@ const SHELF_SLOTS=10;                // titles per shelf
 const START_TITLES=100;              // grandfather's stock: this many random titles, one copy each
 const FURN={
   [SHELF]:{name:"Shelf",cost:120,slots:SHELF_SLOTS,desc:"Holds "+SHELF_SLOTS+" titles"},
+  [SHELF_B]:{name:"Shelf (faces back)",cost:120,slots:SHELF_SLOTS,front:"up",desc:"Holds "+SHELF_SLOTS+" titles, browsed from the tile above: stands back to back with a shelf"},
   [TABLE]:{name:"Display Table",cost:200,slots:2,desc:"Two featured titles on display",lvl:2},
   [PLANT]:{name:"Potted Palm",cost:60,slots:0,desc:"+ambience, slower exits"},
   [ARMCHAIR]:{name:"Armchair",cost:180,slots:0,desc:"Someone settles in to read a while, and may buy the book",lvl:2},
   [CAFE]:{name:"Coffee Corner",cost:900,slots:0,desc:"Beside the counter. Sells coffee, "+rm(COFFEE_PRICE)+" a cup to start; beans "+rm(BEANS_COST)+" a bag · +50% patience, all customers",lvl:3,one:true},
   [SEAT_L]:{name:"Cafe Table",cost:260,slots:0,desc:"A table and two chairs: coffee drinkers sit a while before they browse",lvl:3,tiles:[SEAT_L,SEAT_T,SEAT_R],needs:CAFE},
 };
-const FURN_ORDER=[SHELF,TABLE,PLANT,ARMCHAIR,CAFE,SEAT_L];
+const FURN_ORDER=[SHELF,SHELF_B,TABLE,PLANT,ARMCHAIR,CAFE,SEAT_L];
+const isShelf=t=>t===SHELF||t===SHELF_B;             // either way round
+const holdsBooks=t=>isShelf(t)||t===TABLE;           // fixtures with slots
+function shelfTiles(){ return tilesOf(SHELF).concat(tilesOf(SHELF_B)); }
+// the tile a customer stands on to browse: below a shelf or table, above a shelf that faces the back
+function frontOfFixture(x,y){ return [SHELF,TABLE].includes(S.grid[y-1][x]) || (!!S.grid[y+1] && S.grid[y+1][x]===SHELF_B); }
 
 /* Space tiers. The game starts in grandfather's shop, already a mature bookshop. Rent is tied to
    floor size, not reputation: growth is a choice the player makes and pays for once. */
@@ -1228,7 +1235,7 @@ function initGrid(preserve){
     const newSlots={};
     Object.keys(oldSlots).forEach(k=>{
       const [x,y]=k.split(",").map(Number);
-      if(x<GW-1 && y<GH-1 && (S.grid[y][x]===SHELF||S.grid[y][x]===TABLE)) newSlots[k]=oldSlots[k];
+      if(x<GW-1 && y<GH-1 && holdsBooks(S.grid[y][x])) newSlots[k]=oldSlots[k];
     });
     S.slots=newSlots;
   } else {
@@ -1295,7 +1302,7 @@ function placeInfoDesk(move){
   const old=tilesOf(INFO).concat(tilesOf(INFO_R));
   old.forEach(([x,y])=>S.grid[y][x]=EMPTY);
   const ok=(x,y)=>x>=1&&x+1<=GW-2&&S.grid[y][x]===EMPTY&&S.grid[y][x+1]===EMPTY&&!isKeeperTile(x,y)&&!isKeeperTile(x+1,y)
-    &&![x,x+1].some(cx=>[SHELF,TABLE].includes(S.grid[y-1][cx]))&&x!==doorX()&&x+1!==doorX();
+    &&![x,x+1].some(cx=>frontOfFixture(cx,y))&&x!==doorX()&&x+1!==doorX();
   const dx=doorX(), spots=[];
   for(const y of [GH-2,GH-3]) for(let x=1;x<GW-2;x++) if(ok(x,y)) spots.push([x,y,Math.abs(x+1-dx)+(GH-2-y)*3+(x>dx?0.5:0)]);
   spots.sort((a,b2)=>a[2]-b2[2]);
@@ -1311,7 +1318,7 @@ function fixtureFits(x,y,w){
   for(let cx=x;cx<x+w;cx++){
     if(cx<1||cx>GW-2||y<2||y>GH-2||cx===doorX()) return false;
     if(S.grid[y][cx]!==EMPTY||isKeeperTile(cx,y)) return false;
-    if([SHELF,TABLE,COUNTER,CAFE].includes(S.grid[y-1][cx])) return false;
+    if([SHELF,TABLE,COUNTER,CAFE].includes(S.grid[y-1][cx]) || S.grid[y+1][cx]===SHELF_B) return false;
   }
   return true;
 }
@@ -1327,7 +1334,8 @@ function reachableFronts(blocked){
       seen.add(k); q.push([nx,ny]);
     });
   }
-  return tilesOf(SHELF).concat(tilesOf(TABLE)).filter(([x,y])=>seen.has(key(x,y+1))).length;
+  return tilesOf(SHELF).concat(tilesOf(TABLE)).filter(([x,y])=>seen.has(key(x,y+1))).length
+       + tilesOf(SHELF_B).filter(([x,y])=>seen.has(key(x,y-1))).length;
 }
 // types: the fixture's tiles left to right; score: lower is a better spot
 function placeFixture(types,score,move){
@@ -1394,7 +1402,7 @@ function reservedTile(x,y){
 // a piece of furniture laid left to right from (x,y): every tile clear floor, none of them reserved
 function placingFits(k,x,y){
   const f=FURN[k]; if(!f) return false;
-  return (f.tiles||[k]).every((t,i)=>freeFloor(x+i,y)&&!reservedTile(x+i,y));
+  return (f.tiles||[k]).every((t,i)=>freeFloor(x+i,y)&&!reservedTile(x+i,y)) && (f.front!=="up" || freeFloor(x,y-1));
 }
 function buyCafe(){
   const f=FURN[CAFE]; if(S.cash<f.cost||cafeTile()) return;
@@ -1513,7 +1521,7 @@ function coffeeMenu(intro){
 const autoPrice = cost => Math.round(cost*1.45) - 0.10;
 // every title out in the shop, once each — a display table shows copies of titles that are also shelved
 function shelvedIds(){ const o=new Set(); Object.keys(S.slots).forEach(k=>S.slots[k].forEach(id=>o.add(id))); return [...o]; }
-function shelfCapacity(){ return tilesOf(SHELF).length*SHELF_SLOTS; }
+function shelfCapacity(){ return shelfTiles().length*SHELF_SLOTS; }
 function priceOf(id){ const s=S.stock[id]; return s.auto?autoPrice(s.cost):s.price; }
 function inStock(id){ return !!(S.stock[id] && S.stock[id].copies>0); }
 function stockedIds(){ return Object.keys(S.stock).map(Number).filter(inStock); }
@@ -1529,7 +1537,7 @@ function pendingNew(){ return incomingIds().filter(id=>!inStock(id)); }
 function restockShelves(){
   const on=new Set(shelvedIds());
   const free=[];
-  tilesOf(SHELF).forEach(([x,y])=>{ const k=key(x,y); S.slots[k]=S.slots[k]||[];
+  shelfTiles().forEach(([x,y])=>{ const k=key(x,y); S.slots[k]=S.slots[k]||[];
     for(let i=S.slots[k].length;i<SHELF_SLOTS;i++) free.push(k); });
   stockedIds().forEach(id=>{ if(on.has(id)||!free.length) return; S.slots[free.shift()].push(id); on.add(id); });
   // display tables: two in-stock titles each, no title on two tables at once
@@ -1548,7 +1556,7 @@ function addCopies(id,n){
 function seedStock(){
   S.stock={}; S.incoming=[];
   // dealt round the shelves like cards, so every shelf in the shop looks lived-in
-  const shelves=tilesOf(SHELF).map(([x,y])=>key(x,y));
+  const shelves=shelfTiles().map(([x,y])=>key(x,y));
   shelves.forEach(k=>S.slots[k]=[]);
   shuffled(BOOKS).slice(0,Math.min(START_TITLES,shelfCapacity())).forEach((bk,i)=>{
     addCopies(bk.id,1); S.slots[shelves[i%shelves.length]].push(bk.id); });
@@ -1721,6 +1729,20 @@ function drawShelf(x,y,ids){
     R(g,X+1,cy+3,14,1,C.woodL);
   }
   R(g,X+1,Y+14,14,1,C.woodD);
+}
+// a shelf turned to face the back wall: the player sees its planked back and top edge, and a browsing
+// customer stands on the tile above it, half hidden behind it (it is drawn in the actor pass for that)
+function drawShelfBack(x,y){
+  const X=x*TS,Y=y*TS, g=ctx;
+  SH(g,X+1,Y+14,16,3);
+  PB(g,X,Y,16,16,C.wood,C.woodHi);
+  R(g,X+1,Y+1,14,2,C.woodL);                             // the top edge, catching the light
+  for(let r=0;r<3;r++){                                  // three planks across the back, a nail head at each end
+    const py=Y+4+r*4;
+    R(g,X+1,py,14,1,C.woodHi); R(g,X+1,py+3,14,1,C.woodD);
+    R(g,X+3,py+1,1,1,C.woodDD); R(g,X+12,py+1,1,1,C.woodDD);
+  }
+  R(g,X+1,Y+15,14,1,C.woodD);
 }
 function bookFlat(g,X,Y,col){                           // a closed book lying on its back
   PB(g,X,Y,8,4,col,shade(col,1.3));
@@ -1984,7 +2006,7 @@ function catSpots(){
   for(let y=2;y<GH-1;y++) for(let x=1;x<GW-1;x++){
     if(S.grid[y][x]!==EMPTY || isKeeperTile(x,y)) continue;
     const above=S.grid[y-1][x];
-    if(above===SHELF||above===TABLE||above===COUNTER||above===CAFE) continue;
+    if(above===SHELF||above===TABLE||above===COUNTER||above===CAFE || S.grid[y+1][x]===SHELF_B) continue;
     if(x===doorX() && y>=GH-3) continue;
     if(Math.abs(x-cx)+Math.abs(y-cy)>6) continue;
     o.push([x,y]);
@@ -2295,6 +2317,7 @@ function render(){
   drawWallet();
   // customers and a wandering cat, back to front by where their feet are
   const actors=S.customers.map(p=>({y:p.py+13, draw:()=>drawPerson(p)}));
+  tilesOf(SHELF_B).forEach(([x,y])=>actors.push({y:y*TS+16, draw:()=>drawShelfBack(x,y)}));   // over whoever browses it from above
   const cat=catAway(); if(cat) actors.push(cat);
   const geo=georgeActor(); if(geo) actors.push(geo);
   const leo=leoActor(); if(leo) actors.push(leo);
@@ -2410,9 +2433,10 @@ function spawnCustomer(){
 }
 // off to browse: the floor in front of a random shelf or table
 function sendToShelf(p){
-  const shelves=tilesOf(SHELF).concat(tilesOf(TABLE)), dx=doorX();
+  const shelves=shelfTiles().concat(tilesOf(TABLE)), dx=doorX();
   const t=shelves.length?rnd(shelves):[dx,3];
-  p.goal="shelf"; p.state="walk"; p.bubble=false; p.target=[t[0],t[1]+1];
+  const back=S.grid[t[1]][t[0]]===SHELF_B;                // browsed from above, facing down
+  p.goal="shelf"; p.state="walk"; p.bubble=false; p.target=back?[t[0],t[1]-1]:[t[0],t[1]+1]; p.face=back?"down":"up";
   p.path=pathTo(p,p.target[0],p.target[1]); p.pi=0;
 }
 /* The Coffee Corner's queue: whoever is being served or waiting, or on their way over, in order of
@@ -2514,7 +2538,7 @@ function stepCustomer(p){
       if(p.goal==="cafe"){ p.state="queue"; p.dir="up"; }
       else if(p.goal==="seat"){ p.state="sit"; p.t=70+((Math.random()*60)|0); p.dir=p.seat[2]; }
       else if(p.goal==="read"){ p.state="read"; p.t=110+((Math.random()*80)|0); p.dir="down"; }
-      else { p.state="browse"; p.bubble=true; }
+      else { p.state="browse"; p.bubble=true; if(p.goal==="shelf"&&p.face) p.dir=p.face; }
     }
     else if(p.state==="leave"){ p.dead=true; }
   }
@@ -2901,7 +2925,7 @@ function drawMorning(){
       row(ICON.grow,"Upgrade to "+nt.name,"Bigger floor, more foot traffic · rent "+rm(nt.rent)+"/day"+(locked?" · needs rep "+nt.rep:""),
         locked?"Locked":rm(nt.cost),locked,locked||S.cash<nt.cost,()=>upgradeSpace());
     }
-    const icons={[SHELF]:ICON.shelf,[TABLE]:ICON.table,[PLANT]:ICON.plant,[CAFE]:ICON.cafe,[SEAT_L]:ICON.seats,[ARMCHAIR]:ICON.chair};
+    const icons={[SHELF]:ICON.shelf,[SHELF_B]:ICON.shelf,[TABLE]:ICON.table,[PLANT]:ICON.plant,[CAFE]:ICON.cafe,[SEAT_L]:ICON.seats,[ARMCHAIR]:ICON.chair};
     FURN_ORDER.forEach(k=>{
       const f=FURN[k], lv=f.lvl||1, have=!!f.one&&tilesOf(k).length>0, needs=f.needs!=null&&!tilesOf(f.needs).length;
       const locked=level()<lv||needs;
@@ -3630,7 +3654,7 @@ cv.addEventListener("click",e=>{
     if(placingFits(S.placing,x,y) && S.cash>=f.cost){
       S.cash-=f.cost; S.stats.spent+=f.cost;
       tiles.forEach((t,i)=>{ S.grid[y][x+i]=t; if(f.slots) S.slots[key(x+i,y)]=[]; });
-      if(S.placing===SHELF||S.placing===TABLE) restockShelves();
+      if(holdsBooks(S.placing)) restockShelves();
       tip("Placed.");
       if(S.placing===CAFE){ S.placing=null; cafeBuilt(); return; }
     } else tip("Nothing placed. The marked tiles are where the "+f.name+" fits.");
@@ -3653,7 +3677,7 @@ cv.addEventListener("click",e=>{
   if(t===CAFE){ coffeeMenu(); return; }
   if(t===SEAT_L||t===SEAT_T||t===SEAT_R){ const c=seatedAt(x,y); tip(c?c.name+" is sitting with a coffee, in no hurry.":"The cafe table. Coffee drinkers sit here a while before they browse."); return; }
   if(t===ARMCHAIR){ const c=seatedAt(x,y); tip(c?c.name+" is deep in "+(c.reading!=null?"\""+BOOK(c.reading).title+"\"":"a book")+". Best not to interrupt — though you can.":"The armchair. Someone will settle into it with a book, and may well buy it."); return; }
-  if(t===SHELF||t===TABLE){
+  if(holdsBooks(t)){
     const ids=S.slots[key(x,y)]||[];
     if(ids.length){ const sh=$("#sheet"); sh.innerHTML=""; $("#modal").classList.add("on");
       sh.appendChild(el("h3",null,t===TABLE?"On display":"This shelf")).style.marginTop="0";
